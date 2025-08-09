@@ -1,4 +1,5 @@
-from fastapi import FastAPI
+from fastapi import FastAPI, HTTPException, Request
+from fastapi.responses import JSONResponse
 from api.routes import user 
 
 app = FastAPI()
@@ -10,3 +11,15 @@ def root():
 
 # Include routers
 app.include_router(user.router, prefix="/user", tags=["Users"])
+
+# Custom HTTPException handler for uniform error responses
+@app.exception_handler(HTTPException)
+async def http_exception_handler(request: Request, exc: HTTPException):
+    return JSONResponse(
+        status_code=exc.status_code,
+        content={
+            "success": False,
+            "message": exc.detail,
+            "data": None
+        }
+    )
