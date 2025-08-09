@@ -4,7 +4,7 @@ from sqlalchemy.dialects.postgresql import UUID
 from sqlalchemy.sql import func
 import uuid
 
-from backend.app.db.base import Base
+from db.base import Base
 
 class SmsTemplate(Base):
     __tablename__ = 'sms_templates'

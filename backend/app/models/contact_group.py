@@ -4,7 +4,7 @@ from sqlalchemy.dialects.postgresql import UUID
 from sqlalchemy.sql import func
 import uuid
 
-from backend.app.db.base import Base
+from db.base import Base
 
 class ContactGroup(Base):
     __tablename__ = 'contact_groups'

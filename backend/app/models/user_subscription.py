@@ -4,8 +4,8 @@ from sqlalchemy.dialects.postgresql import UUID
 from sqlalchemy.sql import func
 import uuid
 
-from backend.app.db.base import Base
-from backend.app.models.enums import SubscriptionStatusEnum
+from db.base import Base
+from models.enums import SubscriptionStatusEnum
 
 class UserSubscription(Base):
     __tablename__ = 'user_subscriptions'

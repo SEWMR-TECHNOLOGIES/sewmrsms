@@ -4,8 +4,8 @@ from sqlalchemy.dialects.postgresql import UUID
 from sqlalchemy.sql import func
 import uuid
 
-from backend.app.db.base import Base
-from backend.app.models.enums import SenderStatusEnum
+from db.base import Base
+from models.enums import SenderStatusEnum
 
 class SenderId(Base):
     __tablename__ = 'sender_ids'
