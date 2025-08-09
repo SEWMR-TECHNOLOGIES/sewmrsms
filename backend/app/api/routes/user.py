@@ -21,7 +21,7 @@ import json
 import uuid
 import httpx
 
-UPLOAD_SERVICE_URL = "https://data.sewmrtechnologies.com/handle-file-uploads.php"
+UPLOAD_SERVICE_URL = "https://data.sewmrtechnologies.com/handle-file-uploads"
 MAX_FILE_SIZE = 0.5 * 1024 * 1024
 
 router = APIRouter()
@@ -267,9 +267,12 @@ async def upload_sender_id_document(
     # Prepare target path for PHP upload
     target_path = "sewmrsms/uploads/sender-id-requests/"
 
-    # Prepare multipart for upload
-    files = {'file': (unique_filename, content, 'application/pdf')}
+    # Prepare multipart for upload, including old_attachment if it exists
     data = {'target_path': target_path}
+    if sender_req.document_path:
+        data['old_attachment'] = sender_req.document_path
+
+    files = {'file': (unique_filename, content, 'application/pdf')}
 
     async with httpx.AsyncClient() as client:
         response = await client.post(UPLOAD_SERVICE_URL, data=data, files=files)
