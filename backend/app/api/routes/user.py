@@ -292,7 +292,7 @@ async def upload_sender_id_document(
 
     return {
         "success": True,
-        "message": "File uploaded and sender ID request updated",
+        "message": "Sender ID agreement uploaded successfully",
         "data": {
             "uuid": str(sender_req.uuid),
             "document_path": sender_req.document_path
