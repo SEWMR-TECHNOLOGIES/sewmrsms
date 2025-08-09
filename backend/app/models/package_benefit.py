@@ -1,4 +1,3 @@
-# backend/app/models/package_benefit.py
 from sqlalchemy import Column, Integer, ForeignKey, DateTime
 from sqlalchemy.dialects.postgresql import UUID
 from sqlalchemy.sql import func
@@ -6,6 +5,7 @@ import uuid
 from sqlalchemy.orm import relationship
 
 from db.base import Base
+from models.benefit import Benefit
 
 class PackageBenefit(Base):
     __tablename__ = 'package_benefits'
