@@ -1,6 +1,6 @@
 from fastapi import FastAPI, HTTPException, Request
 from fastapi.responses import JSONResponse
-from api.routes import user 
+from api.routes import user, subscription
 
 app = FastAPI()
 
@@ -11,6 +11,7 @@ def root():
 
 # Include routers
 app.include_router(user.router, prefix="/user", tags=["Users"])
+app.include_router(subscription.router, prefix="/subscription", tags=["Subscriptions"])
 
 # Custom HTTPException handler for uniform error responses
 @app.exception_handler(HTTPException)
