@@ -3,6 +3,7 @@ from sqlalchemy import Column, Integer, Text, Numeric, DateTime
 from sqlalchemy.dialects.postgresql import UUID
 from sqlalchemy.sql import func
 import uuid
+from sqlalchemy.orm import relationship
 
 from db.base import Base
 
@@ -17,3 +18,4 @@ class SmsPackage(Base):
     best_for = Column(Text)
     created_at = Column(DateTime, nullable=False, server_default=func.now())
     updated_at = Column(DateTime, nullable=False, server_default=func.now(), onupdate=func.now())
+    package_benefits = relationship("PackageBenefit", back_populates="package", cascade="all, delete-orphan")
