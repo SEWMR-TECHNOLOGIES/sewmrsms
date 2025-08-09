@@ -114,7 +114,6 @@ CREATE TABLE subscription_orders (
   uuid UUID NOT NULL DEFAULT uuid_generate_v4() UNIQUE,
   package_id INT NOT NULL REFERENCES sms_packages(id) ON DELETE CASCADE,
   user_id INT NOT NULL REFERENCES users(id) ON DELETE CASCADE,
-  sender_id INT NOT NULL REFERENCES sender_ids(id) ON DELETE CASCADE,
   amount NUMERIC(10,2) NOT NULL,
   total_sms INT NOT NULL,
   payment_status payment_status_enum DEFAULT 'pending',

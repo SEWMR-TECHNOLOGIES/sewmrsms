@@ -14,7 +14,6 @@ class SubscriptionOrder(Base):
     uuid = Column(UUID(as_uuid=True), unique=True, nullable=False, default=uuid.uuid4)
     package_id = Column(Integer, ForeignKey('sms_packages.id', ondelete='CASCADE'), nullable=False)
     user_id = Column(Integer, ForeignKey('users.id', ondelete='CASCADE'), nullable=False)
-    sender_id = Column(Integer, ForeignKey('sender_ids.id', ondelete='CASCADE'), nullable=False)
     amount = Column(Numeric(10, 2), nullable=False)
     total_sms = Column(Integer, nullable=False)
     payment_status = Column(Enum(PaymentStatusEnum), default=PaymentStatusEnum.pending)
