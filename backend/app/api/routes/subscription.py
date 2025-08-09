@@ -83,7 +83,8 @@ async def purchase_subscription(
         db.commit()
         db.refresh(new_order)
     except Exception as e:
-        return {"success": False, "message": f"Database error: {str(e)}", "data": None}
+        print(f"DB error on submitting subscription order request: {e}")
+        return {"success": False, "message": "Database error", "data": None}
 
     return {
         "success": True,
