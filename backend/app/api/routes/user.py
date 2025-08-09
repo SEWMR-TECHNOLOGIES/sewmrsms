@@ -1,5 +1,6 @@
 # backend/app/api/user.py
-from fastapi import APIRouter, Depends, Request
+import os
+from fastapi import APIRouter, Depends, File, Form, Request, UploadFile, HTTPException
 from sqlalchemy.orm import Session
 from sqlalchemy.exc import SQLAlchemyError
 from sqlalchemy import or_
@@ -17,6 +18,11 @@ from uuid import uuid4
 from datetime import datetime
 import pytz
 import json
+import uuid
+import httpx
+
+UPLOAD_SERVICE_URL = "https://data.sewmrtechnologies.com/handle-file-uploads.php"
+MAX_FILE_SIZE = 0.5 * 1024 * 1024
 
 router = APIRouter()
 
@@ -218,5 +224,77 @@ async def request_sender_id(
             "sample_message": new_request.sample_message,
             "company_name": new_request.company_name,
             "created_at": now.strftime("%Y-%m-%d %H:%M:%S")
+        }
+    }
+
+@router.post("/upload-signed-sender-id-agreement")
+async def upload_sender_id_document(
+    sender_request_uuid: str = Form(...),
+    file: UploadFile = File(...),
+    current_user: User = Depends(get_current_user),
+    db: Session = Depends(get_db)
+):
+    # Validate UUID format
+    try:
+        sender_uuid = uuid.UUID(sender_request_uuid)
+    except ValueError:
+        raise HTTPException(status_code=400, detail="Invalid sender_request_uuid")
+
+    sender_req = db.query(SenderIdRequest).filter(
+        SenderIdRequest.uuid == sender_uuid,
+        SenderIdRequest.user_id == current_user.id,
+        SenderIdRequest.status == SenderIdRequestStatusEnum.pending.value
+    ).first()
+    if not sender_req:
+        raise HTTPException(status_code=404, detail="Sender ID request not found or not pending")
+
+    # Check MIME type & extension (basic check)
+    if file.content_type != "application/pdf":
+        raise HTTPException(status_code=400, detail="Only PDF files are allowed")
+
+    _, ext = os.path.splitext(file.filename)
+    if ext.lower() != ".pdf":
+        raise HTTPException(status_code=400, detail="File extension must be .pdf")
+
+    # Read file content and check size
+    content = await file.read()
+    if len(content) > MAX_FILE_SIZE:
+        raise HTTPException(status_code=400, detail="File size must be less than 0.5 MB")
+
+    # Prepare unique filename
+    unique_filename = f"{uuid.uuid4()}.pdf"
+
+    # Prepare target path for PHP upload
+    target_path = "sewmrsms/uploads/sender-id-requests/"
+
+    # Prepare multipart for upload
+    files = {'file': (unique_filename, content, 'application/pdf')}
+    data = {'target_path': target_path}
+
+    async with httpx.AsyncClient() as client:
+        response = await client.post(UPLOAD_SERVICE_URL, data=data, files=files)
+
+    if response.status_code != 200:
+        raise HTTPException(status_code=500, detail="Upload service error")
+
+    result = response.json()
+    if not result.get("success"):
+        raise HTTPException(status_code=400, detail=result.get("message", "Upload failed"))
+
+    # Update DB with document URL
+    sender_req.document_path = result["data"]["url"]
+    sender_req.updated_at = datetime.now(pytz.timezone("Africa/Nairobi")).replace(tzinfo=None)
+
+    try:
+        db.commit()
+    except Exception:
+        raise HTTPException(status_code=500, detail="Failed to update sender ID request")
+
+    return {
+        "success": True,
+        "message": "File uploaded and sender ID request updated",
+        "data": {
+            "uuid": str(sender_req.uuid),
+            "document_path": sender_req.document_path
         }
     }
