@@ -1,0 +1,20 @@
+# backend/app/models/user_subscription.py
+from sqlalchemy import Column, Integer, ForeignKey, Enum, DateTime
+from sqlalchemy.dialects.postgresql import UUID
+from sqlalchemy.sql import func
+import uuid
+
+from backend.app.db.base import Base
+from backend.app.models.enums import SubscriptionStatusEnum
+
+class UserSubscription(Base):
+    __tablename__ = 'user_subscriptions'
+
+    id = Column(Integer, primary_key=True)
+    uuid = Column(UUID(as_uuid=True), unique=True, nullable=False, default=uuid.uuid4)
+    user_id = Column(Integer, ForeignKey('users.id', ondelete='CASCADE'), nullable=False)
+    total_sms = Column(Integer, nullable=False)
+    used_sms = Column(Integer, default=0)
+    remaining_sms = Column(Integer)
+    status = Column(Enum(SubscriptionStatusEnum), default=SubscriptionStatusEnum.active)
+    subscribed_at = Column(DateTime, nullable=False, server_default=func.now())

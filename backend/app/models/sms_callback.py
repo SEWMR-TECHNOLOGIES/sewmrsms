@@ -1,0 +1,21 @@
+# backend/app/models/sms_callback.py
+from sqlalchemy import Column, Integer, String, Text, JSON, DateTime
+from sqlalchemy.dialects.postgresql import UUID
+from sqlalchemy.sql import func
+import uuid
+
+from backend.app.db.base import Base
+
+class SmsCallback(Base):
+    __tablename__ = 'sms_callbacks'
+
+    id = Column(Integer, primary_key=True)
+    uuid = Column(UUID(as_uuid=True), unique=True, nullable=False, default=uuid.uuid4)
+    message_id = Column(Text, nullable=False)
+    phone = Column(String(15), nullable=False)
+    status = Column(Text)
+    uid = Column(Text)
+    remarks = Column(Text)
+    payload = Column(JSON)
+    received_at = Column(DateTime, nullable=False, server_default=func.now())
+    sender_alias = Column(Text)

@@ -1,0 +1,48 @@
+# Python virtual environments
+backend/venv/
+**/__pycache__/
+**/*.py[cod]
+*.egg-info/
+*.egg
+*.pytest_cache/
+*.mypy_cache/
+
+# Python bytecode files
+*.pyc
+
+# Alembic migrations cache (optional, usually tracked but exclude if you want)
+backend/app/db/migrations/__pycache__/
+
+# Environment variables
+.env
+.env.*
+!.env.example
+
+# VSCode settings
+.vscode/
+
+# MacOS
+.DS_Store
+
+# Node modules (frontend)
+frontend/node_modules/
+
+# Frontend build output
+frontend/dist/
+frontend/.next/
+frontend/out/
+
+# Logs
+*.log
+
+# Docker files (optional, if you build images)
+docker-compose.override.yml
+
+# Ignore test cache
+backend/tests/__pycache__/
+
+# JetBrains IDEs
+.idea/
+
+# Misc
+*.swp

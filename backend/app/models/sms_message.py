@@ -1,0 +1,16 @@
+# backend/app/models/sms_message.py
+from sqlalchemy import Column, Integer, String, ForeignKey, DateTime
+from sqlalchemy.dialects.postgresql import UUID
+from sqlalchemy.sql import func
+import uuid
+
+from backend.app.db.base import Base
+
+class SmsMessage(Base):
+    __tablename__ = 'sms_messages'
+
+    id = Column(Integer, primary_key=True)
+    uuid = Column(UUID(as_uuid=True), unique=True, nullable=False, default=uuid.uuid4)
+    sender_alias = Column(String(11), nullable=False)
+    user_id = Column(Integer, ForeignKey('users.id', ondelete='CASCADE'), nullable=False)
+    sent_at = Column(DateTime, nullable=False, server_default=func.now())
