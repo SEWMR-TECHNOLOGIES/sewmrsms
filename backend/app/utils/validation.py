@@ -6,8 +6,7 @@ def validate_email(email: str) -> bool:
     return bool(re.match(pattern, email))
 
 def validate_phone(phone: str) -> bool:
-    # Allow digits, optional + at start, 7-15 digits total (simple, tweak as needed)
-    pattern = r'^\+?\d{7,15}$'
+    pattern = r'^255[67]\d{8}$'
     return bool(re.match(pattern, phone))
 
 def validate_password_confirmation(password: str, confirm_password: str) -> bool:
