@@ -5,7 +5,8 @@ from fastapi import APIRouter, Depends, Request
 import pytz
 from sqlalchemy.orm import Session, joinedload
 from api.user_auth import get_current_user
-from models.enums import PaymentStatusEnum
+from models.sender_id import SenderId
+from models.enums import PaymentStatusEnum, SenderStatusEnum
 from models.user import User
 from models.subscription_order import SubscriptionOrder
 from utils.helpers import get_package_by_sms_count
@@ -49,6 +50,19 @@ async def purchase_subscription(
     current_user: User = Depends(get_current_user),
     db: Session = Depends(get_db),
 ):
+    # Check user has at least one active sender id
+    active_sender = db.query(SenderId).filter(
+        SenderId.user_id == current_user.id,
+        SenderId.status == SenderStatusEnum.active
+    ).first()
+
+    if not active_sender:
+        return {
+            "success": False,
+            "message": "You must have at least one active sender ID to purchase SMS",
+            "data": None
+        }
+
     try:
         data = await request.json()
     except Exception:
