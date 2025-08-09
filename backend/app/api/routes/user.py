@@ -5,6 +5,7 @@ from sqlalchemy.orm import Session
 from sqlalchemy.exc import SQLAlchemyError
 from sqlalchemy import or_
 from api.user_auth import get_current_user
+from models.sender_id import SenderId
 from models.models import SenderIdRequest
 from models.enums import SenderIdRequestStatusEnum
 from models.user import User
@@ -300,4 +301,27 @@ async def upload_sender_id_document(
             "uuid": str(sender_req.uuid),
             "document_path": sender_req.document_path
         }
+    }
+
+@router.get("/my-sender-ids")
+async def get_user_sender_ids(
+    current_user: User = Depends(get_current_user),
+    db: Session = Depends(get_db),
+):
+    sender_ids = db.query(SenderId).filter(SenderId.user_id == current_user.id).all()
+
+    data = []
+    for s in sender_ids:
+        data.append({
+            "uuid": str(s.uuid),
+            "alias": s.alias,
+            "status": s.status.value if hasattr(s.status, 'value') else s.status,
+            "created_at": s.created_at.strftime("%Y-%m-%d %H:%M:%S") if s.created_at else None,
+            "updated_at": s.updated_at.strftime("%Y-%m-%d %H:%M:%S") if s.updated_at else None,
+        })
+
+    return {
+        "success": True,
+        "message": f"Sender IDs retrieved for user {current_user.username}",
+        "data": data
     }
