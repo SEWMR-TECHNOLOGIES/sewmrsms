@@ -24,3 +24,7 @@ def validate_password_strength(password: str) -> bool:
     if not re.search(r'[!@#$%^&*(),.?":{}|<>]', password):
         return False
     return True
+
+def validate_sender_alias(alias: str) -> bool:
+    pattern = r'^[A-Z0-9 ]{3,11}$'
+    return bool(re.fullmatch(pattern, alias))

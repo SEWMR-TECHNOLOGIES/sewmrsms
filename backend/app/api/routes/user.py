@@ -3,11 +3,14 @@ from fastapi import APIRouter, Depends, Request
 from sqlalchemy.orm import Session
 from sqlalchemy.exc import SQLAlchemyError
 from sqlalchemy import or_
+from api.user_auth import get_current_user
+from models.models import SenderIdRequest
+from models.enums import SenderIdRequestStatusEnum
 from models.user import User
 from api.deps import get_db
 from utils.validation import (
     validate_email, validate_phone,
-    validate_password_confirmation, validate_password_strength
+    validate_password_confirmation, validate_password_strength, validate_sender_alias
 )
 from utils.security import Hasher, create_access_token
 from uuid import uuid4
@@ -142,3 +145,78 @@ async def signin_user(request: Request, db: Session = Depends(get_db)):
     except Exception as e:
         print(f"Unexpected error: {e}")
         return {"success": False, "message": "Internal server error", "data": None}
+
+@router.post("/request-sender-id")
+async def request_sender_id(
+    request: Request,
+    current_user: User = Depends(get_current_user),
+    db: Session = Depends(get_db)
+):
+    try:
+        data = await request.json()
+    except Exception:
+        return {"success": False, "message": "Invalid JSON", "data": None}
+
+    alias = data.get("alias", "").strip().upper()
+    sample_message = data.get("sample_message", "").strip()
+    company_name = data.get("company_name", "").strip()
+
+    if not alias:
+        return {"success": False, "message": "Alias is required", "data": None}
+    if not sample_message:
+        return {"success": False, "message": "Sample message is required", "data": None}
+    if not company_name:
+        return {"success": False, "message": "Company name is required", "data": None}
+
+    if not validate_sender_alias(alias):
+        return {
+            "success": False,
+            "message": "Alias must be 3 to 11 characters long and contain only uppercase letters, digits, and spaces",
+            "data": None
+        }
+
+    # Check if alias already exists for this user in SenderIdRequests (pending/approved)
+    exists = db.query(SenderIdRequest).filter(
+        SenderIdRequest.user_id == current_user.id,
+        SenderIdRequest.sender_alias == alias,
+        or_(
+            SenderIdRequest.status == SenderIdRequestStatusEnum.pending.value,
+            SenderIdRequest.status == SenderIdRequestStatusEnum.approved.value
+        )
+    ).first()
+
+    if exists:
+        return {"success": False, "message": "Alias already requested or approved", "data": None}
+
+    now = datetime.now(pytz.timezone("Africa/Nairobi")).replace(tzinfo=None)
+
+    new_request = SenderIdRequest(
+        user_id=current_user.id,
+        sender_alias=alias,
+        sample_message=sample_message,
+        company_name=company_name,
+        status=SenderIdRequestStatusEnum.pending.value,
+        created_at=now,
+        updated_at=now
+    )
+    try:
+        db.add(new_request)
+        db.commit()
+        db.refresh(new_request)
+    except Exception as e:
+        print(f"DB error on sender ID request creation: {e}")
+        return {"success": False, "message": "Database error", "data": None}
+
+    return {
+        "success": True,
+        "message": "Sender ID request submitted successfully",
+        "data": {
+            "id": new_request.id,
+            "uuid": str(new_request.uuid),
+            "sender_alias": new_request.sender_alias,
+            "status": new_request.status,
+            "sample_message": new_request.sample_message,
+            "company_name": new_request.company_name,
+            "created_at": now.strftime("%Y-%m-%d %H:%M:%S")
+        }
+    }
