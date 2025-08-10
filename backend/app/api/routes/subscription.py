@@ -9,13 +9,14 @@ import pytz
 from sqlalchemy import and_
 from sqlalchemy.orm import Session, joinedload
 from api.user_auth import get_current_user
+from models.user_subscription import UserSubscription
 from models.mobile_payment import MobilePayment
 from services.payment_service import PaymentGateway
 from utils.validation import validate_phone
 from models.bank_payment import BankPayment
 from models.order_payment import OrderPayment
 from models.sender_id import SenderId
-from models.enums import PaymentMethodEnum, PaymentStatusEnum, SenderStatusEnum
+from models.enums import PaymentMethodEnum, PaymentStatusEnum, SenderStatusEnum, SubscriptionStatusEnum
 from models.user import User
 from models.subscription_order import SubscriptionOrder
 from utils.helpers import get_package_by_sms_count
@@ -279,30 +280,36 @@ async def submit_mobile_payment(
     current_user=Depends(get_current_user),
     db: Session = Depends(get_db),
 ):
+    # Validate content type
     content_type = request.headers.get("content-type", "")
     if "application/json" not in content_type.lower():
         raise HTTPException(status_code=415, detail="Invalid content type. Expected application/json")
 
+    # Parse JSON body
     data = await request.json()
     subscription_order_uuid = data.get("subscription_order_uuid")
     mobile_number = data.get("mobile_number")
 
+    # Validate required fields
     if not subscription_order_uuid:
         raise HTTPException(status_code=400, detail="subscription_order_uuid is required")
     if not mobile_number:
         raise HTTPException(status_code=400, detail="mobile_number is required")
 
+    # Validate UUID format
     try:
         subscription_uuid_obj = uuid.UUID(subscription_order_uuid)
     except ValueError:
         raise HTTPException(status_code=400, detail="Invalid subscription_order_uuid format")
 
+    # Validate phone format
     if not validate_phone(mobile_number):
         raise HTTPException(
             status_code=400,
             detail="Phone must be in format 255XXXXXXXXX (start with 255 then 6 or 7, then 8 digits)",
         )
 
+    # Fetch subscription order from DB
     subscription_order = db.query(SubscriptionOrder).filter(
         SubscriptionOrder.uuid == subscription_uuid_obj
     ).first()
@@ -310,7 +317,7 @@ async def submit_mobile_payment(
     if not subscription_order:
         raise HTTPException(status_code=400, detail="Subscription order not found")
 
-    # Prevent if subscription order marked completed or any completed order payment exists
+    # Check if payment already completed to avoid duplicates
     completed_payment_exists = db.query(OrderPayment).filter(
         OrderPayment.order_id == subscription_order.id,
         OrderPayment.status == PaymentStatusEnum.completed
@@ -321,15 +328,29 @@ async def submit_mobile_payment(
 
     now = datetime.now(pytz.timezone("Africa/Nairobi")).replace(tzinfo=None)
 
-    # Get existing pending order payment for this subscription order
-    order_payment = db.query(OrderPayment).filter(
+    # --- Delete all pending MobilePayments linked to any pending OrderPayment for this subscription ---
+
+    # Get IDs of all pending OrderPayments for this subscription order
+    pending_order_payment_ids = db.query(OrderPayment.id).filter(
         OrderPayment.order_id == subscription_order.id,
         OrderPayment.status == PaymentStatusEnum.pending.value
-    ).first()
+    ).subquery()
 
-    # If order payment exists but method is not mobile, create new mobile order payment
-    if order_payment and order_payment.method != PaymentMethodEnum.mobile.value:
-        order_payment = None
+    # Delete all pending MobilePayments linked to those OrderPayments
+    db.query(MobilePayment).filter(
+        MobilePayment.order_payment_id.in_(pending_order_payment_ids)
+    ).delete(synchronize_session=False)
+
+    db.flush()
+
+    # --- Now get a pending mobile OrderPayment for this subscription or create a new one ---
+
+    # Try to get a pending OrderPayment with mobile method
+    order_payment = db.query(OrderPayment).filter(
+        OrderPayment.order_id == subscription_order.id,
+        OrderPayment.status == PaymentStatusEnum.pending.value,
+        OrderPayment.method == PaymentMethodEnum.mobile.value
+    ).first()
 
     # If no pending mobile order payment, create one
     if not order_payment:
@@ -343,16 +364,11 @@ async def submit_mobile_payment(
         db.add(order_payment)
         db.flush()
 
-    else:
-        # Delete existing MobilePayments for this order_payment if still pending
-        db.query(MobilePayment).filter(
-            MobilePayment.order_payment_id == order_payment.id
-        ).delete()
-        db.flush()
-
+    # Identify network and assign gateway name
     network = gateway._identify_network(mobile_number)
     gateway_name = "MIXX BY YAS" if network == "TIGO" else network
 
+    # Create MobilePayment linked to the order_payment
     mobile_payment = MobilePayment(
         order_payment_id=order_payment.id,
         gateway=gateway_name,
@@ -366,6 +382,7 @@ async def submit_mobile_payment(
     db.add(mobile_payment)
     db.flush()
 
+    # Request payment via the gateway API
     payment_resp = await gateway.request_payment(
         phone_number=mobile_number,
         amount=float(order_payment.amount),
@@ -373,6 +390,7 @@ async def submit_mobile_payment(
         merchant_request_id=str(mobile_payment.uuid)
     )
 
+    # Update MobilePayment with gateway response IDs
     mobile_payment.merchant_request_id = payment_resp.get("MerchantRequestID", "")
     mobile_payment.checkout_request_id = payment_resp.get("CheckoutRequestID", "")
     mobile_payment.transaction_reference = payment_resp.get("TransactionReference", "")
@@ -383,6 +401,7 @@ async def submit_mobile_payment(
         db.rollback()
         raise HTTPException(status_code=500, detail=f"Database error: {str(e)}")
 
+    # Return success with payment details
     return {
         "success": True,
         "message": "Payment Request made successfully.",
@@ -409,14 +428,79 @@ async def get_payment_status(
         raise HTTPException(status_code=400, detail="checkout_request_id is required")
 
     gateway = PaymentGateway()
-    try:
-        status = await gateway.check_transaction_status(checkout_request_id)
+    status = await gateway.check_transaction_status(checkout_request_id)
+
+    if status != "PAID":
         return {
-            "success": True,
+            "success": False,
             "checkout_request_id": checkout_request_id,
-            "status": status
+            "status": status,
+            "message": "Payment still pending"
         }
-    except HTTPException as e:
-        raise e
+
+    # Find mobile payment by checkout_request_id
+    mobile_payment = db.query(MobilePayment).filter(
+        MobilePayment.checkout_request_id == checkout_request_id
+    ).first()
+
+    if not mobile_payment:
+        raise HTTPException(status_code=404, detail="Mobile payment record not found")
+
+    order_payment = db.query(OrderPayment).filter(
+        OrderPayment.id == mobile_payment.order_payment_id
+    ).first()
+
+    subscription_order = db.query(SubscriptionOrder).filter(
+        SubscriptionOrder.id == order_payment.order_id
+    ).first()
+
+    # Check if subscription already completed
+    if subscription_order.payment_status == PaymentStatusEnum.completed:
+        return {
+            "success": False,
+            "message": f"Subscription already completed. You have purchased {subscription_order.total_sms} SMS.",
+            "subscription_order_uuid": str(subscription_order.uuid)
+        }
+
+    now = datetime.now(pytz.timezone("Africa/Nairobi")).replace(tzinfo=None)
+
+    # Update order payment status and paid_at
+    order_payment.status = PaymentStatusEnum.completed
+    order_payment.paid_at = now
+
+    # Update subscription order payment status
+    subscription_order.payment_status = PaymentStatusEnum.completed
+
+    # Upsert user subscription
+    user_subscription = db.query(UserSubscription).filter(
+        UserSubscription.user_id == subscription_order.user_id
+    ).first()
+
+    if user_subscription:
+        # Update existing subscription sms counts
+        user_subscription.total_sms += subscription_order.total_sms
+        user_subscription.status = SubscriptionStatusEnum.active
+    else:
+        # Insert new user subscription record
+        user_subscription = UserSubscription(
+            user_id=subscription_order.user_id,
+            total_sms=subscription_order.total_sms,
+            used_sms=0,
+            status=SubscriptionStatusEnum.active,
+            subscribed_at=now
+        )
+        db.add(user_subscription)
+
+    try:
+        db.commit()
     except Exception as e:
-        raise HTTPException(status_code=500, detail=f"Error checking payment status: {str(e)}")
+        db.rollback()
+        raise HTTPException(status_code=500, detail=f"Database error: {str(e)}")
+
+    return {
+        "success": True,
+        "message": f"Congratulations, you have purchased {subscription_order.total_sms} SMS.",
+        "subscription_order_uuid": str(subscription_order.uuid),
+        "user_subscription_uuid": str(user_subscription.uuid)
+    }
+

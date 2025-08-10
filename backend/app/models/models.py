@@ -1,5 +1,5 @@
 from sqlalchemy import (
-    Column, Integer, String, ForeignKey, DateTime, Text, Numeric, Enum, Boolean, JSON
+    Column, Computed, Integer, String, ForeignKey, DateTime, Text, Numeric, Enum, Boolean, JSON
 )
 from sqlalchemy.dialects.postgresql import UUID
 from sqlalchemy.ext.declarative import declarative_base
@@ -245,7 +245,7 @@ class UserSubscription(Base):
     user_id = Column(Integer, ForeignKey('users.id', ondelete='CASCADE'), nullable=False)
     total_sms = Column(Integer, nullable=False)
     used_sms = Column(Integer, default=0)
-    remaining_sms = Column(Integer)  # calculated in DB with GENERATED ALWAYS, not handled here
+    remaining_sms = Column(Integer, Computed('total_sms - used_sms'), nullable=False)
     status = Column(Enum(SubscriptionStatusEnum), default=SubscriptionStatusEnum.active)
     subscribed_at = Column(DateTime, nullable=False, server_default=func.now())
 
