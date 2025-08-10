@@ -23,8 +23,7 @@ import json
 import uuid
 import httpx
 
-UPLOAD_SERVICE_URL = "https://data.sewmrtechnologies.com/handle-file-uploads"
-MAX_FILE_SIZE = 0.5 * 1024 * 1024
+from core.config import UPLOAD_SERVICE_URL, MAX_FILE_SIZE
 
 router = APIRouter()
 

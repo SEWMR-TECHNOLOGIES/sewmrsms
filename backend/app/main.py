@@ -26,14 +26,14 @@ async def http_exception_handler(request: Request, exc: HTTPException):
         }
     )
 
-@app.exception_handler(RequestValidationError)
-async def validation_exception_handler(request: Request, exc: RequestValidationError):
-    # Customize your message here
-    return JSONResponse(
-        status_code=422,
-        content={
-            "success": False,
-            "message": "Invalid request: Please send the correct content type and required fields.",
-            "data": None
-        },
-    )
+# @app.exception_handler(RequestValidationError)
+# async def validation_exception_handler(request: Request, exc: RequestValidationError):
+#     # Customize your message here
+#     return JSONResponse(
+#         status_code=422,
+#         content={
+#             "success": False,
+#             "message": "Invalid request: Please send the correct content type and required fields.",
+#             "data": None
+#         },
+#     )

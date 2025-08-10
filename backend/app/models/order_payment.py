@@ -1,5 +1,5 @@
 # backend/app/models/order_payment.py
-from sqlalchemy import Column, Integer, Numeric, DateTime, Enum, ForeignKey
+from sqlalchemy import Column, Integer, Numeric, DateTime, Enum, ForeignKey, Text
 from sqlalchemy.dialects.postgresql import UUID
 from sqlalchemy.sql import func
 import uuid
@@ -16,4 +16,5 @@ class OrderPayment(Base):
     amount = Column(Numeric(15, 2), nullable=False)
     method = Column(Enum(PaymentMethodEnum), nullable=False)
     status = Column(Enum(PaymentStatusEnum), default=PaymentStatusEnum.pending)
+    remarks = Column(Text, nullable=True)
     paid_at = Column(DateTime, nullable=False, server_default=func.now())

@@ -233,6 +233,7 @@ class SubscriptionOrder(Base):
     amount = Column(Numeric(10, 2), nullable=False)
     total_sms = Column(Integer, nullable=False)
     payment_status = Column(Enum(PaymentStatusEnum), default=PaymentStatusEnum.pending)
+    remarks = Column(Text, nullable=True)
     created_at = Column(DateTime, nullable=False, server_default=func.now())
 
 

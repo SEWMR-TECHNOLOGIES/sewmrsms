@@ -1,12 +1,18 @@
 # backend/app/api/subscription.py
 
 from datetime import datetime
-from fastapi import APIRouter, Depends, Request
+import os
+import uuid
+from fastapi import APIRouter, Depends, File, Form, HTTPException, Request, UploadFile
+import httpx
 import pytz
+from sqlalchemy import and_
 from sqlalchemy.orm import Session, joinedload
 from api.user_auth import get_current_user
+from models.bank_payment import BankPayment
+from models.order_payment import OrderPayment
 from models.sender_id import SenderId
-from models.enums import PaymentStatusEnum, SenderStatusEnum
+from models.enums import PaymentMethodEnum, PaymentStatusEnum, SenderStatusEnum
 from models.user import User
 from models.subscription_order import SubscriptionOrder
 from utils.helpers import get_package_by_sms_count
@@ -14,6 +20,7 @@ from models.sms_package import SmsPackage
 from models.package_benefit import PackageBenefit
 from models.benefit import Benefit
 from api.deps import get_db
+from core.config import UPLOAD_SERVICE_URL, MAX_FILE_SIZE
 
 router = APIRouter()
 @router.get("/packages")
@@ -119,5 +126,144 @@ async def purchase_subscription(
             "total_sms": number_of_messages,
             "payment_status": new_order.payment_status.value,
             "created_at": now.strftime("%Y-%m-%d %H:%M:%S"),
+        }
+    }
+
+@router.post("/submit-bank-payment")
+async def submit_bank_payment(
+    request: Request,
+    current_user: User = Depends(get_current_user),
+    subscription_order_uuid: str = Form(None),
+    transaction_reference: str = Form(None),
+    bank_name: str = Form(None),
+    file: UploadFile = File(None),
+    db: Session = Depends(get_db),
+):
+    content_type = request.headers.get("content-type", "")
+    if "multipart/form-data" not in content_type.lower():
+        raise HTTPException(status_code=415, detail="Invalid content type. Expected multipart/form-data")
+
+    # Explicit required checks with clear messages
+    if not subscription_order_uuid:
+        raise HTTPException(status_code=400, detail="Subscription reference id (uuid) is required")
+    if not transaction_reference:
+        raise HTTPException(status_code=400, detail="Transaction reference is required")
+    if not bank_name:
+        raise HTTPException(status_code=400, detail="Bank name is required")
+    if not file:
+        raise HTTPException(status_code=400, detail="Bank slip must be attached")
+
+    # Validate UUID format
+    try:
+        subscription_uuid_obj = uuid.UUID(subscription_order_uuid)
+    except ValueError:
+        raise HTTPException(status_code=400, detail="Invalid subscription_order_uuid format")
+
+    # Get subscription order, must be pending
+    subscription_order = db.query(SubscriptionOrder).filter(
+        and_(
+            SubscriptionOrder.uuid == subscription_uuid_obj,
+            SubscriptionOrder.payment_status == PaymentStatusEnum.pending
+        )
+    ).first()
+
+    if not subscription_order:
+        raise HTTPException(status_code=400, detail="No pending subscription order found for this UUID")
+
+    # Check file type and size
+    allowed_content_types = ["application/pdf", "image/jpeg", "image/png"]
+    if file.content_type not in allowed_content_types:
+        raise HTTPException(status_code=400, detail="Invalid file type. Allowed: PDF, JPEG, PNG")
+
+    content = await file.read()
+    if len(content) > MAX_FILE_SIZE:
+        raise HTTPException(status_code=400, detail="File size must be less than 0.5 MB")
+
+    # Check if there's an existing OrderPayment for this subscription_order with pending status
+    order_payment = db.query(OrderPayment).filter(
+        OrderPayment.order_id == subscription_order.id,
+        OrderPayment.status == PaymentStatusEnum.pending.value
+    ).first()
+
+    now = datetime.now(pytz.timezone("Africa/Nairobi")).replace(tzinfo=None)
+
+    if not order_payment:
+        order_payment = OrderPayment(
+            order_id=subscription_order.id,
+            amount=subscription_order.amount,
+            method=PaymentMethodEnum.bank.value,
+            status=PaymentStatusEnum.pending.value,
+            paid_at=now
+        )
+        db.add(order_payment)
+        db.flush()
+
+    # Check for existing BankPayment for this order_payment
+    bank_payment = db.query(BankPayment).filter(
+        BankPayment.order_payment_id == order_payment.id
+    ).first()
+
+    # Prepare unique filename with extension
+    _, ext = os.path.splitext(file.filename)
+    ext = ext.lower() if ext else ".pdf"
+    unique_filename = f"{uuid.uuid4()}{ext}"
+
+    # Prepare upload data
+    target_path = "sewmrsms/uploads/subscriptions/bank-slips/"
+
+    data = {"target_path": target_path}
+    if bank_payment and bank_payment.slip_path:
+        data["old_attachment"] = bank_payment.slip_path 
+
+    files = {"file": (unique_filename, content, file.content_type)}
+
+    # Upload to external service
+    async with httpx.AsyncClient() as client:
+        response = await client.post(UPLOAD_SERVICE_URL, data=data, files=files)
+
+    if response.status_code != 200:
+        raise HTTPException(status_code=500, detail="Upload service error")
+
+    result = response.json()
+    if not result.get("success"):
+        raise HTTPException(status_code=400, detail=result.get("message", "Upload failed"))
+
+    slip_url = result["data"]["url"]
+
+    # Update or create BankPayment
+    if bank_payment:
+        bank_payment.bank_name = bank_name
+        bank_payment.transaction_reference = transaction_reference
+        bank_payment.slip_path = slip_url
+        bank_payment.paid_at = now
+    else:
+        bank_payment = BankPayment(
+            order_payment_id=order_payment.id,
+            bank_name=bank_name,
+            transaction_reference=transaction_reference,
+            slip_path=slip_url,
+            paid_at=now
+        )
+        db.add(bank_payment)
+
+    order_payment.paid_at = now
+
+    try:
+        db.commit()
+    except Exception as e:
+        db.rollback()
+        raise HTTPException(status_code=500, detail=f"Database error: {str(e)}")
+
+    return {
+        "success": True,
+        "message": "Your subscription bank payment details have been received and are pending review. We will notify you once your subscription is approved.",
+        "data": {
+            "subscription_order_uuid": str(subscription_order.uuid),
+            "order_payment_uuid": str(order_payment.uuid),
+            "bank_payment_uuid": str(bank_payment.uuid),
+            "bank_name": bank_payment.bank_name,
+            "transaction_reference": bank_payment.transaction_reference,
+            "slip_path": bank_payment.slip_path,
+            "payment_status": subscription_order.payment_status.value,
         }
     }

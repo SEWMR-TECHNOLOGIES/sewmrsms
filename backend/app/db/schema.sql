@@ -128,6 +128,7 @@ CREATE TABLE order_payments (
   amount NUMERIC(15,2) NOT NULL,
   method payment_method_enum NOT NULL,
   status payment_status_enum DEFAULT 'pending',
+  remarks TEXT DEFAULT NULL,
   paid_at TIMESTAMP NOT NULL DEFAULT CURRENT_TIMESTAMP
 );
 
