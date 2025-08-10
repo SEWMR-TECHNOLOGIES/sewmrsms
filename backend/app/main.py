@@ -1,7 +1,7 @@
 from fastapi import FastAPI, HTTPException, Request
 from fastapi.exceptions import RequestValidationError
 from fastapi.responses import JSONResponse
-from api.routes import user, subscription
+from api.routes import user, subscription, messaging
 
 app = FastAPI()
 
@@ -13,6 +13,7 @@ def root():
 # Include routers
 app.include_router(user.router, prefix="/user", tags=["Users"])
 app.include_router(subscription.router, prefix="/subscription", tags=["Subscriptions"])
+app.include_router(messaging.router, prefix="/messaging", tags="Messaging")
 
 # Custom HTTPException handler for uniform error responses
 @app.exception_handler(HTTPException)

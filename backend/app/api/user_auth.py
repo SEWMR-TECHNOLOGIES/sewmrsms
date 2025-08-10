@@ -45,3 +45,36 @@ async def get_current_user(
             status_code=status.HTTP_401_UNAUTHORIZED,
             detail=str(e)
         )
+
+async def get_current_user_optional(
+    authorization: Optional[str] = Header(None),
+    db: Session = Depends(get_db),
+) -> Optional[User]:
+    """
+    Try to authenticate user via JWT bearer token.
+    If header missing or JWT invalid, return None instead of raising,
+    so endpoint can fall back to API-token verification.
+    """
+    if not authorization:
+        return None
+
+    if not authorization.startswith("Bearer "):
+        # not a bearer token — return None so caller can attempt other auth
+        return None
+
+    token = authorization[len("Bearer "):].strip()
+
+    # 1) try JWT first — if valid return User
+    try:
+        payload = verify_access_token(token)
+        user_uuid = payload.get("sub")
+        if user_uuid:
+            user = db.query(User).filter(User.uuid == user_uuid).first()
+            return user
+    except Exception:
+        # JWT invalid or expired — swallow and let endpoint try API token
+        # Optional: log for debugging
+        # traceback.print_exc()
+        return None
+
+    return None
