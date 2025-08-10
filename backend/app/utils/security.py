@@ -3,7 +3,11 @@ import hmac
 import os
 import jwt
 from datetime import datetime, timedelta
-
+from sqlalchemy.orm import Session
+import pytz
+from models.api_access_tokens import ApiAccessToken
+from models.user import User
+from core.config import JWT_SECRET
 # Use a strong random salt length
 SALT_LENGTH = 16
 
@@ -36,7 +40,6 @@ class Hasher:
             return False
 
 # JWT settings
-JWT_SECRET = os.getenv("JWT_SECRET", "fallback_secret")
 JWT_ALGORITHM = "HS256"
 JWT_ACCESS_TOKEN_EXPIRE_MINUTES = 60 * 24
 
@@ -53,3 +56,14 @@ def verify_access_token(token: str) -> dict:
         raise Exception("Token expired")
     except jwt.InvalidTokenError:
         raise Exception("Invalid token")
+
+def verify_api_token(db: Session, raw_token: str) -> User | None:
+    token_hash = hashlib.sha256(raw_token.encode('utf-8')).hexdigest()
+    token_obj = db.query(ApiAccessToken).filter_by(
+        token_hash=token_hash,
+        revoked=False
+    ).first()
+    now = datetime.now(pytz.timezone("Africa/Nairobi")).replace(tzinfo=None)
+    if token_obj and (not token_obj.expires_at or token_obj.expires_at > now):
+        return db.query(User).filter_by(id=token_obj.user_id).first()
+    return None

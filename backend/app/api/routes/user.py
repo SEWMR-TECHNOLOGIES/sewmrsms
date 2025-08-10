@@ -1,11 +1,14 @@
 # backend/app/api/user.py
+import hashlib
 import os
+import secrets
 from typing import Optional
 from fastapi import APIRouter, Depends, File, Form, Request, UploadFile, HTTPException
 from sqlalchemy.orm import Session
 from sqlalchemy.exc import SQLAlchemyError
 from sqlalchemy import or_
 from api.user_auth import get_current_user
+from models.api_access_tokens import ApiAccessToken
 from models.sender_id import SenderId
 from models.models import SenderIdRequest
 from models.enums import SenderIdRequestStatusEnum
@@ -17,7 +20,7 @@ from utils.validation import (
 )
 from utils.security import Hasher, create_access_token
 from uuid import uuid4
-from datetime import datetime
+from datetime import datetime, timedelta
 import pytz
 import json
 import uuid
@@ -449,4 +452,35 @@ async def get_user_sender_ids(
         "success": True,
         "message": f"Sender IDs retrieved for user {current_user.username}",
         "data": data
+    }
+
+@router.post("/generate-api-token")
+async def generate_api_token(
+    current_user: User = Depends(get_current_user),
+    db: Session = Depends(get_db)
+):
+    raw_token = secrets.token_urlsafe(40)
+    token_hash = hashlib.sha256(raw_token.encode('utf-8')).hexdigest()
+
+    now = datetime.now(pytz.timezone("Africa/Nairobi")).replace(tzinfo=None)
+    expires_at = now + timedelta(days=30)
+
+    access_token = ApiAccessToken(
+        user_id=current_user.id,
+        token_hash=token_hash,
+        created_at=now,
+        expires_at=expires_at,
+        revoked=False
+    )
+    db.add(access_token)
+    db.commit()
+    db.refresh(access_token)
+
+    return {
+        "success": True,
+        "message": "API access token generated successfully",
+        "data": {
+            "access_token": raw_token,
+            "expires_at": expires_at.isoformat()
+        }
     }

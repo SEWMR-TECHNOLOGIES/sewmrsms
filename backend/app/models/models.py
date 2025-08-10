@@ -1,5 +1,5 @@
 from sqlalchemy import (
-    Column, Computed, Integer, String, ForeignKey, DateTime, Text, Numeric, Enum, Boolean, JSON
+    CHAR, Column, Computed, Index, Integer, String, ForeignKey, DateTime, Text, Numeric, Enum, Boolean, JSON
 )
 from sqlalchemy.dialects.postgresql import UUID
 from sqlalchemy.ext.declarative import declarative_base
@@ -326,3 +326,17 @@ class SmsScheduledMessage(Base):
     sent_at = Column(DateTime, nullable=True)
     created_at = Column(DateTime, nullable=False, server_default=func.now())
     updated_at = Column(DateTime, nullable=False, server_default=func.now(), onupdate=func.now())
+
+class ApiAccessToken(Base):
+    __tablename__ = 'api_access_tokens'
+
+    id = Column(Integer, primary_key=True)
+    user_id = Column(Integer, ForeignKey('users.id', ondelete='CASCADE'), nullable=False)
+    token_hash = Column(CHAR(64), unique=True, nullable=False)
+    created_at = Column(DateTime, nullable=False, server_default=func.now())
+    expires_at = Column(DateTime, nullable=True)
+    revoked = Column(Boolean, nullable=False, default=False)
+
+# Indexes
+Index('idx_api_access_tokens_user_id', ApiAccessToken.user_id)
+Index('idx_api_access_tokens_token_hash', ApiAccessToken.token_hash)

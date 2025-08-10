@@ -1,7 +1,6 @@
 import re
 
 def validate_email(email: str) -> bool:
-    # Basic regex for email validation
     pattern = r'^[\w\.-]+@[\w\.-]+\.\w+$'
     return bool(re.match(pattern, email))
 

@@ -31,6 +31,19 @@ CREATE TABLE users (
   updated_at TIMESTAMP NOT NULL DEFAULT CURRENT_TIMESTAMP
 );
 
+-- access tokens
+CREATE TABLE api_access_tokens (
+    id SERIAL PRIMARY KEY,
+    user_id INTEGER NOT NULL REFERENCES users(id) ON DELETE CASCADE,
+    token_hash CHAR(64) NOT NULL UNIQUE,
+    created_at TIMESTAMP WITHOUT TIME ZONE DEFAULT NOW() NOT NULL,
+    expires_at TIMESTAMP WITHOUT TIME ZONE,
+    revoked BOOLEAN NOT NULL DEFAULT FALSE
+);
+CREATE INDEX idx_api_access_tokens_user_id ON api_access_tokens(user_id);
+CREATE INDEX idx_api_access_tokens_token_hash ON api_access_tokens(token_hash);
+
+
 -- Contact groups
 CREATE TABLE contact_groups (
   id SERIAL PRIMARY KEY,
