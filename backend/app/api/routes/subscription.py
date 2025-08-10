@@ -9,6 +9,9 @@ import pytz
 from sqlalchemy import and_
 from sqlalchemy.orm import Session, joinedload
 from api.user_auth import get_current_user
+from models.mobile_payment import MobilePayment
+from services.payment_service import PaymentGateway
+from utils.validation import validate_phone
 from models.bank_payment import BankPayment
 from models.order_payment import OrderPayment
 from models.sender_id import SenderId
@@ -23,6 +26,8 @@ from api.deps import get_db
 from core.config import UPLOAD_SERVICE_URL, MAX_FILE_SIZE
 
 router = APIRouter()
+gateway = PaymentGateway()
+
 @router.get("/packages")
 def get_sms_packages(db: Session = Depends(get_db)):
     # Load packages with their benefits using joins
@@ -267,3 +272,151 @@ async def submit_bank_payment(
             "payment_status": subscription_order.payment_status.value,
         }
     }
+
+@router.post("/submit-mobile-payment")
+async def submit_mobile_payment(
+    request: Request,
+    current_user=Depends(get_current_user),
+    db: Session = Depends(get_db),
+):
+    content_type = request.headers.get("content-type", "")
+    if "application/json" not in content_type.lower():
+        raise HTTPException(status_code=415, detail="Invalid content type. Expected application/json")
+
+    data = await request.json()
+    subscription_order_uuid = data.get("subscription_order_uuid")
+    mobile_number = data.get("mobile_number")
+
+    if not subscription_order_uuid:
+        raise HTTPException(status_code=400, detail="subscription_order_uuid is required")
+    if not mobile_number:
+        raise HTTPException(status_code=400, detail="mobile_number is required")
+
+    try:
+        subscription_uuid_obj = uuid.UUID(subscription_order_uuid)
+    except ValueError:
+        raise HTTPException(status_code=400, detail="Invalid subscription_order_uuid format")
+
+    if not validate_phone(mobile_number):
+        raise HTTPException(
+            status_code=400,
+            detail="Phone must be in format 255XXXXXXXXX (start with 255 then 6 or 7, then 8 digits)",
+        )
+
+    subscription_order = db.query(SubscriptionOrder).filter(
+        SubscriptionOrder.uuid == subscription_uuid_obj
+    ).first()
+
+    if not subscription_order:
+        raise HTTPException(status_code=400, detail="Subscription order not found")
+
+    # Prevent if subscription order marked completed or any completed order payment exists
+    completed_payment_exists = db.query(OrderPayment).filter(
+        OrderPayment.order_id == subscription_order.id,
+        OrderPayment.status == PaymentStatusEnum.completed
+    ).first()
+
+    if subscription_order.payment_status == PaymentStatusEnum.completed or completed_payment_exists:
+        raise HTTPException(status_code=400, detail="Payment has already been made for this subscription")
+
+    now = datetime.now(pytz.timezone("Africa/Nairobi")).replace(tzinfo=None)
+
+    # Get existing pending order payment for this subscription order
+    order_payment = db.query(OrderPayment).filter(
+        OrderPayment.order_id == subscription_order.id,
+        OrderPayment.status == PaymentStatusEnum.pending.value
+    ).first()
+
+    # If order payment exists but method is not mobile, create new mobile order payment
+    if order_payment and order_payment.method != PaymentMethodEnum.mobile.value:
+        order_payment = None
+
+    # If no pending mobile order payment, create one
+    if not order_payment:
+        order_payment = OrderPayment(
+            order_id=subscription_order.id,
+            amount=subscription_order.amount,
+            method=PaymentMethodEnum.mobile.value,
+            status=PaymentStatusEnum.pending.value,
+            paid_at=now
+        )
+        db.add(order_payment)
+        db.flush()
+
+    else:
+        # Delete existing MobilePayments for this order_payment if still pending
+        db.query(MobilePayment).filter(
+            MobilePayment.order_payment_id == order_payment.id
+        ).delete()
+        db.flush()
+
+    network = gateway._identify_network(mobile_number)
+    gateway_name = "MIXX BY YAS" if network == "TIGO" else network
+
+    mobile_payment = MobilePayment(
+        order_payment_id=order_payment.id,
+        gateway=gateway_name,
+        merchant_request_id="",
+        checkout_request_id="",
+        transaction_reference="",
+        amount=order_payment.amount,
+        reason="Subscription payment via mobile",
+        paid_at=now
+    )
+    db.add(mobile_payment)
+    db.flush()
+
+    payment_resp = await gateway.request_payment(
+        phone_number=mobile_number,
+        amount=float(order_payment.amount),
+        description="Subscription payment",
+        merchant_request_id=str(mobile_payment.uuid)
+    )
+
+    mobile_payment.merchant_request_id = payment_resp.get("MerchantRequestID", "")
+    mobile_payment.checkout_request_id = payment_resp.get("CheckoutRequestID", "")
+    mobile_payment.transaction_reference = payment_resp.get("TransactionReference", "")
+
+    try:
+        db.commit()
+    except Exception as e:
+        db.rollback()
+        raise HTTPException(status_code=500, detail=f"Database error: {str(e)}")
+
+    return {
+        "success": True,
+        "message": "Payment Request made successfully.",
+        "data": {
+            "subscription_order_uuid": str(subscription_order.uuid),
+            "order_payment_uuid": str(order_payment.uuid),
+            "mobile_payment_uuid": str(mobile_payment.uuid),
+            "mobile_number": mobile_number,
+            "payment_status": subscription_order.payment_status.value,
+            "checkout_request_id": mobile_payment.checkout_request_id
+        }
+    }
+
+
+@router.post("/payment-status")
+async def get_payment_status(
+    request: Request,
+    current_user=Depends(get_current_user),
+    db: Session = Depends(get_db),
+):
+    data = await request.json()
+    checkout_request_id = data.get("checkout_request_id")
+    if not checkout_request_id:
+        raise HTTPException(status_code=400, detail="checkout_request_id is required")
+
+    gateway = PaymentGateway()
+    try:
+        status = await gateway.check_transaction_status(checkout_request_id)
+        return {
+            "success": True,
+            "checkout_request_id": checkout_request_id,
+            "status": status
+        }
+    except HTTPException as e:
+        raise e
+    except Exception as e:
+        raise HTTPException(status_code=500, detail=f"Error checking payment status: {str(e)}")
