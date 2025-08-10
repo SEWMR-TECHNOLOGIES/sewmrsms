@@ -1,5 +1,5 @@
 # backend/app/models/sender_id_request.py
-from sqlalchemy import Column, Integer, Text, String, ForeignKey, Enum, DateTime
+from sqlalchemy import Boolean, Column, Integer, Text, String, ForeignKey, Enum, DateTime
 from sqlalchemy.dialects.postgresql import UUID
 from sqlalchemy.sql import func
 import uuid
@@ -18,5 +18,8 @@ class SenderIdRequest(Base):
     status = Column(Enum(SenderIdRequestStatusEnum), default=SenderIdRequestStatusEnum.pending)
     sample_message = Column(Text)
     company_name = Column(Text)
+    remarks = Column(Text, nullable=True)
+    is_student_request = Column(Boolean, nullable=False, default=False)
+    student_id_path = Column(Text, nullable=True)
     created_at = Column(DateTime, nullable=False, server_default=func.now())
     updated_at = Column(DateTime, nullable=False, server_default=func.now(), onupdate=func.now())

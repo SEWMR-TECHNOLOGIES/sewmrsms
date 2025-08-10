@@ -166,9 +166,13 @@ CREATE TABLE sender_id_requests (
   status sender_id_request_status_enum DEFAULT 'pending',
   sample_message TEXT,
   company_name TEXT,
+  remarks TEXT DEFAULT NULL,
+  is_student_request BOOLEAN NOT NULL DEFAULT FALSE,
+  student_id_path TEXT,
   created_at TIMESTAMP NOT NULL DEFAULT CURRENT_TIMESTAMP,
   updated_at TIMESTAMP NOT NULL DEFAULT CURRENT_TIMESTAMP
 );
+
 
 -- Sender ID propagations
 CREATE TABLE sender_id_propagations (
