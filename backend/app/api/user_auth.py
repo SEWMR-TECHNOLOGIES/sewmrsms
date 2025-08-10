@@ -1,3 +1,4 @@
+from typing import Optional
 from fastapi import Header, HTTPException, status, Depends
 from sqlalchemy.orm import Session
 from api.deps import get_db
@@ -5,9 +6,19 @@ from models.user import User
 from utils.security import verify_access_token
 
 async def get_current_user(
-    authorization: str = Header(...),
+    authorization: Optional[str] = Header(None),
     db: Session = Depends(get_db)
 ) -> User:
+    if authorization is None:
+        raise HTTPException(
+            status_code=status.HTTP_401_UNAUTHORIZED,
+            detail="Authorization token is missing"
+        )
+    if not authorization.startswith("Bearer "):
+        raise HTTPException(
+            status_code=status.HTTP_401_UNAUTHORIZED,
+            detail="Invalid authorization header"
+        )
     if not authorization.startswith("Bearer "):
         raise HTTPException(
             status_code=status.HTTP_401_UNAUTHORIZED,

@@ -63,6 +63,14 @@ async def purchase_subscription(
             "data": None
         }
 
+    content_type = request.headers.get("content-type", "")
+    if "application/json" not in content_type.lower():
+        return {
+            "success": False,
+            "message": "Invalid content type. Expected application/json",
+            "data": None
+        }
+
     try:
         data = await request.json()
     except Exception:
@@ -102,7 +110,7 @@ async def purchase_subscription(
 
     return {
         "success": True,
-        "message": "Subscription order created successfully",
+        "message": "Subscription order created successfully. Please complete payment to activate your subscription.",
         "data": {
             "uuid": str(new_order.uuid),
             "package_uuid": str(package.uuid),

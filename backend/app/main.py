@@ -1,4 +1,5 @@
 from fastapi import FastAPI, HTTPException, Request
+from fastapi.exceptions import RequestValidationError
 from fastapi.responses import JSONResponse
 from api.routes import user, subscription
 
@@ -23,4 +24,16 @@ async def http_exception_handler(request: Request, exc: HTTPException):
             "message": exc.detail,
             "data": None
         }
+    )
+
+@app.exception_handler(RequestValidationError)
+async def validation_exception_handler(request: Request, exc: RequestValidationError):
+    # Customize your message here
+    return JSONResponse(
+        status_code=422,
+        content={
+            "success": False,
+            "message": "Invalid request: Please send the correct content type and required fields.",
+            "data": None
+        },
     )

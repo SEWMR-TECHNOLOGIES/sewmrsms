@@ -1,5 +1,6 @@
 # backend/app/api/user.py
 import os
+from typing import Optional
 from fastapi import APIRouter, Depends, File, Form, Request, UploadFile, HTTPException
 from sqlalchemy.orm import Session
 from sqlalchemy.exc import SQLAlchemyError
@@ -29,11 +30,19 @@ router = APIRouter()
 
 @router.post("/signup")
 async def signup_user(request: Request, db: Session = Depends(get_db)):
+    content_type = request.headers.get("content-type", "")
+    if "application/json" not in content_type.lower():
+        return {
+            "success": False,
+            "message": "Invalid content type. Expected application/json",
+            "data": None
+        }
+
     try:
         data = await request.json()
     except json.JSONDecodeError:
         return {"success": False, "message": "Invalid JSON", "data": None}
-
+    
     if not data.get("username"):
         return {"success": False, "message": "Username is required", "data": None}
 
@@ -105,6 +114,14 @@ async def signup_user(request: Request, db: Session = Depends(get_db)):
 
 @router.post("/signin")
 async def signin_user(request: Request, db: Session = Depends(get_db)):
+    content_type = request.headers.get("content-type", "")
+    if "application/json" not in content_type.lower():
+        return {
+            "success": False,
+            "message": "Invalid content type. Expected application/json",
+            "data": None
+        }
+    
     try:
         data = await request.json()
     except json.JSONDecodeError:
@@ -159,6 +176,13 @@ async def request_sender_id(
     current_user: User = Depends(get_current_user),
     db: Session = Depends(get_db)
 ):
+    content_type = request.headers.get("content-type", "")
+    if "application/json" not in content_type.lower():
+        return {
+            "success": False,
+            "message": "Invalid content type. Expected application/json",
+            "data": None
+        }
     try:
         data = await request.json()
     except Exception:
@@ -216,7 +240,7 @@ async def request_sender_id(
 
     return {
         "success": True,
-        "message": "Sender ID request submitted successfully",
+        "message": "Sender ID request submitted successfully. Please download, sign, and upload the Sender ID agreement to complete your request.",
         "data": {
             "id": new_request.id,
             "uuid": str(new_request.uuid),
@@ -230,11 +254,19 @@ async def request_sender_id(
 
 @router.post("/upload-signed-sender-id-agreement")
 async def upload_sender_id_document(
+    request: Request,
     sender_request_uuid: str = Form(...),
     file: UploadFile = File(...),
     current_user: User = Depends(get_current_user),
     db: Session = Depends(get_db)
 ):
+    content_type = request.headers.get("content-type", "")
+    if "multipart/form-data" not in content_type.lower():
+        raise HTTPException(
+            status_code=415,
+            detail="Invalid content type. Expected multipart/form-data"
+        )
+    
     # Validate UUID format
     try:
         sender_uuid = uuid.UUID(sender_request_uuid)
@@ -249,7 +281,6 @@ async def upload_sender_id_document(
     if not sender_req:
         raise HTTPException(status_code=404, detail="Sender ID request not found or not pending")
 
-    # Check MIME type & extension (basic check)
     if file.content_type != "application/pdf":
         raise HTTPException(status_code=400, detail="Only PDF files are allowed")
 
@@ -257,7 +288,6 @@ async def upload_sender_id_document(
     if ext.lower() != ".pdf":
         raise HTTPException(status_code=400, detail="File extension must be .pdf")
 
-    # Read file content and check size
     content = await file.read()
     if len(content) > MAX_FILE_SIZE:
         raise HTTPException(status_code=400, detail="File size must be less than 0.5 MB")
@@ -266,9 +296,8 @@ async def upload_sender_id_document(
     unique_filename = f"{uuid.uuid4()}.pdf"
 
     # Prepare target path for PHP upload
-    target_path = "sewmrsms/uploads/sender-id-requests/"
+    target_path = "sewmrsms/uploads/sender-id-requests/agreements/"
 
-    # Prepare multipart for upload, including old_attachment if it exists
     data = {'target_path': target_path}
     if sender_req.document_path:
         data['old_attachment'] = sender_req.document_path
@@ -296,10 +325,107 @@ async def upload_sender_id_document(
 
     return {
         "success": True,
-        "message": "Sender ID agreement uploaded successfully",
+        "message": "Sender ID agreement uploaded successfully. We are reviewing your sender ID request and will notify you once it is processed.",
         "data": {
             "uuid": str(sender_req.uuid),
             "document_path": sender_req.document_path
+        }
+    }
+
+@router.post("/request-student-sender-id")
+async def request_student_sender_id(
+    request: Request,
+    is_student_request: Optional[bool] = Form(None),
+    file: Optional[UploadFile] = File(None),
+    current_user: User = Depends(get_current_user),
+    db: Session = Depends(get_db)
+):
+    content_type = request.headers.get("content-type", "")
+    if "multipart/form-data" not in content_type.lower():
+        raise HTTPException(
+            status_code=415,
+            detail="Invalid content type. Expected multipart/form-data"
+        )
+
+    if not is_student_request:
+        raise HTTPException(status_code=400, detail="Only student requests are accepted here.")
+    
+    if not file:
+        raise HTTPException(status_code=400, detail="File is required. Please upload a PDF file.")
+    
+    # Check for existing pending or approved student request
+    existing_request = db.query(SenderIdRequest).filter(
+        SenderIdRequest.user_id == current_user.id,
+        SenderIdRequest.is_student_request.is_(True),
+        SenderIdRequest.status.in_([
+            SenderIdRequestStatusEnum.pending.value,
+            SenderIdRequestStatusEnum.approved.value
+        ])
+    ).first()
+    
+    if existing_request:
+        raise HTTPException(status_code=400, detail="You already have a pending or approved student sender ID request.")
+    
+    if file.content_type != "application/pdf":
+        raise HTTPException(status_code=400, detail="Only PDF files are allowed.")
+    
+    _, ext = os.path.splitext(file.filename)
+    if ext.lower() != ".pdf":
+        raise HTTPException(status_code=400, detail="File extension must be .pdf")
+    
+    content = await file.read()
+    if len(content) > MAX_FILE_SIZE:
+        raise HTTPException(status_code=400, detail="File size must be less than 0.5 MB")
+    
+    unique_filename = f"{uuid.uuid4()}.pdf"
+    target_path = "sewmrsms/uploads/sender-id-requests/student-ids/"
+    
+    data = {'target_path': target_path}
+    files = {'file': (unique_filename, content, 'application/pdf')}
+    
+    async with httpx.AsyncClient() as client:
+        response = await client.post(UPLOAD_SERVICE_URL, data=data, files=files)
+    
+    if response.status_code != 200:
+        raise HTTPException(status_code=500, detail="Upload service error")
+    
+    result = response.json()
+    if not result.get("success"):
+        raise HTTPException(status_code=400, detail=result.get("message", "Upload failed"))
+    
+    # Create new sender ID request for student
+    now = datetime.now(pytz.timezone("Africa/Nairobi")).replace(tzinfo=None)
+    new_request = SenderIdRequest(
+        user_id=current_user.id,
+        sender_alias="EasyTextAPI",
+        sample_message="Hello, this is a test message from EasyTextAPI for your project integration.",
+        company_name="SEWMR Technologies",
+        status=SenderIdRequestStatusEnum.pending.value,
+        remarks=None,
+        is_student_request=True,
+        student_id_path=result["data"]["url"],
+        created_at=now,
+        updated_at=now
+    )
+    
+    try:
+        db.add(new_request)
+        db.commit()
+        db.refresh(new_request)
+    except Exception as e:
+        raise HTTPException(status_code=500, detail=f"Database error: {str(e)}")
+    
+    return {
+        "success": True,
+        "message": "We have received your student sender ID request. Once approved, EasyTextAPI will be assigned to your account.",
+        "data": {
+            "id": new_request.id,
+            "uuid": str(new_request.uuid),
+            "sender_alias": new_request.sender_alias,
+            "status": new_request.status,
+            "company_name": new_request.company_name,
+            "student_id_path": new_request.student_id_path,
+            "created_at": now.strftime("%Y-%m-%d %H:%M:%S")
         }
     }
 
