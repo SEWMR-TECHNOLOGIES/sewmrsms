@@ -16,5 +16,6 @@ class SmsScheduledMessage(Base):
     message = Column(Text, nullable=False)
     status = Column(Enum(MessageStatusEnum), default=MessageStatusEnum.pending)
     sent_at = Column(DateTime, nullable=True)
+    remarks = Column(Text, nullable=True)
     created_at = Column(DateTime, nullable=False, server_default=func.now())
     updated_at = Column(DateTime, nullable=False, server_default=func.now(), onupdate=func.now())

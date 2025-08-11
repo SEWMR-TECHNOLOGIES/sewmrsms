@@ -235,12 +235,16 @@ CREATE TABLE template_columns (
   updated_at TIMESTAMP NOT NULL DEFAULT CURRENT_TIMESTAMP
 );
 
--- SMS messages (logs)
-CREATE TABLE sms_messages (
+-- Sent messages (logs)
+CREATE TABLE sent_messages (
   id SERIAL PRIMARY KEY,
   uuid UUID NOT NULL DEFAULT uuid_generate_v4() UNIQUE,
   sender_alias VARCHAR(11) NOT NULL,
   user_id INT NOT NULL REFERENCES users(id) ON DELETE CASCADE,
+  phone_number VARCHAR(15) NOT NULL,
+  message TEXT NOT NULL,
+  message_id VARCHAR(100), 
+  remarks TEXT,
   sent_at TIMESTAMP NOT NULL DEFAULT CURRENT_TIMESTAMP
 );
 
@@ -279,6 +283,7 @@ CREATE TABLE scheduled_messages (
   message TEXT NOT NULL,
   status message_status_enum DEFAULT 'pending',
   sent_at TIMESTAMP,
+  remarks TEXT NULL,
   created_at TIMESTAMP NOT NULL DEFAULT CURRENT_TIMESTAMP,
   updated_at TIMESTAMP NOT NULL DEFAULT CURRENT_TIMESTAMP
 );
