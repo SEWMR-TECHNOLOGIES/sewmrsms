@@ -256,3 +256,62 @@ def get_sms_template(
             ]
         }
     }
+
+@router.delete("/sms-template/{template_uuid}")
+def delete_sms_template(
+    template_uuid: str,
+    current_user: User = Depends(get_current_user),
+    db: Session = Depends(get_db)
+):
+    """
+    Delete an SMS template by UUID. Requires template to belong to current user.
+    """
+    template = db.query(SmsTemplate).filter(
+        SmsTemplate.uuid == template_uuid,
+        SmsTemplate.user_id == current_user.id
+    ).first()
+
+    if not template:
+        return {"success": False, "message": "Template not found or no permission", "data": None}
+
+    try:
+        db.delete(template)
+        db.commit()
+    except Exception as e:
+        return {"success": False, "message": f"Database error: {str(e)}", "data": None}
+
+    return {
+        "success": True,
+        "message": "SMS template deleted successfully",
+        "data": {"uuid": template_uuid}
+    }
+
+
+@router.delete("/template-column/{column_uuid}")
+def delete_template_column(
+    column_uuid: str,
+    current_user: User = Depends(get_current_user),
+    db: Session = Depends(get_db)
+):
+    """
+    Delete a template column by UUID. Ensures column belongs to a template owned by current user.
+    """
+    column = db.query(TemplateColumn).join(SmsTemplate).filter(
+        TemplateColumn.uuid == column_uuid,
+        SmsTemplate.user_id == current_user.id
+    ).first()
+
+    if not column:
+        return {"success": False, "message": "Template column not found or no permission", "data": None}
+
+    try:
+        db.delete(column)
+        db.commit()
+    except Exception as e:
+        return {"success": False, "message": f"Database error: {str(e)}", "data": None}
+
+    return {
+        "success": True,
+        "message": "Template column deleted successfully",
+        "data": {"uuid": column_uuid}
+    }
