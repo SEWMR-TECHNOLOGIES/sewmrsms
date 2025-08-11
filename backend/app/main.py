@@ -8,7 +8,7 @@ app = FastAPI()
 # Root route
 @app.get("/")
 def root():
-    return {"message": "Welcome to SERWMR Bulk SMS API"}
+    return {"message": "Welcome to SEWMR SMS"}
 
 # Include routers
 app.include_router(user.router, prefix="/user", tags=["Users"])
