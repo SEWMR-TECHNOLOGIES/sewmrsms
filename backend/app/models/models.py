@@ -43,12 +43,12 @@ class SubscriptionStatusEnum(enum.Enum):
     inactive = 'inactive'
     cancelled = 'cancelled'
     expired = 'expired'
-
 class ScheduleStatusEnum(enum.Enum):
     pending = 'pending'
     sent = 'sent'
     failed = 'failed'
     cancelled = 'cancelled'
+    partial = 'partial'  # Added for schedules that sent some messages but not all
 
 class MessageStatusEnum(enum.Enum):
     pending = 'pending'

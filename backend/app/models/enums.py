@@ -41,6 +41,7 @@ class ScheduleStatusEnum(enum.Enum):
     sent = 'sent'
     failed = 'failed'
     cancelled = 'cancelled'
+    partial = 'partial'  # Added for schedules that sent some messages but not all
 
 class MessageStatusEnum(enum.Enum):
     pending = 'pending'

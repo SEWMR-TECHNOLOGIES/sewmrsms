@@ -14,7 +14,7 @@ CREATE TYPE propagation_status_enum AS ENUM ('pending', 'propagated', 'failed');
 
 CREATE TYPE subscription_status_enum AS ENUM ('active', 'inactive', 'cancelled', 'expired');
 
-CREATE TYPE schedule_status_enum AS ENUM ('pending', 'sent', 'failed', 'cancelled');
+CREATE TYPE schedule_status_enum AS ENUM ('pending', 'sent', 'failed', 'cancelled', 'partial');
 
 CREATE TYPE message_status_enum AS ENUM ('pending', 'sent', 'failed');
 
