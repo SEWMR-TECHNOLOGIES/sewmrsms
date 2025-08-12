@@ -1,30 +1,32 @@
 from typing import Optional
-from fastapi import Header, HTTPException, status, Depends
+from fastapi import Cookie, Header, HTTPException, status, Depends
 from sqlalchemy.orm import Session
 from api.deps import get_db
 from models.user import User
 from utils.security import verify_access_token
 
 async def get_current_user(
+    session_token: Optional[str] = Cookie(None),
     authorization: Optional[str] = Header(None),
     db: Session = Depends(get_db)
 ) -> User:
-    if authorization is None:
+    token = None
+
+    if session_token:
+        token = session_token
+    elif authorization:
+        if not authorization.startswith("Bearer "):
+            raise HTTPException(
+                status_code=status.HTTP_401_UNAUTHORIZED,
+                detail="Invalid authorization header"
+            )
+        token = authorization[len("Bearer "):]
+    else:
         raise HTTPException(
             status_code=status.HTTP_401_UNAUTHORIZED,
             detail="Authorization token is missing"
         )
-    if not authorization.startswith("Bearer "):
-        raise HTTPException(
-            status_code=status.HTTP_401_UNAUTHORIZED,
-            detail="Invalid authorization header"
-        )
-    if not authorization.startswith("Bearer "):
-        raise HTTPException(
-            status_code=status.HTTP_401_UNAUTHORIZED,
-            detail="Invalid authorization header"
-        )
-    token = authorization[len("Bearer "):]
+
     try:
         payload = verify_access_token(token)
         user_uuid = payload.get("sub")
@@ -47,6 +49,7 @@ async def get_current_user(
         )
 
 async def get_current_user_optional(
+    session_token: Optional[str] = Cookie(None),
     authorization: Optional[str] = Header(None),
     db: Session = Depends(get_db),
 ) -> Optional[User]:
@@ -55,14 +58,17 @@ async def get_current_user_optional(
     If header missing or JWT invalid, return None instead of raising,
     so endpoint can fall back to API-token verification.
     """
-    if not authorization:
-        return None
+    token = None
 
-    if not authorization.startswith("Bearer "):
-        # not a bearer token — return None so caller can attempt other auth
+    if session_token:
+        token = session_token
+    elif authorization:
+        if not authorization.startswith("Bearer "):
+            # not a bearer token — return None so caller can attempt other auth
+            return None
+        token = authorization[len("Bearer "):].strip()
+    else:
         return None
-
-    token = authorization[len("Bearer "):].strip()
 
     # 1) try JWT first — if valid return User
     try:

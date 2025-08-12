@@ -6,16 +6,18 @@ import hashlib
 import secrets
 from typing import Optional
 from urllib.parse import urlencode
-from fastapi import APIRouter, Cookie, Depends, HTTPException, Request, Response
+from fastapi import APIRouter, Cookie, Depends, HTTPException, Request, Response, status
 from fastapi.responses import JSONResponse, RedirectResponse
 import pytz
 from sqlalchemy import or_
 from sqlalchemy.orm import Session
 from api.deps import get_db
+from api.user_auth import get_current_user
+from models.api_access_tokens import ApiAccessToken
 from models.password_reset_tokens import PasswordResetToken
 from models.user import User
 from utils import send_password_reset_email
-from utils.security import Hasher
+from utils.security import Hasher, verify_access_token
 from utils.validation import validate_password_strength
 from utils.send_password_reset_email import send_password_reset_email
 router = APIRouter()
@@ -171,3 +173,86 @@ async def reset_password(request: Request, reset_token: Optional[str] = Cookie(N
     db.commit()
 
     return {"success": True, "message": "Password reset successfully", "data": None}
+
+@router.get("/validate-token")
+async def validate_token(session_token: str = Cookie(None), db: Session = Depends(get_db)):
+    if not session_token:
+        return JSONResponse(
+            status_code=status.HTTP_401_UNAUTHORIZED,
+            content={"success": False, "message": "No session token", "data": None}
+        )
+
+    try:
+        payload = verify_access_token(session_token)
+        user_uuid = payload.get("sub")
+        if not user_uuid:
+            return JSONResponse(
+                status_code=status.HTTP_401_UNAUTHORIZED,
+                content={"success": False, "message": "Invalid token payload", "data": None}
+            )
+
+        user = db.query(User).filter(User.uuid == user_uuid).first()
+        if not user:
+            return JSONResponse(
+                status_code=status.HTTP_401_UNAUTHORIZED,
+                content={"success": False, "message": "User not found", "data": None}
+            )
+
+        return {
+            "success": True,
+            "message": "Token is valid",
+            "data": {
+                "user": {
+                    "uuid": str(user.uuid),
+                    "email": user.email,
+                    "username": user.username,
+                    "full_name": user.full_name,
+                    "phone": user.phone
+                }
+            }
+        }
+    except Exception as e:
+        return JSONResponse(
+            status_code=status.HTTP_401_UNAUTHORIZED,
+            content={"success": False, "message": str(e), "data": None}
+        )
+
+@router.post("/logout")
+async def logout(response: Response):
+    response.delete_cookie("session_token", domain=".sewmrsms.co.tz", path="/")
+    return {
+        "success": True,
+        "message": "Logged out successfully",
+        "data": None
+    }
+
+@router.post("/generate-api-token")
+async def generate_api_token(
+    current_user: User = Depends(get_current_user),
+    db: Session = Depends(get_db)
+):
+    raw_token = secrets.token_urlsafe(40)
+    token_hash = hashlib.sha256(raw_token.encode('utf-8')).hexdigest()
+
+    now = datetime.now(pytz.timezone("Africa/Nairobi")).replace(tzinfo=None)
+    expires_at = now + timedelta(days=30)
+
+    access_token = ApiAccessToken(
+        user_id=current_user.id,
+        token_hash=token_hash,
+        created_at=now,
+        expires_at=expires_at,
+        revoked=False
+    )
+    db.add(access_token)
+    db.commit()
+    db.refresh(access_token)
+
+    return {
+        "success": True,
+        "message": "API access token generated successfully",
+        "data": {
+            "access_token": raw_token,
+            "expires_at": expires_at.isoformat()
+        }
+    }

@@ -2,18 +2,11 @@
 import hashlib
 import os
 import secrets
-from typing import Optional
-from fastapi import APIRouter, Depends, File, Form, Request, UploadFile, HTTPException
+from fastapi import APIRouter, Depends, Request
+from fastapi.responses import JSONResponse
 from sqlalchemy.orm import Session
 from sqlalchemy.exc import SQLAlchemyError
 from sqlalchemy import or_
-from api.user_auth import get_current_user
-from models.network import Network
-from models.sender_id_propagation import SenderIdPropagation
-from models.api_access_tokens import ApiAccessToken
-from models.sender_id import SenderId
-from models.models import SenderIdRequest
-from models.enums import SenderIdRequestStatusEnum
 from models.user import User
 from api.deps import get_db
 from utils.validation import (
@@ -25,10 +18,8 @@ from uuid import uuid4
 from datetime import datetime, timedelta
 import pytz
 import json
-import uuid
 import httpx
-
-from core.config import UPLOAD_SERVICE_URL, MAX_FILE_SIZE
+from core.config import COOKIE_DOMAIN, IS_PRODUCTION, MAX_COOKIE_AGE
 
 router = APIRouter()
 
@@ -153,12 +144,10 @@ async def signin_user(request: Request, db: Session = Depends(get_db)):
 
         access_token = create_access_token({"sub": str(user.uuid)})
 
-        return {
+        response = JSONResponse({
             "success": True,
             "message": "Signed in successfully",
             "data": {
-                "access_token": access_token,
-                "token_type": "bearer",
                 "id": user.id,
                 "uuid": str(user.uuid),
                 "email": user.email,
@@ -166,41 +155,23 @@ async def signin_user(request: Request, db: Session = Depends(get_db)):
                 "full_name": user.full_name,
                 "phone": user.phone
             }
-        }
+        })
+
+        response.set_cookie(
+            key="session_token",
+            value=access_token,
+            domain=COOKIE_DOMAIN,  
+            httponly=True,
+            secure=IS_PRODUCTION,              
+            samesite="lax",         
+            max_age=MAX_COOKIE_AGE    
+        )
+
+        return response
+
     except SQLAlchemyError as e:
         print(f"DB error: {e}")
         return {"success": False, "message": "Database error", "data": None}
     except Exception as e:
         print(f"Unexpected error: {e}")
         return {"success": False, "message": "Internal server error", "data": None}
-
-@router.post("/generate-api-token")
-async def generate_api_token(
-    current_user: User = Depends(get_current_user),
-    db: Session = Depends(get_db)
-):
-    raw_token = secrets.token_urlsafe(40)
-    token_hash = hashlib.sha256(raw_token.encode('utf-8')).hexdigest()
-
-    now = datetime.now(pytz.timezone("Africa/Nairobi")).replace(tzinfo=None)
-    expires_at = now + timedelta(days=30)
-
-    access_token = ApiAccessToken(
-        user_id=current_user.id,
-        token_hash=token_hash,
-        created_at=now,
-        expires_at=expires_at,
-        revoked=False
-    )
-    db.add(access_token)
-    db.commit()
-    db.refresh(access_token)
-
-    return {
-        "success": True,
-        "message": "API access token generated successfully",
-        "data": {
-            "access_token": raw_token,
-            "expires_at": expires_at.isoformat()
-        }
-    }
