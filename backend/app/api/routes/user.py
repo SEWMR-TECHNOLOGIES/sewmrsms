@@ -8,6 +8,8 @@ from sqlalchemy.orm import Session
 from sqlalchemy.exc import SQLAlchemyError
 from sqlalchemy import or_
 from api.user_auth import get_current_user
+from models.network import Network
+from models.sender_id_propagation import SenderIdPropagation
 from models.api_access_tokens import ApiAccessToken
 from models.sender_id import SenderId
 from models.models import SenderIdRequest
@@ -429,6 +431,53 @@ async def request_student_sender_id(
             "student_id_path": new_request.student_id_path,
             "created_at": now.strftime("%Y-%m-%d %H:%M:%S")
         }
+    }
+
+@router.get("/sender-id/{sender_request_uuid}/propagation-status")
+def get_sender_id_propagation_status(
+    sender_request_uuid: str,
+    db: Session = Depends(get_db),
+    current_user = Depends(get_current_user)
+):
+    # Fetch sender_id_request to confirm ownership
+    request_obj = db.query(SenderIdRequest).filter(
+        SenderIdRequest.uuid == sender_request_uuid,
+        SenderIdRequest.user_id == current_user.id
+    ).first()
+
+    if not request_obj:
+        raise HTTPException(status_code=404, detail="Sender ID request not found or unauthorized")
+
+    # Join with networks to get name and color
+    propagations = (
+        db.query(SenderIdPropagation, Network)
+        .join(Network, SenderIdPropagation.network_id == Network.id)
+        .filter(SenderIdPropagation.request_id == request_obj.id)
+        .all()
+    )
+
+    # If no propagation data, return a helpful message
+    if not propagations:
+        return {
+            "success": True,
+            "message": "No propagation records found for this Sender ID request",
+            "data": []
+        }
+
+    data = []
+    for propagation, network in propagations:
+        data.append({
+            "network_name": network.name,
+            "network_uuid": str(network.uuid),
+            "color_code": network.color_code,
+            "status": propagation.status.value if propagation.status else None,
+            "updated_at": propagation.updated_at.strftime("%Y-%m-%d %H:%M:%S") if propagation.updated_at else None
+        })
+
+    return {
+        "success": True,
+        "message": "Propagation status retrieved successfully",
+        "data": data
     }
 
 @router.get("/my-sender-ids")
