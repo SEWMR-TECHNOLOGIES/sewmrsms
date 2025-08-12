@@ -329,3 +329,17 @@ INSERT INTO package_benefits (id, package_id, benefit_id) VALUES
 (18, 1, 2),
 (19, 1, 3),
 (20, 1, 4);
+
+-- Password reset tokens table
+CREATE TABLE password_reset_tokens (
+    id SERIAL PRIMARY KEY,
+    uuid UUID NOT NULL DEFAULT gen_random_uuid(),
+    user_id INTEGER NOT NULL REFERENCES users(id) ON DELETE CASCADE,
+    token_hash CHAR(64) NOT NULL UNIQUE,
+    created_at TIMESTAMP WITHOUT TIME ZONE DEFAULT NOW() NOT NULL,
+    expires_at TIMESTAMP WITHOUT TIME ZONE NOT NULL,
+    used BOOLEAN NOT NULL DEFAULT FALSE
+);
+
+CREATE INDEX idx_password_reset_tokens_user_id ON password_reset_tokens(user_id);
+CREATE INDEX idx_password_reset_tokens_token_hash ON password_reset_tokens(token_hash);

@@ -1,7 +1,7 @@
 from fastapi import FastAPI, HTTPException, Request
 from fastapi.exceptions import RequestValidationError
 from fastapi.responses import JSONResponse
-from api.routes import user, subscription, sms_templates, messaging, contacts,sender_id, cron_jobs
+from api.routes import user, subscription, sms_templates, messaging, contacts,sender_id, cron_jobs,auth
 
 app = FastAPI()
 
@@ -18,6 +18,7 @@ app.include_router(sms_templates.router, prefix="/templates", tags=["Templates"]
 app.include_router(messaging.router, prefix="/messaging", tags=["Messaging"])
 app.include_router(messaging.router, prefix="/messaging", tags=["Messaging"])
 app.include_router(cron_jobs.router, prefix="/cron", tags=["Address Book"])
+app.include_router(auth.router, prefix="/auth", tags=["Auth"])
 
 # Custom HTTPException handler for uniform error responses
 @app.exception_handler(HTTPException)
