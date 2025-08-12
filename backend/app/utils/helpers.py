@@ -2,11 +2,16 @@
 
 import csv
 import io
+import os
 from typing import List, Optional
-from fastapi import HTTPException
+from fastapi import HTTPException, UploadFile
 import openpyxl
+from sqlalchemy import Tuple
 from sqlalchemy.orm import Session
+import xlrd
+from models.template_column import TemplateColumn
 from models.sms_package import SmsPackage
+from typing import Tuple as TypingTuple
 
 def get_package_by_sms_count(db: Session, sms_count: int) -> SmsPackage | None:
     return (
@@ -39,11 +44,8 @@ def parse_contacts_textarea(text: str) -> List[dict]:
     return contacts
 
 def parse_contacts_csv(file_bytes: bytes) -> List[dict]:
-    """
-    Parse CSV or XLSX file bytes into list of contacts dictionaries.
-    Accept both CSV and XLSX formats.
-    """
     contacts = []
+
     # Try CSV first
     try:
         text = file_bytes.decode("utf-8")
@@ -59,7 +61,32 @@ def parse_contacts_csv(file_bytes: bytes) -> List[dict]:
     except Exception:
         pass
 
-    # If CSV parsing failed or empty, try XLSX
+    # Try XLS (old Excel) using xlrd
+    try:
+        workbook = xlrd.open_workbook(file_contents=file_bytes)
+        sheet = workbook.sheet_by_index(0)
+        headers = [str(sheet.cell_value(0, col)).lower() for col in range(sheet.ncols)]
+        name_idx = headers.index("name") if "name" in headers else None
+        phone_idx = headers.index("phone") if "phone" in headers else None
+        email_idx = headers.index("email") if "email" in headers else None
+
+        if phone_idx is None:
+            raise ValueError("Missing required 'phone' column in XLS")
+
+        for row_idx in range(1, sheet.nrows):
+            name = sheet.cell_value(row_idx, name_idx) if name_idx is not None else None
+            phone = sheet.cell_value(row_idx, phone_idx) if phone_idx is not None else None
+            email = sheet.cell_value(row_idx, email_idx) if email_idx is not None else None
+            contacts.append({
+                "name": str(name).strip() if name else None,
+                "phone": str(phone).strip() if phone else None,
+                "email": str(email).strip() if email else None,
+            })
+        return contacts
+    except Exception:
+        pass
+
+    # Try XLSX using openpyxl
     try:
         wb = openpyxl.load_workbook(io.BytesIO(file_bytes))
         ws = wb.active
@@ -83,3 +110,53 @@ def parse_contacts_csv(file_bytes: bytes) -> List[dict]:
         return contacts
     except Exception as e:
         raise HTTPException(status_code=400, detail=f"Invalid file format or content: {str(e)}")
+
+
+def parse_excel_or_csv(file: UploadFile) -> List[List[str]]:
+    ext = os.path.splitext(file.filename)[1].lower()
+    content = file.file.read()
+    file.file.seek(0)  # reset for any later use
+
+    if ext == '.csv':
+        decoded = content.decode('utf-8-sig')  # handle BOM if present
+        reader = csv.reader(io.StringIO(decoded))
+        rows = list(reader)
+        return rows[1:]  # skip header
+
+    elif ext == '.xls':
+        workbook = xlrd.open_workbook(file_contents=content)
+        sheet = workbook.sheet_by_index(0)
+        return [sheet.row_values(r) for r in range(1, sheet.nrows)]  # skip header
+
+    elif ext == '.xlsx':
+        workbook = openpyxl.load_workbook(io.BytesIO(content))
+        sheet = workbook.active
+        return [[cell.value if cell.value is not None else "" for cell in row] 
+                for row in sheet.iter_rows(min_row=2)]
+
+    else:
+        raise HTTPException(status_code=400, detail="Unsupported file type. Use .xls, .xlsx, or .csv")
+
+def generate_messages(template_msg: str, columns: List[TemplateColumn], rows: List[List[str]]) -> List[TypingTuple[str, Optional[str]]]:
+    # Map column positions to TemplateColumn objects for quick lookup
+    col_pos_map = {col.position: col for col in columns}
+    phone_col_pos = next((pos for pos, col in col_pos_map.items() if col.is_phone_column), None)
+    if phone_col_pos is None:
+        raise HTTPException(status_code=400, detail="No phone column defined in template")
+
+    messages = []
+    for row in rows:
+        msg = template_msg
+        # Replace placeholders {1}, {2}, ... with row data (1-based index)
+        for pos, col in col_pos_map.items():
+            val = ""
+            if pos <= len(row) and row[pos-1] is not None:
+                val = str(row[pos-1])
+            msg = msg.replace(f"{{{pos}}}", val)
+
+        phone = None
+        if phone_col_pos <= len(row) and row[phone_col_pos-1] is not None:
+            phone = str(row[phone_col_pos-1]).strip()
+
+        messages.append((msg, phone))
+    return messages
