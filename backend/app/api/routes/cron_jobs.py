@@ -1,8 +1,9 @@
-from fastapi import APIRouter, Depends
+from fastapi import APIRouter, Depends, HTTPException, Header
 from sqlalchemy.orm import Session
 from datetime import datetime
 import pytz
 from api.deps import get_db
+from core.config import CRON_AUTH_TOKEN
 from models.sent_messages import SentMessage
 from services.sms_gateway_service import SmsGatewayService
 from utils.validation import validate_phone
@@ -15,7 +16,13 @@ from models.enums import ScheduleStatusEnum, MessageStatusEnum
 router = APIRouter()
 
 @router.post("/send-scheduled-messages")
-async def run_scheduled_sends(db: Session = Depends(get_db)):
+async def run_scheduled_sends(
+    db: Session = Depends(get_db),
+    x_cron_auth: str = Header(None)
+):
+    if not CRON_AUTH_TOKEN or x_cron_auth != CRON_AUTH_TOKEN:
+        raise HTTPException(status_code=401, detail="Unauthorized")
+    
     """
     Cron endpoint (no auth) to process pending schedules whose scheduled_for <= now (EAT).
     Returns a short summary.

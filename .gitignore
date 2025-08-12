@@ -46,3 +46,5 @@ backend/tests/__pycache__/
 
 # Misc
 *.swp
+
+scripts/

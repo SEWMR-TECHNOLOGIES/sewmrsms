@@ -21,3 +21,4 @@ JWT_SECRET = os.getenv("JWT_SECRET")
 DATABASE_URL = f"postgresql+psycopg2://{DB_USER}:{DB_PASSWORD}@{DB_HOST}:{DB_PORT}/{DB_NAME}?sslmode=require"
 UPLOAD_SERVICE_URL = "https://data.sewmrtechnologies.com/handle-file-uploads"
 MAX_FILE_SIZE = 0.5 * 1024 * 1024  # 0.5 MB
+CRON_AUTH_TOKEN = os.getenv("CRON_AUTH_TOKEN")
