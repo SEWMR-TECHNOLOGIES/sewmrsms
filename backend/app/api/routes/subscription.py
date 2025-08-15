@@ -3,7 +3,7 @@
 from datetime import datetime
 import os
 import uuid
-from fastapi import APIRouter, Depends, File, Form, HTTPException, Request, UploadFile
+from fastapi import APIRouter, Depends, File, Form, HTTPException, Path, Request, UploadFile
 import httpx
 import pytz
 from sqlalchemy import and_
@@ -20,42 +20,11 @@ from models.enums import PaymentMethodEnum, PaymentStatusEnum, SenderStatusEnum,
 from models.user import User
 from models.subscription_order import SubscriptionOrder
 from utils.helpers import get_package_by_sms_count
-from models.sms_package import SmsPackage
-from models.package_benefit import PackageBenefit
-from models.benefit import Benefit
 from api.deps import get_db
 from core.config import UPLOAD_SERVICE_URL, MAX_FILE_SIZE
 
 router = APIRouter()
 gateway = PaymentGateway()
-
-@router.get("/packages")
-def get_sms_packages(db: Session = Depends(get_db)):
-    # Load packages with their benefits using joins
-    packages = db.query(SmsPackage).options(
-        joinedload(SmsPackage.package_benefits).joinedload(PackageBenefit.benefit)
-    ).all()
-
-    result = []
-    for pkg in packages:
-        # Extract benefits descriptions for each package
-        benefits = [pb.benefit.description for pb in pkg.package_benefits]
-        result.append({
-            "uuid": str(pkg.uuid),
-            "name": pkg.name,
-            "price_per_sms": float(pkg.price_per_sms),
-            "start_sms_count": pkg.start_sms_count,
-            "best_for": pkg.best_for,
-            "benefits": benefits,
-            "created_at": pkg.created_at.strftime("%Y-%m-%d %H:%M:%S"),
-            "updated_at": pkg.updated_at.strftime("%Y-%m-%d %H:%M:%S")
-        })
-
-    return {
-        "success": True,
-        "message": "SMS packages loaded successfully",
-        "data": result
-    }
 
 @router.post("/purchase-sms")
 async def purchase_subscription(
@@ -135,46 +104,30 @@ async def purchase_subscription(
         }
     }
 
-@router.post("/submit-bank-payment")
+@router.post("/{subscription_order_uuid}/payments/bank")
 async def submit_bank_payment(
     request: Request,
+    subscription_order_uuid: uuid.UUID = Path(...),
+    transaction_reference: str = Form(...),
+    bank_name: str = Form(...),
+    file: UploadFile = File(...),
     current_user: User = Depends(get_current_user),
-    subscription_order_uuid: str = Form(None),
-    transaction_reference: str = Form(None),
-    bank_name: str = Form(None),
-    file: UploadFile = File(None),
     db: Session = Depends(get_db),
 ):
-    content_type = request.headers.get("content-type", "")
-    if "multipart/form-data" not in content_type.lower():
+    if "multipart/form-data" not in request.headers.get("content-type", "").lower():
         raise HTTPException(status_code=415, detail="Invalid content type. Expected multipart/form-data")
 
-    # Explicit required checks with clear messages
-    if not subscription_order_uuid:
-        raise HTTPException(status_code=400, detail="Subscription reference id (uuid) is required")
-    if not transaction_reference:
-        raise HTTPException(status_code=400, detail="Transaction reference is required")
-    if not bank_name:
-        raise HTTPException(status_code=400, detail="Bank name is required")
-    if not file:
-        raise HTTPException(status_code=400, detail="Bank slip must be attached")
-
-    # Validate UUID format
-    try:
-        subscription_uuid_obj = uuid.UUID(subscription_order_uuid)
-    except ValueError:
-        raise HTTPException(status_code=400, detail="Invalid subscription_order_uuid format")
-
-    # Get subscription order, must be pending
+    # lookup pending subscription and ownership
     subscription_order = db.query(SubscriptionOrder).filter(
-        and_(
-            SubscriptionOrder.uuid == subscription_uuid_obj,
-            SubscriptionOrder.payment_status == PaymentStatusEnum.pending
-        )
+        SubscriptionOrder.uuid == subscription_order_uuid,
+        SubscriptionOrder.payment_status == PaymentStatusEnum.pending
     ).first()
 
     if not subscription_order:
-        raise HTTPException(status_code=400, detail="No pending subscription order found for this UUID")
+        raise HTTPException(status_code=404, detail="No pending subscription order found for this UUID")
+
+    if subscription_order.user_id != current_user.user_id:
+        raise HTTPException(status_code=403, detail="Not authorized to submit payment for this order")
 
     # Check file type and size
     allowed_content_types = ["application/pdf", "image/jpeg", "image/png"]
@@ -274,9 +227,10 @@ async def submit_bank_payment(
         }
     }
 
-@router.post("/submit-mobile-payment")
+@router.post("/{subscription_order_uuid}/payments/mobile")
 async def submit_mobile_payment(
     request: Request,
+    subscription_order_uuid: uuid.UUID = Path(...),
     current_user=Depends(get_current_user),
     db: Session = Depends(get_db),
 ):
@@ -287,20 +241,11 @@ async def submit_mobile_payment(
 
     # Parse JSON body
     data = await request.json()
-    subscription_order_uuid = data.get("subscription_order_uuid")
     mobile_number = data.get("mobile_number")
 
     # Validate required fields
-    if not subscription_order_uuid:
-        raise HTTPException(status_code=400, detail="subscription_order_uuid is required")
     if not mobile_number:
         raise HTTPException(status_code=400, detail="mobile_number is required")
-
-    # Validate UUID format
-    try:
-        subscription_uuid_obj = uuid.UUID(subscription_order_uuid)
-    except ValueError:
-        raise HTTPException(status_code=400, detail="Invalid subscription_order_uuid format")
 
     # Validate phone format
     if not validate_phone(mobile_number):
@@ -311,7 +256,7 @@ async def submit_mobile_payment(
 
     # Fetch subscription order from DB
     subscription_order = db.query(SubscriptionOrder).filter(
-        SubscriptionOrder.uuid == subscription_uuid_obj
+        SubscriptionOrder.uuid == subscription_order_uuid
     ).first()
 
     if not subscription_order:
@@ -415,32 +360,29 @@ async def submit_mobile_payment(
         }
     }
 
-
-@router.post("/payment-status")
+@router.get("/{subscription_order_uuid}/payments/{checkout_request_id}/status")
 async def get_payment_status(
-    request: Request,
+    subscription_order_uuid: uuid.UUID = Path(...),
+    checkout_request_id: uuid.UUID = Path(...),
+    request: Request = None,
     current_user=Depends(get_current_user),
     db: Session = Depends(get_db),
 ):
-    data = await request.json()
-    checkout_request_id = data.get("checkout_request_id")
-    if not checkout_request_id:
-        raise HTTPException(status_code=400, detail="checkout_request_id is required")
-
+    # Check gateway status
     gateway = PaymentGateway()
-    status = await gateway.check_transaction_status(checkout_request_id)
+    status = await gateway.check_transaction_status(str(checkout_request_id))
 
     if status != "PAID":
         return {
             "success": False,
-            "checkout_request_id": checkout_request_id,
+            "checkout_request_id": str(checkout_request_id),
             "status": status,
             "message": "Payment still pending"
         }
 
     # Find mobile payment by checkout_request_id
     mobile_payment = db.query(MobilePayment).filter(
-        MobilePayment.checkout_request_id == checkout_request_id
+        MobilePayment.checkout_request_id == str(checkout_request_id)
     ).first()
 
     if not mobile_payment:
@@ -450,9 +392,19 @@ async def get_payment_status(
         OrderPayment.id == mobile_payment.order_payment_id
     ).first()
 
+    if not order_payment:
+        raise HTTPException(status_code=404, detail="Order payment record not found")
+
     subscription_order = db.query(SubscriptionOrder).filter(
         SubscriptionOrder.id == order_payment.order_id
     ).first()
+
+    if not subscription_order:
+        raise HTTPException(status_code=404, detail="Subscription order not found")
+
+    # Ensure path subscription UUID matches the found order
+    if subscription_order.uuid != subscription_order_uuid:
+        raise HTTPException(status_code=400, detail="Subscription UUID mismatch")
 
     # Check if subscription already completed
     if subscription_order.payment_status == PaymentStatusEnum.completed:
@@ -465,11 +417,11 @@ async def get_payment_status(
     now = datetime.now(pytz.timezone("Africa/Nairobi")).replace(tzinfo=None)
 
     # Update order payment status and paid_at
-    order_payment.status = PaymentStatusEnum.completed
+    order_payment.status = PaymentStatusEnum.completed.value
     order_payment.paid_at = now
 
     # Update subscription order payment status
-    subscription_order.payment_status = PaymentStatusEnum.completed
+    subscription_order.payment_status = PaymentStatusEnum.completed.value
 
     # Upsert user subscription
     user_subscription = db.query(UserSubscription).filter(
@@ -477,16 +429,14 @@ async def get_payment_status(
     ).first()
 
     if user_subscription:
-        # Update existing subscription sms counts
         user_subscription.total_sms += subscription_order.total_sms
-        user_subscription.status = SubscriptionStatusEnum.active
+        user_subscription.status = SubscriptionStatusEnum.active.value
     else:
-        # Insert new user subscription record
         user_subscription = UserSubscription(
             user_id=subscription_order.user_id,
             total_sms=subscription_order.total_sms,
             used_sms=0,
-            status=SubscriptionStatusEnum.active,
+            status=SubscriptionStatusEnum.active.value,
             subscribed_at=now
         )
         db.add(user_subscription)
@@ -503,4 +453,3 @@ async def get_payment_status(
         "subscription_order_uuid": str(subscription_order.uuid),
         "user_subscription_uuid": str(user_subscription.uuid)
     }
-

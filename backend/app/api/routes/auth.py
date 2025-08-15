@@ -3,12 +3,14 @@
 
 from datetime import datetime, timedelta
 import hashlib
+import json
 import secrets
 from typing import Optional
 from urllib.parse import urlencode
 from fastapi import APIRouter, Cookie, Depends, HTTPException, Request, Response, status
 from fastapi.responses import JSONResponse, RedirectResponse
 import pytz
+from uuid import uuid4
 from sqlalchemy import or_
 from sqlalchemy.orm import Session
 from api.deps import get_db
@@ -17,12 +19,197 @@ from models.api_access_tokens import ApiAccessToken
 from models.password_reset_tokens import PasswordResetToken
 from models.user import User
 from utils import send_password_reset_email
-from utils.security import Hasher, verify_access_token
+from sqlalchemy.exc import SQLAlchemyError
+from utils.validation import (
+    validate_email, validate_name, validate_phone,
+    validate_password_confirmation, validate_password_strength, validate_sender_alias
+)
+from utils.security import Hasher, create_access_token, verify_access_token
 from utils.validation import validate_password_strength
 from utils.send_password_reset_email import send_password_reset_email
+from core.config import COOKIE_DOMAIN, IS_PRODUCTION, MAX_COOKIE_AGE
+
 router = APIRouter()
 
-@router.post("/password-reset-request")
+@router.post("/signup")
+async def signup_user(request: Request, db: Session = Depends(get_db)):
+    content_type = request.headers.get("content-type", "")
+    if "application/json" not in content_type.lower():
+        return {
+            "success": False,
+            "message": "Invalid content type. Expected application/json",
+            "data": None
+        }
+
+    try:
+        data = await request.json()
+    except json.JSONDecodeError:
+        return {"success": False, "message": "Invalid JSON", "data": None}
+
+    # extract and normalize username early (do not use data[...] directly)
+    username = data.get("username", "").strip()
+    if not username:
+        return {"success": False, "message": "Username is required", "data": None}
+
+    email = data.get("email", "").strip()
+    if not email or not validate_email(email):
+        return {"success": False, "message": "Valid email required", "data": None}
+
+    phone = data.get("phone", "").strip()
+    if not phone:
+        return {
+            "success": False,
+            "message": "Phone number is required",
+            "data": None
+        }
+    if phone and not validate_phone(phone):
+        return {
+            "success": False,
+            "message": "Phone must be in format 255XXXXXXXXX (start with 255 then 6 or 7, then 8 digits)",
+            "data": None
+        }
+
+    password = data.get("password", "")
+    confirm_password = data.get("confirm_password", "")
+    if not password or not validate_password_confirmation(password, confirm_password):
+        return {"success": False, "message": "Passwords do not match", "data": None}
+
+    if not validate_password_strength(password):
+        return {
+            "success": False,
+            "message": "Password must be at least 8 characters, include uppercase, lowercase, digit, and special character.",
+            "data": None
+        }
+
+    first_name = data.get("first_name", "").strip()
+    last_name = data.get("last_name", "").strip()
+    if not first_name or not last_name:
+        return {"success": False, "message": "First name and last name are required", "data": None}
+    # Validate names using your new function
+    if not validate_name(first_name):
+        return {"success": False, "message": "First name is invalid", "data": None}
+
+    if not validate_name(last_name):
+        return {"success": False, "message": "Last name is invalid", "data": None}
+    try:
+        # check email or username duplicates
+        if db.query(User).filter((User.email == email) | (User.username == username)).first():
+            return {"success": False, "message": "Email or username already registered", "data": None}
+
+        # check phone duplicate separately (if provided)
+        if phone and db.query(User).filter(User.phone == phone).first():
+            return {"success": False, "message": "Phone number already registered", "data": None}
+
+        password_hash = Hasher.hash_password(password)
+        now = datetime.now(pytz.timezone("Africa/Nairobi")).replace(tzinfo=None)
+
+        new_user = User(
+            uuid=uuid4(),
+            email=email,
+            username=username,
+            first_name=first_name,
+            last_name=last_name,
+            phone=phone if phone else None,
+            password_hash=password_hash,
+            created_at=now,
+            updated_at=now
+        )
+        db.add(new_user)
+        db.commit()
+        db.refresh(new_user)
+
+        return {
+            "success": True,
+            "message": "User registered successfully",
+            "data": {
+                "id": new_user.id,
+                "uuid": str(new_user.uuid),
+                "email": new_user.email,
+                "username": new_user.username,
+                "first_name": new_user.first_name,
+                "last_name": new_user.last_name,
+                "phone": new_user.phone,
+                "created_at": now.strftime("%Y-%m-%d %H:%M:%S"),
+            }
+        }
+    except SQLAlchemyError as e:
+        print(f"DB error: {e}")
+        return {"success": False, "message": "Database error", "data": None}
+    except Exception as e:
+        print(f"Unexpected error: {e}")
+        return {"success": False, "message": "Internal server error", "data": None}
+
+@router.post("/signin")
+async def signin_user(request: Request, db: Session = Depends(get_db)):
+    content_type = request.headers.get("content-type", "")
+    if "application/json" not in content_type.lower():
+        return {
+            "success": False,
+            "message": "Invalid content type. Expected application/json",
+            "data": None
+        }
+    
+    try:
+        data = await request.json()
+    except json.JSONDecodeError:
+        return {"success": False, "message": "Invalid JSON", "data": None}
+
+    identifier = data.get("identifier", "").strip()
+    password = data.get("password", "")
+
+    if not identifier:
+        return {"success": False, "message": "Username, email, or phone is required", "data": None}
+    if not password:
+        return {"success": False, "message": "Password is required", "data": None}
+
+    try:
+        user = db.query(User).filter(
+            or_(
+                User.email == identifier,
+                User.username == identifier,
+                User.phone == identifier
+            )
+        ).first()
+
+        if not user or not Hasher.verify_password(password, user.password_hash):
+            return {"success": False, "message": "Invalid credentials", "data": None}
+
+        access_token = create_access_token({"sub": str(user.uuid)})
+
+        response = JSONResponse({
+            "success": True,
+            "message": "Signed in successfully",
+            "data": {
+                "id": user.id,
+                "uuid": str(user.uuid),
+                "email": user.email,
+                "username": user.username,
+                "first_name": user.first_name,
+                "last_name": user.last_name,
+                "phone": user.phone
+            }
+        })
+
+        response.set_cookie(
+            key="session_token",
+            value=access_token,
+            domain=COOKIE_DOMAIN,  
+            httponly=True,
+            secure=IS_PRODUCTION,              
+            samesite="lax",         
+            max_age=MAX_COOKIE_AGE    
+        )
+
+        return response
+
+    except SQLAlchemyError as e:
+        print(f"DB error: {e}")
+        return {"success": False, "message": "Database error", "data": None}
+    except Exception as e:
+        print(f"Unexpected error: {e}")
+        return {"success": False, "message": "Internal server error", "data": None}
+    
+@router.post("/request-password-reset")
 async def password_reset_request(request: Request, db: Session = Depends(get_db)):
     content_type = request.headers.get("content-type", "")
     if "application/json" not in content_type.lower():
@@ -84,7 +271,7 @@ async def password_reset_request(request: Request, db: Session = Depends(get_db)
     reset_link = f"{backend_host}/auth/accept-reset?{params}"
 
     # Send password reset email
-    send_password_reset_email(user.email, reset_link, user.full_name)
+    send_password_reset_email(user.email, reset_link, user.first_name)
 
     return {
         "success": True,
@@ -206,7 +393,7 @@ async def validate_token(session_token: str = Cookie(None), db: Session = Depend
                     "uuid": str(user.uuid),
                     "email": user.email,
                     "username": user.username,
-                    "full_name": user.full_name,
+                    "first_name": user.first_name,
                     "phone": user.phone
                 }
             }

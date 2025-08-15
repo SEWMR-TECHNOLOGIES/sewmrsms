@@ -3,13 +3,13 @@ from email.mime.text import MIMEText
 from email.mime.multipart import MIMEMultipart
 from core.config import FROM_EMAIL, FROM_NAME, SMTP_HOST, SMTP_PASSWORD, SMTP_USER
 
-def send_password_reset_email(to_email: str, reset_link: str, full_name: str = ""):
+def send_password_reset_email(to_email: str, reset_link: str, first_name: str = ""):
     from datetime import datetime
     import pytz
 
     now = datetime.now(pytz.timezone("Africa/Nairobi")).replace(tzinfo=None)
     subject = "Password Reset Request"
-    greeting_name = full_name if full_name else "there"
+    greeting_name = first_name if first_name else "there"
 
     body = f"""
     <html>

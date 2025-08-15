@@ -23,7 +23,7 @@ from services.sms_gateway_service import SmsGatewayService
 
 router = APIRouter()
 
-@router.post("/send-sms")
+@router.post("/send")
 async def send_sms(
     request: Request,
     current_user: Optional[User] = Depends(get_current_user_optional),

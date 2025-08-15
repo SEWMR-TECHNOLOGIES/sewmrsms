@@ -1,5 +1,6 @@
 # backend/app/api/sms_templates.py
-from fastapi import APIRouter, Request, Depends
+import uuid
+from fastapi import APIRouter, Path, Request, Depends
 from sqlalchemy.orm import Session
 from sqlalchemy import func
 from datetime import datetime
@@ -12,7 +13,7 @@ from api.user_auth import get_current_user
 
 router = APIRouter()
 
-@router.post("/create-sms-template")
+@router.post("/create")
 async def create_sms_template(
     request: Request,
     current_user: User = Depends(get_current_user),
@@ -84,7 +85,7 @@ async def create_sms_template(
         }
     }
 
-@router.get("/sms-templates")
+@router.get("/")
 def list_sms_templates(
     current_user: User = Depends(get_current_user),
     db: Session = Depends(get_db)
@@ -110,33 +111,27 @@ def list_sms_templates(
         ]
     }
 
-@router.post("/add-template-column")
+@router.post("/{template_uuid}/columns/add")
 async def add_template_column(
     request: Request,
+    template_uuid: uuid.UUID = Path(...),
     current_user: User = Depends(get_current_user),
     db: Session = Depends(get_db)
 ):
     content_type = request.headers.get("content-type", "")
     if "application/json" not in content_type.lower():
-        return {
-            "success": False,
-            "message": "Invalid content type. Expected application/json",
-            "data": None
-        }
+        return {"success": False, "message": "Invalid content type. Expected application/json", "data": None}
 
     try:
         data = await request.json()
     except Exception:
         return {"success": False, "message": "Invalid JSON", "data": None}
 
-    template_uuid = data.get("template_uuid", "").strip()
     column_name = data.get("name", "").strip()
     column_position = data.get("position")
     is_phone_column = data.get("is_phone_column", False)
 
     # Validate required fields
-    if not template_uuid:
-        return {"success": False, "message": "Template UUID is required", "data": None}
     if not column_name:
         return {"success": False, "message": "Column name is required", "data": None}
     if column_position is None or not isinstance(column_position, int):
@@ -207,7 +202,7 @@ async def add_template_column(
         }
     }
 
-@router.get("/sms-template/{template_uuid}")
+@router.get("/{template_uuid}")
 def get_sms_template(
     template_uuid: str,
     current_user: User = Depends(get_current_user),
@@ -257,7 +252,7 @@ def get_sms_template(
         }
     }
 
-@router.delete("/sms-template/{template_uuid}")
+@router.delete("/{template_uuid}")
 def delete_sms_template(
     template_uuid: str,
     current_user: User = Depends(get_current_user),
@@ -287,7 +282,7 @@ def delete_sms_template(
     }
 
 
-@router.delete("/template-column/{column_uuid}")
+@router.delete("/columns/{column_uuid}")
 def delete_template_column(
     column_uuid: str,
     current_user: User = Depends(get_current_user),

@@ -1,7 +1,7 @@
 # backend/app/api/sender_id.py
 import os
 from typing import Optional
-from fastapi import APIRouter, Depends, File, Form, Request, UploadFile, HTTPException
+from fastapi import APIRouter, Depends, File, Form, Path, Request, UploadFile, HTTPException
 from sqlalchemy.orm import Session
 from sqlalchemy import or_
 from api.user_auth import get_current_user
@@ -22,7 +22,7 @@ from core.config import UPLOAD_SERVICE_URL, MAX_FILE_SIZE
 
 router = APIRouter()
 
-@router.post("/request-sender-id")
+@router.post("/request")
 async def request_sender_id(
     request: Request,
     current_user: User = Depends(get_current_user),
@@ -104,10 +104,10 @@ async def request_sender_id(
         }
     }
 
-@router.post("/upload-signed-sender-id-agreement")
+@router.post("/sender-ids/{sender_request_uuid}/upload-signed-agreement")
 async def upload_sender_id_document(
     request: Request,
-    sender_request_uuid: str = Form(...),
+    sender_request_uuid: uuid.UUID = Path(...),
     file: UploadFile = File(...),
     current_user: User = Depends(get_current_user),
     db: Session = Depends(get_db)
@@ -118,15 +118,10 @@ async def upload_sender_id_document(
             status_code=415,
             detail="Invalid content type. Expected multipart/form-data"
         )
-    
-    # Validate UUID format
-    try:
-        sender_uuid = uuid.UUID(sender_request_uuid)
-    except ValueError:
-        raise HTTPException(status_code=400, detail="Invalid sender_request_uuid")
 
+    # Ensure request exists and belongs to user
     sender_req = db.query(SenderIdRequest).filter(
-        SenderIdRequest.uuid == sender_uuid,
+        SenderIdRequest.uuid == sender_request_uuid,
         SenderIdRequest.user_id == current_user.id,
         SenderIdRequest.status == SenderIdRequestStatusEnum.pending.value
     ).first()
@@ -139,7 +134,7 @@ async def upload_sender_id_document(
     _, ext = os.path.splitext(file.filename)
     if ext.lower() != ".pdf":
         raise HTTPException(status_code=400, detail="File extension must be .pdf")
-
+    
     content = await file.read()
     if len(content) > MAX_FILE_SIZE:
         raise HTTPException(status_code=400, detail="File size must be less than 0.5 MB")
@@ -184,7 +179,7 @@ async def upload_sender_id_document(
         }
     }
 
-@router.post("/request-student-sender-id")
+@router.post("/request/student")
 async def request_student_sender_id(
     request: Request,
     is_student_request: Optional[bool] = Form(None),
@@ -328,7 +323,7 @@ def get_sender_id_propagation_status(
         "data": data
     }
 
-@router.get("/my-sender-ids")
+@router.get("/")
 async def get_user_sender_ids(
     current_user: User = Depends(get_current_user),
     db: Session = Depends(get_db),

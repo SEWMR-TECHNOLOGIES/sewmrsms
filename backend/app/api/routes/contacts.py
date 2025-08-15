@@ -1,5 +1,6 @@
 # backend/app/api/contact_groups.py
-from fastapi import APIRouter, Request, Depends, UploadFile, File, HTTPException
+import uuid
+from fastapi import APIRouter, Path, Request, Depends, UploadFile, File, HTTPException
 from fastapi.responses import JSONResponse
 from sqlalchemy.orm import Session
 from sqlalchemy import and_, func, or_
@@ -16,7 +17,7 @@ from api.user_auth import get_current_user
 
 router = APIRouter()
 
-@router.post("/create-contact-group")
+@router.post("/groups/create")
 async def create_contact_group(
     request: Request,
     current_user: User = Depends(get_current_user),
@@ -64,7 +65,7 @@ async def create_contact_group(
         }
     }
 
-@router.get("/contact-groups")
+@router.get("/groups")
 def list_contact_groups(
     current_user: User = Depends(get_current_user),
     db: Session = Depends(get_db)
@@ -91,7 +92,7 @@ def list_contact_groups(
         })
     return {"success": True, "message": f"Found {len(groups)} contact groups", "data": data}
 
-@router.get("/contact-groups/{group_uuid}")
+@router.get("/groups/{group_uuid}")
 def get_contact_group(
     group_uuid: str,
     current_user: User = Depends(get_current_user),
@@ -239,7 +240,7 @@ async def create_contacts(
         }
     }
 
-@router.get("/contacts/{contact_uuid}")
+@router.get("/{contact_uuid}")
 def get_contact(
     contact_uuid: str,
     current_user: User = Depends(get_current_user),
@@ -267,7 +268,7 @@ def get_contact(
         }
     }
 
-@router.delete("/contact-groups/{group_uuid}")
+@router.delete("/groups/{group_uuid}/remove")
 def delete_contact_group(
     group_uuid: str,
     current_user: User = Depends(get_current_user),
@@ -299,46 +300,20 @@ def delete_contact_group(
     }
 
 
-@router.post("/remove-contact-from-group")
+@router.delete("/groups/{group_uuid}/contacts/{contact_uuid}")
 async def remove_contact_from_group(
-    request: Request,
+    group_uuid: uuid.UUID = Path(...),
+    contact_uuid: uuid.UUID = Path(...),
     current_user: User = Depends(get_current_user),
     db: Session = Depends(get_db)
 ):
-    """
-    Remove a contact from a contact group (set contact.group_id to NULL).
-    Expects JSON:
-    {
-      "contact_uuid": "...",
-      "contact_group_uuid": "..."
-    }
-    """
-    content_type = request.headers.get("content-type", "")
-    if "application/json" not in content_type.lower():
-        return {
-            "success": False,
-            "message": "Invalid content type. Expected application/json",
-            "data": None
-        }
-
-    try:
-        data = await request.json()
-    except Exception:
-        return {"success": False, "message": "Invalid JSON", "data": None}
-
-    contact_uuid = normalize_str(data.get("contact_uuid"))
-    group_uuid = normalize_str(data.get("contact_group_uuid"))
-
-    if not contact_uuid or not group_uuid:
-        return {"success": False, "message": "contact_uuid and contact_group_uuid are required", "data": None}
-
     # Verify group belongs to user
     group = db.query(ContactGroup).filter(
         ContactGroup.uuid == group_uuid,
         ContactGroup.user_id == current_user.id
     ).first()
     if not group:
-        return {"success": False, "message": "Contact group not found or no permission", "data": None}
+        raise HTTPException(status_code=404, detail="Contact group not found or no permission")
 
     # Verify contact exists and belongs to user
     contact = db.query(Contact).filter(
@@ -346,25 +321,18 @@ async def remove_contact_from_group(
         Contact.user_id == current_user.id
     ).first()
     if not contact:
-        return {"success": False, "message": "Contact not found or no permission", "data": None}
+        raise HTTPException(status_code=404, detail="Contact not found or no permission")
 
     # Ensure contact is actually in the provided group
     if contact.group_id != group.id:
-        return {
-            "success": False,
-            "message": "Contact does not belong to the provided contact group",
-            "data": None
-        }
+        raise HTTPException(status_code=400, detail="Contact does not belong to the provided group")
 
     # Remove from group
-    try:
-        contact.group_id = None
-        contact.updated_at = datetime.now(pytz.timezone("Africa/Nairobi")).replace(tzinfo=None)
-        db.add(contact)
-        db.commit()
-        db.refresh(contact)
-    except Exception as e:
-        return {"success": False, "message": f"Database error: {str(e)}", "data": None}
+    contact.group_id = None
+    contact.updated_at = datetime.now(pytz.timezone("Africa/Nairobi")).replace(tzinfo=None)
+    db.add(contact)
+    db.commit()
+    db.refresh(contact)
 
     return {
         "success": True,
@@ -380,7 +348,7 @@ async def remove_contact_from_group(
         }
     }
 
-@router.delete("/contacts/{contact_uuid}")
+@router.delete("/{contact_uuid}")
 def delete_contact(
     contact_uuid: str,
     current_user: User = Depends(get_current_user),

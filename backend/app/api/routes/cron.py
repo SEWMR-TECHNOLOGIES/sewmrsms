@@ -15,7 +15,7 @@ from models.enums import ScheduleStatusEnum, MessageStatusEnum
 
 router = APIRouter()
 
-@router.post("/send-scheduled-messages")
+@router.post("/scheduled-messages/send")
 async def run_scheduled_sends(
     db: Session = Depends(get_db),
     x_cron_auth: str = Header(None)
