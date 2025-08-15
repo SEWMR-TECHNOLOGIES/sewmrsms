@@ -8,7 +8,7 @@ import { Label } from "@/components/ui/label"
 import { Card, CardContent, CardDescription, CardHeader, CardTitle } from "@/components/ui/card"
 import { Separator } from "@/components/ui/separator"
 import { useToast } from "@/hooks/use-toast"
-import { Mail, Lock, User, Phone, ArrowLeft, Check } from "lucide-react"
+import { Mail, Lock, User, Phone, ArrowLeft, Check, Eye, EyeOff } from "lucide-react"
 
 const SignUpPage = () => {
   const navigate = useNavigate()
@@ -25,11 +25,16 @@ const SignUpPage = () => {
     agree: false,
   })
   const [loading, setLoading] = useState(false)
+  const [showPassword, setShowPassword] = useState(false)
+  const [showConfirmPassword, setShowConfirmPassword] = useState(false)
 
   const handleChange = (e: React.ChangeEvent<HTMLInputElement>) => {
     const { id, value, type, checked } = e.target
     setForm((prev) => ({ ...prev, [id]: type === "checkbox" ? checked : value }))
   }
+
+  const togglePassword = () => setShowPassword(prev => !prev)
+  const toggleConfirmPassword = () => setShowConfirmPassword(prev => !prev)
 
   const handleSignUp = async () => {
     if (!form.agree) {
@@ -69,9 +74,7 @@ const SignUpPage = () => {
         })
         navigate("/signin")
       } else {
-        const msg =
-          data?.message ??
-          "We could not create your account. Check your details and try again."
+        const msg = data?.message ?? "We could not create your account. Check your details and try again."
         toast({
           variant: "destructive",
           title: "Signup failed",
@@ -109,11 +112,11 @@ const SignUpPage = () => {
             <Card className="shadow-lg border-0 bg-card/50 backdrop-blur-sm">
               <CardHeader className="space-y-1">
                 <CardTitle className="text-2xl text-center">Sign Up</CardTitle>
-                <CardDescription className="text-center">
-                  Join thousands of businesses using SEWMR SMS
-                </CardDescription>
+                <CardDescription className="text-center">Join thousands of businesses using SEWMR SMS</CardDescription>
               </CardHeader>
               <CardContent className="space-y-4">
+
+                {/* Name Fields */}
                 <div className="grid grid-cols-2 gap-4">
                   <div className="space-y-2">
                     <Label htmlFor="firstName">First Name</Label>
@@ -128,6 +131,7 @@ const SignUpPage = () => {
                   </div>
                 </div>
 
+                {/* Username */}
                 <div className="space-y-2">
                   <Label htmlFor="username">Username</Label>
                   <div className="relative">
@@ -136,6 +140,7 @@ const SignUpPage = () => {
                   </div>
                 </div>
 
+                {/* Email */}
                 <div className="space-y-2">
                   <Label htmlFor="email">Email</Label>
                   <div className="relative">
@@ -144,6 +149,7 @@ const SignUpPage = () => {
                   </div>
                 </div>
 
+                {/* Phone */}
                 <div className="space-y-2">
                   <Label htmlFor="phone">Phone Number</Label>
                   <div className="relative">
@@ -152,22 +158,45 @@ const SignUpPage = () => {
                   </div>
                 </div>
 
+                {/* Password */}
                 <div className="space-y-2">
                   <Label htmlFor="password">Password</Label>
                   <div className="relative">
                     <Lock className="absolute left-3 top-1/2 -translate-y-1/2 text-muted-foreground h-4 w-4" />
-                    <Input id="password" type="password" placeholder="Create a password" className="pl-10" value={form.password} onChange={handleChange} />
+                    <Input
+                      id="password"
+                      type={showPassword ? "text" : "password"}
+                      placeholder="Create a password"
+                      className="pl-10 pr-10"
+                      value={form.password}
+                      onChange={handleChange}
+                    />
+                    <button type="button" className="absolute right-3 top-1/2 -translate-y-1/2 text-muted-foreground" onClick={togglePassword}>
+                      {showPassword ? <EyeOff className="h-4 w-4" /> : <Eye className="h-4 w-4" />}
+                    </button>
                   </div>
                 </div>
 
+                {/* Confirm Password */}
                 <div className="space-y-2">
                   <Label htmlFor="confirmPassword">Confirm Password</Label>
                   <div className="relative">
                     <Lock className="absolute left-3 top-1/2 -translate-y-1/2 text-muted-foreground h-4 w-4" />
-                    <Input id="confirmPassword" type="password" placeholder="Confirm your password" className="pl-10" value={form.confirmPassword} onChange={handleChange} />
+                    <Input
+                      id="confirmPassword"
+                      type={showConfirmPassword ? "text" : "password"}
+                      placeholder="Confirm your password"
+                      className="pl-10 pr-10"
+                      value={form.confirmPassword}
+                      onChange={handleChange}
+                    />
+                    <button type="button" className="absolute right-3 top-1/2 -translate-y-1/2 text-muted-foreground" onClick={toggleConfirmPassword}>
+                      {showConfirmPassword ? <EyeOff className="h-4 w-4" /> : <Eye className="h-4 w-4" />}
+                    </button>
                   </div>
                 </div>
 
+                {/* Agree Terms */}
                 <div className="flex items-start space-x-2">
                   <input type="checkbox" id="agree" checked={form.agree} onChange={handleChange} className="rounded border-border mt-1" />
                   <span className="text-sm text-muted-foreground">

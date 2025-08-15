@@ -1,4 +1,4 @@
-import { useState, useEffect } from "react"
+import { useState } from "react"
 import { useNavigate, Link } from "react-router-dom"
 import { Header } from "@/components/Header"
 import { Footer } from "@/components/Footer"
@@ -8,17 +8,22 @@ import { Label } from "@/components/ui/label"
 import { Card, CardContent, CardDescription, CardHeader, CardTitle } from "@/components/ui/card"
 import { Separator } from "@/components/ui/separator"
 import { useToast } from "@/hooks/use-toast"
-import { Lock, ArrowLeft } from "lucide-react"
+import { Lock, Eye, EyeOff, ArrowLeft } from "lucide-react"
 
 const ResetPasswordPage = () => {
   const navigate = useNavigate()
   const { toast } = useToast()
   const [form, setForm] = useState({ newPassword: "", confirmPassword: "" })
   const [loading, setLoading] = useState(false)
+  const [showPassword, setShowPassword] = useState({ newPassword: false, confirmPassword: false })
 
   const handleChange = (e: React.ChangeEvent<HTMLInputElement>) => {
     const { id, value } = e.target
     setForm((prev) => ({ ...prev, [id]: value }))
+  }
+
+  const togglePassword = (field: "newPassword" | "confirmPassword") => {
+    setShowPassword(prev => ({ ...prev, [field]: !prev[field] }))
   }
 
   const handleReset = async () => {
@@ -99,38 +104,53 @@ const ResetPasswordPage = () => {
             <Card className="shadow-lg border-0 bg-card/50 backdrop-blur-sm">
               <CardHeader className="space-y-1">
                 <CardTitle className="text-2xl text-center">New Password</CardTitle>
-                <CardDescription className="text-center">
-                  Choose a strong password
-                </CardDescription>
+                <CardDescription className="text-center">Choose a strong password</CardDescription>
               </CardHeader>
               <CardContent className="space-y-4">
-                <div className="space-y-2">
+
+                {/* New Password Field */}
+                <div className="space-y-2 relative">
                   <Label htmlFor="newPassword">New Password</Label>
                   <div className="relative">
                     <Lock className="absolute left-3 top-1/2 -translate-y-1/2 text-muted-foreground h-4 w-4" />
                     <Input
                       id="newPassword"
-                      type="password"
+                      type={showPassword.newPassword ? "text" : "password"}
                       placeholder="Enter new password"
-                      className="pl-10"
+                      className="pl-10 pr-10"
                       value={form.newPassword}
                       onChange={handleChange}
                     />
+                    <button
+                      type="button"
+                      className="absolute right-3 top-1/2 -translate-y-1/2 text-muted-foreground"
+                      onClick={() => togglePassword("newPassword")}
+                    >
+                      {showPassword.newPassword ? <EyeOff className="h-4 w-4" /> : <Eye className="h-4 w-4" />}
+                    </button>
                   </div>
                 </div>
 
-                <div className="space-y-2">
+                {/* Confirm Password Field */}
+                <div className="space-y-2 relative">
                   <Label htmlFor="confirmPassword">Confirm Password</Label>
                   <div className="relative">
                     <Lock className="absolute left-3 top-1/2 -translate-y-1/2 text-muted-foreground h-4 w-4" />
                     <Input
                       id="confirmPassword"
-                      type="password"
+                      type={showPassword.confirmPassword ? "text" : "password"}
                       placeholder="Confirm your password"
-                      className="pl-10"
+                      className="pl-10 pr-10"
                       value={form.confirmPassword}
                       onChange={handleChange}
                     />
+                    <button
+                      type="button"
+                      className="absolute right-3 top-1/2 -translate-y-1/2 text-muted-foreground"
+                      onClick={() => togglePassword("confirmPassword")}
+                    >
+                      {showPassword.confirmPassword ? <EyeOff className="h-4 w-4" /> : <Eye className="h-4 w-4" />}
+                    </button>
                   </div>
                 </div>
 
