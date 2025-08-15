@@ -443,3 +443,22 @@ async def generate_api_token(
             "expires_at": expires_at.isoformat()
         }
     }
+
+@router.get("/me")
+async def get_current_user_endpoint(current_user: User = Depends(get_current_user)):
+    """
+    Returns the authenticated user's information based on session cookie or Bearer token.
+    """
+    return {
+        "success": True,
+        "message": "User authenticated",
+        "data": {
+            "id": current_user.id,
+            "uuid": str(current_user.uuid),
+            "email": current_user.email,
+            "username": current_user.username,
+            "first_name": current_user.first_name,
+            "last_name": current_user.last_name,
+            "phone": current_user.phone
+        }
+    }
