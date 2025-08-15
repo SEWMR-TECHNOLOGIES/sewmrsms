@@ -38,8 +38,8 @@ export const Footer = () => {
             <div className="space-y-2">
               <div className="flex items-center space-x-2 text-background/80">
                 <Mail className="h-4 w-4" />
-                <a href="mailto:info@sewmr-sms.sewmr.com" className="hover:text-background transition-colors">
-                  info@sewmr-sms.sewmr.com
+                <a href="mailto:support@sewmrsms.co.tz" className="hover:text-background transition-colors">
+                  support@sewmrsms.co.tz
                 </a>
               </div>
               <div className="flex items-center space-x-2 text-background/80">

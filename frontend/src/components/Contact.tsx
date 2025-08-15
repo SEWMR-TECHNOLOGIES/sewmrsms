@@ -5,8 +5,8 @@ const contactMethods = [
   {
     icon: Mail,
     title: "Email Us",
-    value: "info@sewmr-sms.sewmr.com",
-    link: "mailto:info@sewmr-sms.sewmr.com",
+    value: "support@sewmrsms.co.tz",
+    link: "mailto:support@sewmrsms.co.tz",
     description: "Send us an email for general inquiries",
   },
   {

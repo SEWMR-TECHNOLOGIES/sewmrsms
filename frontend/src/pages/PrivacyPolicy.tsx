@@ -92,7 +92,7 @@ const PrivacyPolicy = () => {
                   </p>
                   <div className="mt-4 p-4 bg-muted/50 rounded-lg">
                     <p className="text-foreground">
-                      Email: info@sewmr-sms.sewmr.com<br />
+                      Email: support@sewmrsms.co.tz<br />
                       Phone: +255 653 750 805<br />
                       Address: Arusha, Tanzania
                     </p>
