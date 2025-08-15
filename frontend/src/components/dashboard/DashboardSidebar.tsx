@@ -103,7 +103,7 @@ export const DashboardSidebar = () => {
           <div className="flex items-center space-x-2">
             <img src={logo} alt="SEWMR SMS" className="h-8 w-auto" />
             {!collapsed && (
-              <span className="font-bold text-lg text-foreground">Dashboard</span>
+              <span className="font-bold text-lg">Dashboard</span>
             )}
           </div>
         </div>

@@ -146,7 +146,7 @@ export const ModernSidebar = () => {
           {!isCollapsed && (
             <div className="flex flex-col">
               <span className="font-semibold text-sidebar-foreground text-sm">SEWMR SMS</span>
-              <span className="text-xs text-sidebar-foreground/60">Professional Platform</span>
+              <span className="text-xs text-sidebar-foreground/60">Messaging Console</span>
             </div>
           )}
         </div>
@@ -164,18 +164,17 @@ export const ModernSidebar = () => {
                   // Simple menu item
                   return (
                     <SidebarMenuItem key={item.title}>
-                      <SidebarMenuButton 
-                        asChild 
-                        className="group transition-all duration-200 hover:bg-sidebar-accent rounded-lg"
-                      >
-                        <NavLink 
+                      <SidebarMenuButton asChild>
+                        <NavLink
                           to={item.url!}
-                          className={({ isActive }) => cn(
-                            "flex items-center gap-3 px-3 py-2.5 text-sm font-medium transition-all",
-                            isActive 
-                              ? "bg-primary text-primary-foreground shadow-lg shadow-primary/20" 
-                              : "text-sidebar-foreground hover:text-sidebar-accent-foreground"
-                          )}
+                          className={({ isActive }) =>
+                            cn(
+                              "flex items-center gap-3 px-3 py-2.5 text-sm font-medium",
+                              isActive
+                                ? "bg-primary text-primary-foreground shadow-lg shadow-primary/20"
+                                : "text-sidebar-foreground"
+                            )
+                          }
                         >
                           <item.icon className="h-5 w-5 shrink-0" />
                           {!isCollapsed && <span>{item.title}</span>}
