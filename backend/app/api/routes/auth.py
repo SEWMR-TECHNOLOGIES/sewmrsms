@@ -268,7 +268,7 @@ async def password_reset_request(request: Request, db: Session = Depends(get_db)
     backend_host = f"{request.url.scheme}://{request.url.hostname}"
     if request.url.port:
         backend_host += f":{request.url.port}"
-    reset_link = f"{backend_host}/auth/accept-reset?{params}"
+    reset_link = f"{backend_host}/api/v1/auth/accept-reset?{params}"
 
     # Send password reset email
     send_password_reset_email(user.email, reset_link, user.first_name)
