@@ -15,6 +15,9 @@ def send_password_reset_email(to_email: str, reset_link: str, first_name: str = 
     <html>
     <head>
       <style>
+        :root {{
+          --gradient-primary: linear-gradient(135deg, hsl(6 99% 64%), hsl(6 99% 58%));
+        }}
         body {{
           font-family: Arial, sans-serif;
           background-color: #f4f6f8;
@@ -29,9 +32,17 @@ def send_password_reset_email(to_email: str, reset_link: str, first_name: str = 
           padding: 30px;
           border-radius: 8px;
           box-shadow: 0 2px 6px rgba(0,0,0,0.1);
+          text-align: center;
+        }}
+        .logo {{
+          max-width: 120px;
+          margin-bottom: 20px;
         }}
         h2 {{
-          color: #2c3e50;
+          background: var(--gradient-primary);
+          -webkit-background-clip: text;
+          -webkit-text-fill-color: transparent;
+          font-size: 24px;
           margin-bottom: 20px;
         }}
         p {{
@@ -42,7 +53,7 @@ def send_password_reset_email(to_email: str, reset_link: str, first_name: str = 
         a.button {{
           display: inline-block;
           padding: 12px 24px;
-          background-color: #007bff;
+          background: var(--gradient-primary);
           color: white !important;
           text-decoration: none;
           border-radius: 5px;
@@ -52,16 +63,16 @@ def send_password_reset_email(to_email: str, reset_link: str, first_name: str = 
           font-size: 12px;
           color: #999999;
           margin-top: 30px;
-          text-align: center;
         }}
       </style>
     </head>
     <body>
       <div class="container">
+        <img src="https://app.sewmrsms.co.tz/assets/logo-C8LRBZc2.png" alt="SEWMR SMS Logo" class="logo"/>
         <h2>Password Reset Request</h2>
         <p>Hi {greeting_name},</p>
         <p>We received a request to reset your password. Click the button below to set a new password:</p>
-        <p style="text-align:center;">
+        <p>
           <a href="{reset_link}" class="button" target="_blank" rel="noopener noreferrer">Reset Password</a>
         </p>
         <p>If you did not request this, please ignore this email. This link will expire in 15 minutes.</p>
@@ -88,4 +99,4 @@ def send_password_reset_email(to_email: str, reset_link: str, first_name: str = 
         server.sendmail(FROM_EMAIL, to_email, msg.as_string())
         server.quit()
     except Exception as e:
-        raise e 
+        raise e
