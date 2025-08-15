@@ -120,7 +120,7 @@ async def signup_user(request: Request, db: Session = Depends(get_db)):
 
         return {
             "success": True,
-            "message": "User registered successfully",
+            "message": f"Dear {first_name}, your account has been created successfully. Welcome to SEWMR SMS! To proceed, please log in.",
             "data": {
                 "id": new_user.id,
                 "uuid": str(new_user.uuid),
