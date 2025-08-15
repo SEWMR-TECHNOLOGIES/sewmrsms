@@ -12,7 +12,7 @@ export const AuthGuard: React.FC<{ children: React.ReactNode }> = ({ children })
       try {
         const res = await fetch("https://api.sewmrsms.co.tz/api/v1/auth/me", {
           method: "GET",
-          credentials: "include", 
+          credentials: "include",
         });
 
         const data = await res.json();
@@ -40,7 +40,13 @@ export const AuthGuard: React.FC<{ children: React.ReactNode }> = ({ children })
     checkAuth();
   }, [navigate, toast]);
 
-  if (loading) return <div>Loading...</div>; // Or a spinner
+  if (loading) {
+    return (
+      <div className="fixed inset-0 flex items-center justify-center bg-white z-50">
+        <div className="animate-spin rounded-full h-16 w-16 border-t-4 border-blue-600 border-solid"></div>
+      </div>
+    );
+  }
 
   return <>{children}</>;
 };
