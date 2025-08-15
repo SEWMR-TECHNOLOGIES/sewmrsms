@@ -1,37 +1,13 @@
 import React from 'react';
 import { 
-  LayoutDashboard, 
-  Users, 
-  MessageSquare, 
-  BarChart3, 
-  CreditCard, 
-  Settings,
-  UserPlus,
-  Import,
-  Send,
-  FileText,
-  History,
-  TrendingUp,
-  ShoppingCart,
-  Receipt,
-  User,
-  Key,
-  Bell,
-  ChevronDown,
-  ChevronRight,
-  Shield
+  LayoutDashboard, Users, MessageSquare, BarChart3, CreditCard, Settings,
+  UserPlus, Import, Send, FileText, History, TrendingUp, ShoppingCart, Receipt,
+  User, Key, Bell, ChevronDown, ChevronRight, Shield
 } from 'lucide-react';
 import { NavLink, useLocation } from 'react-router-dom';
 import { 
-  Sidebar, 
-  SidebarContent, 
-  SidebarGroup, 
-  SidebarGroupContent, 
-  SidebarHeader, 
-  SidebarMenu, 
-  SidebarMenuItem, 
-  SidebarMenuButton,
-  useSidebar 
+  Sidebar, SidebarContent, SidebarGroup, SidebarGroupContent, SidebarHeader,
+  SidebarMenu, SidebarMenuItem, SidebarMenuButton, useSidebar 
 } from '@/components/ui/sidebar';
 import { Collapsible, CollapsibleContent, CollapsibleTrigger } from '@/components/ui/collapsible';
 import { cn } from '@/lib/utils';
@@ -50,69 +26,53 @@ interface MenuItem {
 }
 
 const menuItems: MenuItem[] = [
-  {
-    title: 'Dashboard',
-    url: '/dashboard',
-    icon: LayoutDashboard,
-  },
-  {
-    title: 'Contacts',
-    icon: Users,
-    items: [
+  { title: 'Dashboard', url: '/dashboard', icon: LayoutDashboard },
+  { 
+    title: 'Contacts', icon: Users, items: [
       { title: 'My Contacts', url: '/dashboard/contacts', icon: Users },
       { title: 'Add Contact', url: '/dashboard/contacts/new', icon: UserPlus },
       { title: 'Import Contacts', url: '/dashboard/contacts/import', icon: Import },
       { title: 'Contact Groups', url: '/dashboard/contacts/groups', icon: Users },
-    ],
+    ]
   },
-  {
-    title: 'Messages',
-    icon: MessageSquare,
-    items: [
+  { 
+    title: 'Messages', icon: MessageSquare, items: [
       { title: 'Quick Send', url: '/dashboard/messages/quick-send', icon: Send },
       { title: 'From Template', url: '/dashboard/messages/template', icon: FileText },
       { title: 'Bulk Send', url: '/dashboard/messages/bulk', icon: MessageSquare },
       { title: 'Message History', url: '/dashboard/messages/history', icon: History },
       { title: 'Templates', url: '/dashboard/messages/templates', icon: FileText },
-    ],
+    ]
   },
-  {
-    title: 'Sender IDs',
-    icon: Shield,
-    items: [
+  { 
+    title: 'Sender IDs', icon: Shield, items: [
       { title: 'My Sender IDs', url: '/dashboard/sender-ids', icon: Shield },
       { title: 'Request New', url: '/dashboard/sender-ids/request', icon: UserPlus },
       { title: 'Network Status', url: '/dashboard/sender-ids/networks', icon: TrendingUp },
-    ],
+    ]
   },
-  {
-    title: 'Reports',
-    icon: BarChart3,
-    items: [
+  { 
+    title: 'Reports', icon: BarChart3, items: [
       { title: 'Delivery Reports', url: '/dashboard/reports/delivery', icon: TrendingUp },
       { title: 'Analytics', url: '/dashboard/reports/analytics', icon: BarChart3 },
       { title: 'Usage Reports', url: '/dashboard/reports/usage', icon: BarChart3 },
-    ],
+    ]
   },
-  {
-    title: 'Billing',
-    icon: CreditCard,
-    items: [
+  { 
+    title: 'Billing', icon: CreditCard, items: [
       { title: 'Purchase Credits', url: '/dashboard/billing/purchase', icon: ShoppingCart },
       { title: 'Payment History', url: '/dashboard/billing/history', icon: History },
       { title: 'Invoices', url: '/dashboard/billing/invoices', icon: Receipt },
       { title: 'Usage', url: '/dashboard/billing/usage', icon: BarChart3 },
-    ],
+    ]
   },
-  {
-    title: 'Settings',
-    icon: Settings,
-    items: [
+  { 
+    title: 'Settings', icon: Settings, items: [
       { title: 'Profile', url: '/dashboard/settings/profile', icon: User },
       { title: 'API Keys', url: '/dashboard/settings/api', icon: Key },
       { title: 'Notifications', url: '/dashboard/settings/notifications', icon: Bell },
       { title: 'Security', url: '/dashboard/settings/security', icon: Shield },
-    ],
+    ]
   },
 ];
 
@@ -159,7 +119,8 @@ export const ModernSidebar = () => {
               {menuItems.map((item) => {
                 const isOpen = openItems.includes(item.title);
                 const hasItems = item.items && item.items.length > 0;
-                
+
+                // Simple menu item
                 if (!hasItems) {
                   return (
                     <SidebarMenuItem key={item.title}>
@@ -168,10 +129,8 @@ export const ModernSidebar = () => {
                           to={item.url!}
                           className={({ isActive }) =>
                             cn(
-                              "flex items-center gap-3 px-3 py-2.5 text-sm font-medium text-sidebar-foreground", // default color
-                              isActive
-                                ? "bg-primary text-primary-foreground shadow-lg shadow-primary/20"
-                                : ""
+                              "flex items-center gap-3 px-3 py-2.5 text-sm font-medium text-sidebar-foreground",
+                              isActive ? "bg-primary text-primary-foreground shadow-lg shadow-primary/20" : ""
                             )
                           }
                         >
@@ -193,18 +152,18 @@ export const ModernSidebar = () => {
                             <item.icon className="h-5 w-5 shrink-0" />
                             {!isCollapsed && (
                               <>
+                                <span className="flex-1 ml-2">{item.title}</span>
                                 {isOpen ? (
                                   <ChevronDown className="h-4 w-4 transition-transform" />
                                 ) : (
                                   <ChevronRight className="h-4 w-4 transition-transform" />
                                 )}
-                                <span className="flex-1 text-left ml-2">{item.title}</span>
                               </>
                             )}
                           </div>
                         </SidebarMenuButton>
                       </CollapsibleTrigger>
-                      
+
                       {!isCollapsed && (
                         <CollapsibleContent className="pb-1">
                           <div className="ml-4 mt-1 space-y-1 border-l border-sidebar-border/50 pl-4">

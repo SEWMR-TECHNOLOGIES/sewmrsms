@@ -279,7 +279,6 @@ async def password_reset_request(request: Request, db: Session = Depends(get_db)
         "data": None
     }
 
-
 @router.get("/accept-reset")
 async def accept_reset(token: str, db: Session = Depends(get_db)):
     token_hash = hashlib.sha256(token.encode("utf-8")).hexdigest()
