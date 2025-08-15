@@ -23,6 +23,8 @@ import BillingPurchase from "./pages/dashboard/billing/BillingPurchase";
 import PaymentHistory from "./pages/dashboard/billing/PaymentHistory";
 import SenderIds from "./pages/dashboard/sender-ids/SenderIds";
 import RequestSenderID from "./pages/dashboard/sender-ids/RequestSenderID";
+import RequestPasswordResetPage from "./pages/ResetPasswordRequest";
+import ResetPasswordPage from "./pages/ResetPassword";
 
 const queryClient = new QueryClient();
 
@@ -44,6 +46,8 @@ const App = () => (
           <Route path="/privacy-policy" element={<PrivacyPolicy />} />
           <Route path="/terms-of-service" element={<TermsOfService />} />
           <Route path="/cookie-policy" element={<CookiePolicy />} />
+          <Route path="/forgot-password" element={<RequestPasswordResetPage />} />
+          <Route path="/reset-password" element={<ResetPasswordPage />} />
           
           {/* Dashboard Routes */}
           <Route path="/dashboard" element={<DashboardLayout />}>
