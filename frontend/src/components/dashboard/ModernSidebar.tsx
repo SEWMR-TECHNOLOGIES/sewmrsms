@@ -78,17 +78,11 @@ const menuItems: MenuItem[] = [
 
 export const ModernSidebar = () => {
   const { state } = useSidebar();
-  const location = useLocation();
   const [openItems, setOpenItems] = React.useState<string[]>(['Dashboard']);
-
   const isCollapsed = state === 'collapsed';
 
   const toggleItem = (title: string) => {
-    setOpenItems(prev => 
-      prev.includes(title) 
-        ? prev.filter(item => item !== title)
-        : [...prev, title]
-    );
+    setOpenItems(prev => prev.includes(title) ? prev.filter(i => i !== title) : [...prev, title]);
   };
 
   return (
@@ -100,9 +94,7 @@ export const ModernSidebar = () => {
     >
       <SidebarHeader className="border-b border-sidebar-border bg-sidebar-background/50 backdrop-blur">
         <div className="flex items-center gap-3 px-6 py-4">
-          <div className="flex h-8 w-8 items-center justify-center rounded-lg bg-primary text-primary-foreground font-bold text-sm">
-            S
-          </div>
+          <div className="flex h-8 w-8 items-center justify-center rounded-lg bg-primary text-primary-foreground font-bold text-sm">S</div>
           {!isCollapsed && (
             <div className="flex flex-col">
               <span className="font-semibold text-sidebar-foreground text-sm">SEWMR SMS</span>
@@ -120,7 +112,7 @@ export const ModernSidebar = () => {
                 const isOpen = openItems.includes(item.title);
                 const hasItems = item.items && item.items.length > 0;
 
-                // Simple menu item
+                // Simple menu item (no sub-items)
                 if (!hasItems) {
                   return (
                     <SidebarMenuItem key={item.title}>
@@ -129,37 +121,34 @@ export const ModernSidebar = () => {
                           to={item.url!}
                           className={({ isActive }) =>
                             cn(
-                              "flex items-center gap-3 px-3 py-2.5 text-sm font-medium text-sidebar-foreground",
-                              isActive ? "bg-primary text-primary-foreground shadow-lg shadow-primary/20" : ""
+                              "flex items-center justify-between px-3 py-2.5 text-sm font-medium rounded-md transition-all text-sidebar-foreground",
+                              isActive ? "bg-primary text-primary-foreground shadow-lg shadow-primary/20" : "hover:bg-sidebar-accent/50 hover:text-sidebar-foreground"
                             )
                           }
                         >
-                          <item.icon className="h-5 w-5 shrink-0" />
-                          {!isCollapsed && <span>{item.title}</span>}
+                          <div className="flex items-center gap-3">
+                            <item.icon className="h-5 w-5 shrink-0" />
+                            {!isCollapsed && <span>{item.title}</span>}
+                          </div>
+                          {!isCollapsed && <ChevronRight className="h-4 w-4 text-sidebar-foreground" />}
                         </NavLink>
                       </SidebarMenuButton>
                     </SidebarMenuItem>
                   );
                 }
 
-                // Menu item with submenu
+                // Menu item with sub-items
                 return (
                   <SidebarMenuItem key={item.title}>
                     <Collapsible open={isOpen} onOpenChange={() => toggleItem(item.title)}>
                       <CollapsibleTrigger asChild>
                         <SidebarMenuButton className="group w-full transition-all duration-200 hover:bg-sidebar-accent rounded-lg">
-                          <div className="flex items-center gap-3 px-3 py-2.5 text-sm font-medium text-sidebar-foreground">
-                            <item.icon className="h-5 w-5 shrink-0" />
-                            {!isCollapsed && (
-                              <>
-                                <span className="flex-1 ml-2">{item.title}</span>
-                                {isOpen ? (
-                                  <ChevronDown className="h-4 w-4 transition-transform" />
-                                ) : (
-                                  <ChevronRight className="h-4 w-4 transition-transform" />
-                                )}
-                              </>
-                            )}
+                          <div className="flex items-center justify-between px-3 py-2.5 text-sm font-medium text-sidebar-foreground">
+                            <div className="flex items-center gap-3">
+                              <item.icon className="h-5 w-5 shrink-0" />
+                              {!isCollapsed && <span>{item.title}</span>}
+                            </div>
+                            {!isCollapsed && (isOpen ? <ChevronDown className="h-4 w-4" /> : <ChevronRight className="h-4 w-4" />)}
                           </div>
                         </SidebarMenuButton>
                       </CollapsibleTrigger>
@@ -167,15 +156,13 @@ export const ModernSidebar = () => {
                       {!isCollapsed && (
                         <CollapsibleContent className="pb-1">
                           <div className="ml-4 mt-1 space-y-1 border-l border-sidebar-border/50 pl-4">
-                            {item.items?.map((subItem) => (
+                            {item.items?.map(subItem => (
                               <SidebarMenuButton key={subItem.title} asChild>
                                 <NavLink
                                   to={subItem.url}
                                   className={({ isActive }) => cn(
                                     "flex items-center gap-2 px-3 py-2 text-sm rounded-md transition-all",
-                                    isActive
-                                      ? "bg-primary/10 text-primary font-medium"
-                                      : "text-sidebar-foreground/70 hover:text-sidebar-foreground hover:bg-sidebar-accent/50"
+                                    isActive ? "bg-primary/10 text-primary font-medium" : "text-sidebar-foreground/70 hover:text-sidebar-foreground hover:bg-sidebar-accent/50"
                                   )}
                                 >
                                   <subItem.icon className="h-4 w-4 shrink-0" />
