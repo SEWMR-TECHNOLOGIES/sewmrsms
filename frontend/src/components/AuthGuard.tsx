@@ -43,7 +43,10 @@ export const AuthGuard: React.FC<{ children: React.ReactNode }> = ({ children })
   if (loading) {
     return (
       <div className="fixed inset-0 flex items-center justify-center bg-white z-50">
-        <div className="animate-spin rounded-full h-16 w-16 border-t-4 border-blue-600 border-solid"></div>
+        <div
+          className="animate-spin rounded-full h-16 w-16 border-t-4 border-solid border-gray-200"
+          style={{ borderTopColor: "hsl(6, 99%, 64%)" }}
+        ></div>
       </div>
     );
   }
