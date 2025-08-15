@@ -161,7 +161,6 @@ export const ModernSidebar = () => {
                 const hasItems = item.items && item.items.length > 0;
                 
                 if (!hasItems) {
-                  // Simple menu item
                   return (
                     <SidebarMenuItem key={item.title}>
                       <SidebarMenuButton asChild>
@@ -169,10 +168,10 @@ export const ModernSidebar = () => {
                           to={item.url!}
                           className={({ isActive }) =>
                             cn(
-                              "flex items-center gap-3 px-3 py-2.5 text-sm font-medium",
+                              "flex items-center gap-3 px-3 py-2.5 text-sm font-medium text-sidebar-foreground", // default color
                               isActive
                                 ? "bg-primary text-primary-foreground shadow-lg shadow-primary/20"
-                                : "text-sidebar-foreground"
+                                : ""
                             )
                           }
                         >
