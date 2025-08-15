@@ -2,12 +2,13 @@
 from typing import Optional
 import uuid
 from fastapi import APIRouter, File, Form, Request, Depends, HTTPException, Header, UploadFile
+from sqlalchemy import insert
 from sqlalchemy.orm import Session
 from datetime import datetime
 import pytz
 from api.deps import get_db
 from api.user_auth import get_current_user_optional
-from models.models import SmsTemplate
+from models.models import SmsCallback, SmsTemplate
 from models.template_column import TemplateColumn
 from utils.helpers import generate_messages, parse_excel_or_csv
 from models.sent_messages import SentMessage
@@ -524,3 +525,56 @@ async def quick_send_sms(
             "sent_messages": sent_messages
         }
     }
+
+@router.post("/webhook")
+async def sms_callback(request: Request, db: Session = Depends(get_db)):
+    try:
+        data = await request.json()
+
+        message_id = data.get("message_id")
+        phone = data.get("PhoneNumber") or data.get("phone")
+        status = data.get("DLRStatus")
+        uid = data.get("uid")
+        remarks = data.get("Remarks")
+        sender_alias = data.get("SenderId")
+        full_payload = data
+
+        if not message_id or not phone:
+            return {"success": False, "message": "message_id and phone are required", "data": None}
+
+        # East Africa Time
+        eat = pytz.timezone("Africa/Nairobi")
+        received_at = datetime.now(eat).replace(tzinfo=None)
+
+        stmt = insert(SmsCallback).values(
+            message_id=message_id,
+            phone=phone,
+            status=status,
+            uid=uid,
+            remarks=remarks,
+            sender_alias=sender_alias,
+            payload=full_payload,
+            received_at=received_at
+        )
+
+        if uid:
+            stmt = stmt.on_conflict_do_update(
+                index_elements=['uid'],
+                set_={
+                    'status': stmt.excluded.status,
+                    'remarks': stmt.excluded.remarks,
+                    'sender_alias': stmt.excluded.sender_alias,
+                    'phone': stmt.excluded.phone,
+                    'payload': stmt.excluded.payload,
+                    'received_at': stmt.excluded.received_at
+                }
+            )
+
+        db.execute(stmt)
+        db.commit()
+
+        return {"success": True, "message": "Callback received", "data": data}
+
+    except Exception as e:
+        print("Error processing SMS callback:", e)
+        return {"success": False, "message": "Internal server error", "data": None}
