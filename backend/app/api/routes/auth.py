@@ -297,11 +297,11 @@ async def accept_reset(token: str, response: Response, db: Session = Depends(get
     response.set_cookie(
         key="reset_token",
         value=token,
+        domain=COOKIE_DOMAIN,
         httponly=True,
-        secure=True,
+        secure=IS_PRODUCTION,
         samesite="lax",
-        max_age=15 * 60, 
-        path="/"
+        max_age=15 * 60
     )
 
     frontend_password_reset_url = "https://app.sewmrsms.co.tz/reset-password"  

@@ -50,7 +50,7 @@ const ResetPasswordPage = () => {
           new_password: form.newPassword,
           confirm_password: form.confirmPassword,
         }),
-        credentials: "include", // cookie with reset_token
+        credentials: "include", 
       })
       const data = await res.json()
       if (data?.success) {
