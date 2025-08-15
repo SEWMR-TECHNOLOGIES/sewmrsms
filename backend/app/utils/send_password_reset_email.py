@@ -15,9 +15,6 @@ def send_password_reset_email(to_email: str, reset_link: str, first_name: str = 
     <html>
     <head>
       <style>
-        :root {{
-          --gradient-primary: linear-gradient(135deg, hsl(6 99% 64%), hsl(6 99% 58%));
-        }}
         body {{
           font-family: Arial, sans-serif;
           background-color: #f4f6f8;
@@ -39,7 +36,7 @@ def send_password_reset_email(to_email: str, reset_link: str, first_name: str = 
           margin-bottom: 20px;
         }}
         h2 {{
-          background: var(--gradient-primary);
+          background: linear-gradient(135deg, hsl(6, 99%, 64%), hsl(6, 99%, 58%));
           -webkit-background-clip: text;
           -webkit-text-fill-color: transparent;
           font-size: 24px;
@@ -53,7 +50,7 @@ def send_password_reset_email(to_email: str, reset_link: str, first_name: str = 
         a.button {{
           display: inline-block;
           padding: 12px 24px;
-          background: var(--gradient-primary);
+          background: linear-gradient(135deg, hsl(6, 99%, 64%), hsl(6, 99%, 58%));
           color: white !important;
           text-decoration: none;
           border-radius: 5px;
@@ -99,4 +96,5 @@ def send_password_reset_email(to_email: str, reset_link: str, first_name: str = 
         server.sendmail(FROM_EMAIL, to_email, msg.as_string())
         server.quit()
     except Exception as e:
+        print("Failed to send password reset email:", e)
         raise e
