@@ -281,7 +281,7 @@ async def password_reset_request(request: Request, db: Session = Depends(get_db)
 
 
 @router.get("/accept-reset")
-async def accept_reset(token: str, response: Response, db: Session = Depends(get_db)):
+async def accept_reset(token: str, db: Session = Depends(get_db)):
     token_hash = hashlib.sha256(token.encode("utf-8")).hexdigest()
     now = datetime.utcnow()
 
@@ -294,7 +294,12 @@ async def accept_reset(token: str, response: Response, db: Session = Depends(get
     if not reset_token:
         return JSONResponse({"success": False, "message": "Invalid or expired reset token"}, status_code=400)
 
-    response.set_cookie(
+    frontend_password_reset_url = "https://app.sewmrsms.co.tz/reset-password"
+
+    # create RedirectResponse and set cookie on it (not on the unrelated `response` param)
+    redirect = RedirectResponse(frontend_password_reset_url)
+
+    redirect.set_cookie(
         key="reset_token",
         value=token,
         domain=COOKIE_DOMAIN,
@@ -304,8 +309,7 @@ async def accept_reset(token: str, response: Response, db: Session = Depends(get
         max_age=15 * 60
     )
 
-    frontend_password_reset_url = "https://app.sewmrsms.co.tz/reset-password"  
-    return RedirectResponse(frontend_password_reset_url)
+    return redirect
 
 @router.post("/reset-password")
 async def reset_password(request: Request, reset_token: Optional[str] = Cookie(None), db: Session = Depends(get_db)):
