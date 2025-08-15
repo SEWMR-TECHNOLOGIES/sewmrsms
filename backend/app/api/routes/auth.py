@@ -300,8 +300,8 @@ async def accept_reset(token: str, response: Response, db: Session = Depends(get
         httponly=True,
         secure=True,
         samesite="lax",
-        max_age=15 * 60,  # 15 minutes
-        path="/auth"
+        max_age=15 * 60, 
+        path="/"
     )
 
     frontend_password_reset_url = "https://app.sewmrsms.co.tz/reset-password"  
