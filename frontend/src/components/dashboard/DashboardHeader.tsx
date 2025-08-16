@@ -34,6 +34,7 @@ export const DashboardHeader = () => {
         toast({
           title: "Logged out successfully",
           description: "You have been logged out of your account.",
+          variant: "success",
         });
         navigate("/");
       } else {

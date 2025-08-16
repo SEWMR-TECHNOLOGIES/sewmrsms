@@ -428,8 +428,8 @@ body {{ font-family: Arial, Helvetica, sans-serif; font-size:12px; line-height:1
 .agreement {{ margin:14px 0; text-align:justify; font-size:12px; }}
 .agreement ul {{ margin:8px 0 8px 18px; }}
 .agreement li {{ margin:6px 0; }}
-.sign-table {{ width:100%; border-collapse: collapse; margin-top:15px; }}
-.sign-cell {{ width:50%; padding-top:40px; vertical-align: bottom; text-align:center; font-size:12px; }}
+.sign-table {{ width:100%; border-collapse: collapse; margin-top:12px; }}
+.sign-cell {{ width:50%; padding-top:30px; vertical-align: bottom; text-align:center; font-size:12px; }}
 .sig-line {{ display:block; border-top:1px solid #444; width:85%; margin:0 auto 6px auto; height:1px; }}
 .sig-caption {{ font-size:11px; color:#444; }}
 .footer {{ border-top:1px solid #e6e6e6; margin-top:24px; padding-top:8px; font-size:11px; color:#666; text-align:center; }}
@@ -479,7 +479,7 @@ body {{ font-family: Arial, Helvetica, sans-serif; font-size:12px; line-height:1
   <div class="heading">Client</div>
   <table class="dl-table" style="border:none; border-collapse: collapse;">
     <tr>
-      <td class="dl-key" style="border:none;">Company Name</td>
+      <td class="dl-key" style="border:none;">Company / Organization</td>
       <td class="dl-val" style="border:none;">{request_obj.company_name}</td>
     </tr>
     <tr>
@@ -510,7 +510,7 @@ and enable the requested Sender ID for the Client subject to the terms set out b
 
 {student_note_html}
 
-<p style="margin-top:14px;">Both parties agree to the terms above and indicate acceptance by signing below.</p>
+<p style="margin-top:12px;">Both parties agree to the terms above and indicate acceptance by signing below.</p>
 </div>
 
 <table class="sign-table">
