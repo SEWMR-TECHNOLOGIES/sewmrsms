@@ -8,7 +8,7 @@ CREATE TYPE payment_status_enum AS ENUM ('pending', 'completed', 'failed', 'canc
 
 CREATE TYPE sender_status_enum AS ENUM ('active', 'inactive', 'pending');
 
-CREATE TYPE sender_id_request_status_enum AS ENUM ('pending', 'approved', 'rejected');
+CREATE TYPE sender_id_request_status_enum AS ENUM ('pending', 'approved', 'rejected', 'in_review');
 
 CREATE TYPE propagation_status_enum AS ENUM ('pending', 'propagated', 'failed');
 

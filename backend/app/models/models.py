@@ -32,6 +32,7 @@ class SenderIdRequestStatusEnum(enum.Enum):
     pending = 'pending'
     approved = 'approved'
     rejected = 'rejected'
+    in_review = 'in_review'
 
 class PropagationStatusEnum(enum.Enum):
     pending = 'pending'
