@@ -1,24 +1,27 @@
 import React, { useState, useEffect } from 'react';
-import { Plus, Shield, CheckCircle, XCircle, Clock, AlertCircle } from 'lucide-react';
+import { Plus, Shield, CheckCircle, XCircle, Clock, AlertCircle, FileText } from 'lucide-react';
 import { Button } from '@/components/ui/button';
 import { Card, CardContent, CardDescription, CardHeader, CardTitle } from '@/components/ui/card';
 import { Badge } from '@/components/ui/badge';
 import { DataTable } from '@/components/ui/data-table';
-import { supabase } from '@/integrations/supabase/client';
 import { useToast } from '@/hooks/use-toast';
 import { format } from 'date-fns';
-import { useNavigate } from 'react-router-dom';
+import { useNavigate, Link } from 'react-router-dom';
 import type { ColumnDef } from '@tanstack/react-table';
+import { Loader } from '@/components/ui/loader';
 
 interface SenderID {
-  id: string;
-  sender_id: string;
-  business_name: string;
-  organization: string;
+  uuid: string;
+  sender_alias: string;
+  company_name: string;
+  sample_message: string;
   status: 'pending' | 'approved' | 'rejected' | 'under_review';
+  is_student_request: boolean;
+  student_id_path?: string;
+  document_path?: string;
+  remarks?: string;
   created_at: string;
-  rejection_reason?: string;
-  networks: string[];
+  updated_at: string;
 }
 
 const getStatusIcon = (status: string) => {
@@ -47,9 +50,12 @@ const getStatusBadge = (status: string) => {
   }
 };
 
-export default function SenderIds() {
+export default function UserSenderRequests() {
   const [senderIds, setSenderIds] = useState<SenderID[]>([]);
   const [loading, setLoading] = useState(true);
+  const [searchQuery, setSearchQuery] = useState('');
+  const [page, setPage] = useState(1);
+  const [perPage] = useState(10);
   const { toast } = useToast();
   const navigate = useNavigate();
 
@@ -59,50 +65,49 @@ export default function SenderIds() {
 
   const fetchSenderIds = async () => {
     try {
-      const { data: { user } } = await supabase.auth.getUser();
-      if (!user) return;
-
-      const { data, error } = await supabase
-        .from('sender_ids')
-        .select('*')
-        .eq('user_id', user.id)
-        .order('created_at', { ascending: false });
-
-      if (error) throw error;
-      setSenderIds((data || []).map(item => ({
-        ...item,
-        status: item.status as 'pending' | 'approved' | 'rejected' | 'under_review',
-        networks: Array.isArray(item.networks) ? item.networks : JSON.parse(item.networks as string || '[]')
-      })));
-    } catch (error) {
-      console.error('Error fetching sender IDs:', error);
+      const res = await fetch('https://api.sewmrsms.co.tz/api/v1/sender-ids/requests', {
+        credentials: 'include',
+      });
+      const data = await res.json();
+      if (!data.success) throw new Error(data.message || 'Failed to fetch sender IDs');
+      setSenderIds(data.data);
+    } catch (err) {
+      console.error(err);
       toast({
-        title: "Error",
-        description: "Failed to load sender IDs",
-        variant: "destructive",
+        title: 'Error',
+        description: 'Unable to load sender ID requests',
+        variant: 'destructive',
       });
     } finally {
       setLoading(false);
     }
   };
 
+  const filteredSenderIds = senderIds.filter(s =>
+    s.sender_alias.toLowerCase().includes(searchQuery.toLowerCase()) ||
+    s.company_name.toLowerCase().includes(searchQuery.toLowerCase())
+  );
+
+  const paginatedSenderIds = filteredSenderIds.slice((page - 1) * perPage, page * perPage);
+
+  const totalPages = Math.ceil(filteredSenderIds.length / perPage);
+
   const columns: ColumnDef<SenderID>[] = [
     {
-      accessorKey: 'sender_id',
+      accessorKey: 'sender_alias',
       header: 'Sender ID',
       cell: ({ row }) => (
         <div className="flex items-center gap-2">
           <Shield className="h-4 w-4 text-primary" />
-          <span className="font-medium">{row.getValue('sender_id')}</span>
+          <span className="font-medium">{row.getValue('sender_alias')}</span>
+          {row.original.is_student_request && (
+            <Badge variant="secondary" className="text-xs ml-1">Student</Badge>
+          )}
         </div>
       ),
     },
     {
-      accessorKey: 'business_name',
-      header: 'Business Name',
-    },
-    {
-      accessorKey: 'organization',
+      accessorKey: 'company_name',
       header: 'Organization',
     },
     {
@@ -119,26 +124,6 @@ export default function SenderIds() {
       },
     },
     {
-      accessorKey: 'networks',
-      header: 'Networks',
-      cell: ({ row }) => {
-        const networks = row.getValue('networks') as string[];
-        return (
-          <div className="flex flex-wrap gap-1">
-            {networks?.length ? (
-              networks.map((network, index) => (
-                <Badge key={index} variant="outline" className="text-xs">
-                  {network}
-                </Badge>
-              ))
-            ) : (
-              <span className="text-muted-foreground text-sm">None</span>
-            )}
-          </div>
-        );
-      },
-    },
-    {
       accessorKey: 'created_at',
       header: 'Created',
       cell: ({ row }) => {
@@ -146,132 +131,84 @@ export default function SenderIds() {
         return <span className="text-sm">{format(date, 'MMM dd, yyyy')}</span>;
       },
     },
-  ];
-
-  if (loading) {
-    return (
-      <div className="space-y-6">
-        <div className="flex justify-between items-center">
-          <div className="space-y-2">
-            <h1 className="text-3xl font-bold tracking-tight">Sender IDs</h1>
-            <p className="text-muted-foreground">Manage your SMS sender identities</p>
+    {
+      accessorKey: 'actions',
+      header: 'Actions',
+      cell: ({ row }) => {
+        const request = row.original;
+        return (
+          <div className="flex flex-col gap-1">
+            <Link to={`/console/sender-ids/${request.uuid}/propagation`} className="text-primary underline text-sm">
+              Check Propagation
+            </Link>
+            {request.document_path && (
+              <a href={request.document_path} target="_blank" rel="noreferrer" className="text-primary underline text-sm">
+                Download Agreement
+              </a>
+            )}
+            <Link to={`/console/sender-ids/${request.uuid}/upload-agreement`} className="text-primary underline text-sm">
+              Upload Agreement
+            </Link>
+            {request.is_student_request && (
+              <span className="text-xs text-muted-foreground">Student ID uploaded</span>
+            )}
           </div>
-          <Button disabled>
-            <Plus className="h-4 w-4 mr-2" />
-            Request New Sender ID
-          </Button>
-        </div>
-        <Card>
-          <CardContent className="p-6">
-            <div className="animate-pulse space-y-4">
-              <div className="h-10 bg-muted rounded"></div>
-              {[...Array(5)].map((_, i) => (
-                <div key={i} className="h-16 bg-muted rounded"></div>
-              ))}
-            </div>
-          </CardContent>
-        </Card>
-      </div>
-    );
-  }
+        );
+      },
+    },
+  ];
 
   return (
     <div className="space-y-6">
       {/* Header */}
       <div className="flex justify-between items-center">
         <div className="space-y-2">
-          <h1 className="text-3xl font-bold tracking-tight">Sender IDs</h1>
-          <p className="text-muted-foreground">
-            Manage your SMS sender identities and track their approval status
-          </p>
+          <h1 className="text-3xl font-bold tracking-tight">Sender ID Requests</h1>
+          <p className="text-muted-foreground">View and manage all your sender ID requests</p>
         </div>
-        <Button onClick={() => navigate('/dashboard/sender-ids/request')}>
+        <Button onClick={() => navigate('/console/sender-ids/request')}>
           <Plus className="h-4 w-4 mr-2" />
           Request New Sender ID
         </Button>
       </div>
 
-      {/* Stats Cards */}
-      <div className="grid grid-cols-1 md:grid-cols-4 gap-4">
-        <Card>
-          <CardContent className="p-6">
-            <div className="flex items-center justify-between">
-              <div>
-                <p className="text-sm font-medium text-muted-foreground">Total Sender IDs</p>
-                <p className="text-2xl font-bold">{senderIds.length}</p>
-              </div>
-              <Shield className="h-8 w-8 text-primary" />
-            </div>
-          </CardContent>
-        </Card>
-        
-        <Card>
-          <CardContent className="p-6">
-            <div className="flex items-center justify-between">
-              <div>
-                <p className="text-sm font-medium text-muted-foreground">Approved</p>
-                <p className="text-2xl font-bold text-success">
-                  {senderIds.filter(s => s.status === 'approved').length}
-                </p>
-              </div>
-              <CheckCircle className="h-8 w-8 text-success" />
-            </div>
-          </CardContent>
-        </Card>
-        
-        <Card>
-          <CardContent className="p-6">
-            <div className="flex items-center justify-between">
-              <div>
-                <p className="text-sm font-medium text-muted-foreground">Pending</p>
-                <p className="text-2xl font-bold text-warning">
-                  {senderIds.filter(s => s.status === 'pending' || s.status === 'under_review').length}
-                </p>
-              </div>
-              <Clock className="h-8 w-8 text-warning" />
-            </div>
-          </CardContent>
-        </Card>
-        
-        <Card>
-          <CardContent className="p-6">
-            <div className="flex items-center justify-between">
-              <div>
-                <p className="text-sm font-medium text-muted-foreground">Rejected</p>
-                <p className="text-2xl font-bold text-destructive">
-                  {senderIds.filter(s => s.status === 'rejected').length}
-                </p>
-              </div>
-              <XCircle className="h-8 w-8 text-destructive" />
-            </div>
-          </CardContent>
-        </Card>
+      <div className="flex justify-between items-center">
+        <input
+          type="text"
+          placeholder="Search sender IDs..."
+          value={searchQuery}
+          onChange={(e) => setSearchQuery(e.target.value)}
+          className="border p-2 rounded-md w-1/3"
+        />
+        <div className="text-sm text-muted-foreground">
+          Page {page} of {totalPages || 1}
+        </div>
       </div>
 
-      {/* Sender IDs Table */}
-      <Card>
-        <CardHeader>
-          <CardTitle>Your Sender IDs</CardTitle>
-          <CardDescription>
-            View and manage all your sender ID requests and their current status
-          </CardDescription>
-        </CardHeader>
+      <Card className="relative">
+        {loading && <Loader overlay />}
         <CardContent>
-          <DataTable 
-            columns={columns} 
-            data={senderIds}
-            searchKey="sender_id"
-            searchPlaceholder="Search sender IDs..."
+          <DataTable
+            columns={columns}
+            data={paginatedSenderIds}
           />
         </CardContent>
       </Card>
 
-      {/* Empty State */}
-      {senderIds.length === 0 && (
+
+      {/* Pagination Controls */}
+      {totalPages > 1 && (
+        <div className="flex justify-end gap-2">
+          <Button disabled={page === 1} onClick={() => setPage(page - 1)}>Previous</Button>
+          <Button disabled={page === totalPages} onClick={() => setPage(page + 1)}>Next</Button>
+        </div>
+      )}
+
+      {senderIds.length === 0 && !loading && (
         <Card className="text-center py-12">
           <CardContent>
             <Shield className="h-12 w-12 text-muted-foreground mx-auto mb-4" />
-            <h3 className="text-lg font-semibold mb-2">No Sender IDs Yet</h3>
+            <h3 className="text-lg font-semibold mb-2">No Sender ID Requests Yet</h3>
             <p className="text-muted-foreground mb-4">
               Get started by requesting your first sender ID to send SMS messages
             </p>
