@@ -345,3 +345,34 @@ async def get_user_sender_ids(
         "message": f"Sender IDs retrieved for user {current_user.username}",
         "data": data
     }
+
+@router.get("/requests")
+async def get_user_sender_id_requests(
+    current_user: User = Depends(get_current_user),
+    db: Session = Depends(get_db),
+):
+    requests = db.query(SenderIdRequest).filter(
+        SenderIdRequest.user_id == current_user.id
+    ).order_by(SenderIdRequest.created_at.desc()).all()
+
+    data = []
+    for r in requests:
+        data.append({
+            "uuid": str(r.uuid),
+            "sender_alias": r.sender_alias,
+            "status": r.status.value if hasattr(r.status, "value") else r.status,
+            "is_student_request": r.is_student_request,
+            "student_id_path": r.student_id_path,
+            "document_path": r.document_path,
+            "company_name": r.company_name,
+            "sample_message": r.sample_message,
+            "remarks": r.remarks,
+            "created_at": r.created_at.strftime("%Y-%m-%d %H:%M:%S") if r.created_at else None,
+            "updated_at": r.updated_at.strftime("%Y-%m-%d %H:%M:%S") if r.updated_at else None,
+        })
+
+    return {
+        "success": True,
+        "message": f"{len(data)} sender ID requests retrieved for user {current_user.username}",
+        "data": data
+    }
