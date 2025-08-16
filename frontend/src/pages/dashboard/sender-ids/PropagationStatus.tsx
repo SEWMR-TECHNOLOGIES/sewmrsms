@@ -14,7 +14,7 @@ interface Propagation {
 }
 
 export default function SenderIdPropagationStatus() {
-  const { sender_request_uuid } = useParams<{ sender_request_uuid: string }>();
+  const { uuid } = useParams<{ uuid: string }>();
   const [propagations, setPropagations] = useState<Propagation[]>([]);
   const [loading, setLoading] = useState(true);
   const { toast } = useToast();
@@ -26,7 +26,7 @@ export default function SenderIdPropagationStatus() {
   const fetchPropagationStatus = async () => {
     try {
       const res = await fetch(
-        `https://api.sewmrsms.co.tz/api/v1/sender-ids/${sender_request_uuid}/propagation-status`,
+        `https://api.sewmrsms.co.tz/api/v1/sender-ids/${uuid}/propagation-status`,
         { credentials: "include" }
       );
       const json = await res.json();
