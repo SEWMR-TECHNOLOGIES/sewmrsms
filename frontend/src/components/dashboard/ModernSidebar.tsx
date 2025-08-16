@@ -104,58 +104,63 @@ export const ModernSidebar = () => {
                 const hasItems = item.items && item.items.length > 0;
 
                 return (
-                  <SidebarMenuItem key={item.title}>
-                    <Collapsible 
-                      open={isOpen} 
-                      onOpenChange={() => hasItems && toggleItem(item.title)}
-                    >
-                      <CollapsibleTrigger asChild>
-                        {hasItems ? (
-                          <SidebarMenuButton className="group w-full transition-all duration-200 hover:bg-sidebar-accent rounded-lg">
-                            {/* same as before */}
-                          </SidebarMenuButton>
-                        ) : (
-                          <SidebarMenuButton
-                            asChild
-                            className="group w-full transition-all duration-200 hover:bg-sidebar-accent rounded-lg"
-                          >
-                            <NavLink
-                              to={item.url!}
-                              className="flex items-center justify-between w-full px-3 py-2.5 text-sm font-medium text-sidebar-foreground"
-                            >
-                              <div className="flex items-center gap-3">
-                                <item.icon className="h-5 w-5 shrink-0" />
-                                {!isCollapsed && <span>{item.title}</span>}
+                <SidebarMenuItem key={item.title}>
+                  <Collapsible open={isOpen} onOpenChange={() => hasItems && toggleItem(item.title)}>
+                    <CollapsibleTrigger asChild>
+                      {hasItems ? (
+                        // Items with sub-items – keep exactly as before
+                        <SidebarMenuButton className="group w-full transition-all duration-200 hover:bg-sidebar-accent rounded-lg">
+                          <div className="flex items-center justify-between w-full px-3 py-2.5 text-sm font-medium text-sidebar-foreground">
+                            <div className="flex items-center gap-3">
+                              <item.icon className="h-5 w-5 shrink-0" />
+                              {!isCollapsed && <span>{item.title}</span>}
+                            </div>
+                            {!isCollapsed && (
+                              <div className="flex-none">
+                                {isOpen ? <ChevronDown className="h-4 w-4" /> : <ChevronRight className="h-4 w-4" />}
                               </div>
-                              {!isCollapsed && <ChevronRight className="h-4 w-4 text-transparent" />}
-                            </NavLink>
-                          </SidebarMenuButton>
-                        )}
-                      </CollapsibleTrigger>
-
-                      {!isCollapsed && hasItems && (
-                        <CollapsibleContent className="pb-1">
-                          <div className="ml-4 mt-1 space-y-1 border-l border-sidebar-border/50 pl-4">
-                            {item.items?.map(subItem => (
-                              <SidebarMenuButton key={subItem.title} asChild>
-                                <NavLink
-                                  to={subItem.url}
-                                  className={({ isActive }) => cn(
-                                    "flex items-center gap-2 px-3 py-2 text-sm rounded-md transition-all",
-                                    isActive ? "bg-primary/10 text-primary font-medium" : "text-sidebar-foreground/70 hover:text-sidebar-foreground hover:bg-sidebar-accent/50"
-                                  )}
-                                >
-                                  <subItem.icon className="h-4 w-4 shrink-0" />
-                                  <span>{subItem.title}</span>
-                                </NavLink>
-                              </SidebarMenuButton>
-                            ))}
+                            )}
                           </div>
-                        </CollapsibleContent>
+                        </SidebarMenuButton>
+                      ) : (
+                        // Items without sub-items – clickable via SPA NavLink, no UI change
+                        <SidebarMenuButton asChild className="group w-full transition-all duration-200 hover:bg-sidebar-accent rounded-lg">
+                          <NavLink
+                            to={item.url!}
+                            className="flex items-center justify-between w-full px-3 py-2.5 text-sm font-medium text-sidebar-foreground"
+                          >
+                            <div className="flex items-center gap-3">
+                              <item.icon className="h-5 w-5 shrink-0" />
+                              {!isCollapsed && <span>{item.title}</span>}
+                            </div>
+                            {!isCollapsed && <ChevronRight className="h-4 w-4 text-transparent" />}
+                          </NavLink>
+                        </SidebarMenuButton>
                       )}
-                    </Collapsible>
+                    </CollapsibleTrigger>
 
-                  </SidebarMenuItem>
+                    {!isCollapsed && hasItems && (
+                      <CollapsibleContent className="pb-1">
+                        <div className="ml-4 mt-1 space-y-1 border-l border-sidebar-border/50 pl-4">
+                          {item.items?.map(subItem => (
+                            <SidebarMenuButton key={subItem.title} asChild>
+                              <NavLink
+                                to={subItem.url}
+                                className={({ isActive }) => cn(
+                                  "flex items-center gap-2 px-3 py-2 text-sm rounded-md transition-all",
+                                  isActive ? "bg-primary/10 text-primary font-medium" : "text-sidebar-foreground/70 hover:text-sidebar-foreground hover:bg-sidebar-accent/50"
+                                )}
+                              >
+                                <subItem.icon className="h-4 w-4 shrink-0" />
+                                <span>{subItem.title}</span>
+                              </NavLink>
+                            </SidebarMenuButton>
+                          ))}
+                        </div>
+                      </CollapsibleContent>
+                    )}
+                  </Collapsible>
+                </SidebarMenuItem>
                 );
               })}
             </SidebarMenu>
