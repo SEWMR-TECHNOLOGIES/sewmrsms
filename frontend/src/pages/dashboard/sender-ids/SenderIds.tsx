@@ -140,23 +140,24 @@ export default function UserSenderRequests() {
       },
     },
     {
-       accessorKey: 'actions',
+      accessorKey: 'actions',
       header: 'Actions',
       cell: ({ row }) => {
         const request = row.original;
         const isUnderReview = request.status === 'in_review';
         const isApproved = request.status === 'approved';
 
-        const downloadAgreementApi = `/console/sender-ids/${request.uuid}/download-agreement`;
-
         return (
           <div className="flex flex-col gap-1">
-            <Link
-              to={`/console/sender-ids/${request.uuid}/propagation`}
-              className="text-primary underline text-sm"
-            >
-              Check Propagation
-            </Link>
+            {/* Only show propagation for approved sender IDs */}
+            {isApproved && (
+              <Link
+                to={`/console/sender-ids/${request.uuid}/propagation`}
+                className="text-primary underline text-sm"
+              >
+                Check Propagation
+              </Link>
+            )}
 
             {/* Existing uploaded document */}
             {request.document_path && (
@@ -170,25 +171,27 @@ export default function UserSenderRequests() {
               </a>
             )}
 
-            {/* New download agreement to sign (if not approved) */}
+            {/* Download agreement to sign: disabled if in_review */}
             {!isApproved && (
               <a
                 href={`https://api.sewmrsms.co.tz/api/v1/requests/${request.uuid}/download-agreement`}
                 target="_blank"
                 rel="noreferrer"
-                className="text-primary underline text-sm"
+                className={`text-primary underline text-sm ${isUnderReview ? 'pointer-events-none opacity-50' : ''}`}
               >
                 Download Agreement to Sign
               </a>
             )}
 
-            {/* Upload agreement link (disabled if under review) */}
-            <Link
-              to={`/console/sender-ids/${request.uuid}/upload-agreement`}
-              className={`text-primary underline text-sm ${isUnderReview ? 'pointer-events-none opacity-50' : ''}`}
-            >
-              Upload Agreement
-            </Link>
+            {/* Upload agreement: hide if approved, disable if in_review */}
+            {!isApproved && (
+              <Link
+                to={`/console/sender-ids/${request.uuid}/upload-agreement`}
+                className={`text-primary underline text-sm ${isUnderReview ? 'pointer-events-none opacity-50' : ''}`}
+              >
+                Upload Agreement
+              </Link>
+            )}
 
             {/* Remarks if present */}
             {request.remarks && (
@@ -206,7 +209,7 @@ export default function UserSenderRequests() {
       },
     },
   ];
-
+  
   return (
     <div className="space-y-6">
       {/* Header */}
