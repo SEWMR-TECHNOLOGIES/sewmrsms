@@ -56,7 +56,7 @@ const SignInPage = () => {
           description: `Welcome back, ${data.data.first_name || "user"}!`,
           duration: 3500,
         })
-        navigate("/dashboard")
+        navigate("/console")
       } else {
         toast({
           variant: "destructive",

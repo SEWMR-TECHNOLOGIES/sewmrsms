@@ -16,7 +16,7 @@ interface SenderID {
   sender_alias: string;
   company_name: string;
   sample_message: string;
-  status: 'pending' | 'approved' | 'rejected' | 'under_review';
+  status: 'pending' | 'approved' | 'rejected' | 'in_review';
   is_student_request: boolean;
   student_id_path?: string;
   document_path?: string;
@@ -31,8 +31,10 @@ const getStatusIcon = (status: string) => {
       return <CheckCircle className="h-4 w-4 text-success" />;
     case 'rejected':
       return <XCircle className="h-4 w-4 text-destructive" />;
-    case 'under_review':
-      return <AlertCircle className="h-4 w-4 text-warning" />;
+    case 'in_review':
+      return <AlertCircle className="h-4 w-4 text-amber-500" />;
+    case 'pending':
+      return <Clock className="h-4 w-4 text-muted-foreground" />;
     default:
       return <Clock className="h-4 w-4 text-muted-foreground" />;
   }
@@ -44,8 +46,14 @@ const getStatusBadge = (status: string) => {
       return <Badge variant="secondary" className="bg-success/10 text-success">Approved</Badge>;
     case 'rejected':
       return <Badge variant="destructive">Rejected</Badge>;
-    case 'under_review':
-      return <Badge variant="secondary" className="bg-warning/10 text-warning">Under Review</Badge>;
+    case 'in_review':
+      return <Badge variant="secondary" className="bg-amber-100 text-amber-700 border border-amber-300">
+        Under Review
+      </Badge>;
+    case 'pending':
+      return <Badge variant="outline" className="text-muted-foreground border-muted-foreground/30">
+        Pending
+      </Badge>;
     default:
       return <Badge variant="outline">Pending</Badge>;
   }
@@ -132,23 +140,64 @@ export default function UserSenderRequests() {
       },
     },
     {
-      accessorKey: 'actions',
+       accessorKey: 'actions',
       header: 'Actions',
       cell: ({ row }) => {
         const request = row.original;
+        const isUnderReview = request.status === 'in_review';
+        const isApproved = request.status === 'approved';
+
+        const downloadAgreementApi = `/console/sender-ids/${request.uuid}/download-agreement`;
+
         return (
           <div className="flex flex-col gap-1">
-            <Link to={`/console/sender-ids/${request.uuid}/propagation`} className="text-primary underline text-sm">
+            <Link
+              to={`/console/sender-ids/${request.uuid}/propagation`}
+              className="text-primary underline text-sm"
+            >
               Check Propagation
             </Link>
+
+            {/* Existing uploaded document */}
             {request.document_path && (
-              <a href={request.document_path} target="_blank" rel="noreferrer" className="text-primary underline text-sm">
+              <a
+                href={request.document_path}
+                target="_blank"
+                rel="noreferrer"
+                className="text-primary underline text-sm"
+              >
                 Download Agreement
               </a>
             )}
-            <Link to={`/console/sender-ids/${request.uuid}/upload-agreement`} className="text-primary underline text-sm">
+
+            {/* New download agreement to sign (if not approved) */}
+            {!isApproved && (
+              <a
+                href={downloadAgreementApi}
+                target="_blank"
+                rel="noreferrer"
+                className="text-primary underline text-sm"
+              >
+                Download Agreement to Sign
+              </a>
+            )}
+
+            {/* Upload agreement link (disabled if under review) */}
+            <Link
+              to={`/console/sender-ids/${request.uuid}/upload-agreement`}
+              className={`text-primary underline text-sm ${isUnderReview ? 'pointer-events-none opacity-50' : ''}`}
+            >
               Upload Agreement
             </Link>
+
+            {/* Remarks if present */}
+            {request.remarks && (
+              <span className="text-xs text-muted-foreground">
+                Remarks: {request.remarks}
+              </span>
+            )}
+
+            {/* Student indicator */}
             {request.is_student_request && (
               <span className="text-xs text-muted-foreground">Student ID uploaded</span>
             )}
@@ -206,7 +255,7 @@ export default function UserSenderRequests() {
               <div>
                 <p className="text-sm font-medium text-muted-foreground">Pending / Review</p>
                 <p className="text-2xl font-bold text-warning">
-                  {senderIds.filter(s => s.status === 'pending' || s.status === 'under_review').length}
+                  {senderIds.filter(s => s.status === 'pending' || s.status === 'in_review').length}
                 </p>
               </div>
               <Clock className="h-8 w-8 text-warning" />
