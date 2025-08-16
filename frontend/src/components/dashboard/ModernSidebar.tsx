@@ -109,12 +109,16 @@ export const ModernSidebar = () => {
                       <Collapsible open={isOpen} onOpenChange={() => toggleItem(item.title)}>
                         <CollapsibleTrigger asChild>
                           <SidebarMenuButton className="group w-full transition-all duration-200 hover:bg-sidebar-accent rounded-lg">
-                            <div className="flex items-center justify-between px-3 py-2.5 text-sm font-medium text-sidebar-foreground">
+                            <div className="flex items-center justify-between w-full px-3 py-2.5 text-sm font-medium text-sidebar-foreground">
                               <div className="flex items-center gap-3">
                                 <item.icon className="h-5 w-5 shrink-0" />
                                 {!isCollapsed && <span>{item.title}</span>}
                               </div>
-                              {!isCollapsed && (isOpen ? <ChevronDown className="h-4 w-4" /> : <ChevronRight className="h-4 w-4" />)}
+                              {!isCollapsed && (
+                                <div className="flex-none">
+                                  {isOpen ? <ChevronDown className="h-4 w-4" /> : <ChevronRight className="h-4 w-4" />}
+                                </div>
+                              )}
                             </div>
                           </SidebarMenuButton>
                         </CollapsibleTrigger>
@@ -151,9 +155,12 @@ export const ModernSidebar = () => {
                             )
                           }
                         >
-                          <div className="flex items-center gap-3 w-full">
-                            <item.icon className="h-5 w-5 shrink-0" />
-                            {!isCollapsed && <span>{item.title}</span>}
+                          <div className="flex items-center justify-between w-full gap-3">
+                            <div className="flex items-center gap-3">
+                              <item.icon className="h-5 w-5 shrink-0" />
+                              {!isCollapsed && <span>{item.title}</span>}
+                            </div>
+                            {!isCollapsed && <div className="flex-none w-4" />}
                           </div>
                         </NavLink>
                       </SidebarMenuButton>
