@@ -4,7 +4,7 @@ import {
   UserPlus, Import, Send, FileText, History, TrendingUp, ShoppingCart, Receipt,
   User, Key, Bell, ChevronDown, ChevronRight, Shield
 } from 'lucide-react';
-import { NavLink } from 'react-router-dom';
+import { NavLink, useNavigate } from 'react-router-dom';
 import { 
   Sidebar, SidebarContent, SidebarGroup, SidebarGroupContent, SidebarHeader,
   SidebarMenu, SidebarMenuItem, SidebarMenuButton, useSidebar 
@@ -76,13 +76,17 @@ export const ModernSidebar = () => {
   const { state } = useSidebar();
   const [openItems, setOpenItems] = React.useState<string[]>(['Dashboard']);
   const isCollapsed = state === 'collapsed';
+  const navigate = useNavigate();
 
   const toggleItem = (title: string) => {
     setOpenItems(prev => prev.includes(title) ? prev.filter(i => i !== title) : [...prev, title]);
   };
 
   return (
-    <Sidebar className={cn("h-full border-r border-sidebar-border bg-gradient-to-b from-sidebar-background to-sidebar-background/95 backdrop-blur-xl", isCollapsed ? "w-16" : "w-72")}>
+    <Sidebar className={cn(
+      "h-full border-r border-sidebar-border bg-gradient-to-b from-sidebar-background to-sidebar-background/95 backdrop-blur-xl",
+      isCollapsed ? "w-16" : "w-72"
+    )}>
       <SidebarHeader className="border-b border-sidebar-border bg-sidebar-background/50 backdrop-blur">
         <div className="flex items-center gap-3 px-6 py-4">
           <div className="flex h-8 w-8 items-center justify-center rounded-lg bg-primary text-primary-foreground font-bold text-sm">S</div>
@@ -106,7 +110,6 @@ export const ModernSidebar = () => {
                 return (
                   <SidebarMenuItem key={item.title}>
                     {hasItems ? (
-                      // keep collapsible for items with sub-items
                       <Collapsible open={isOpen} onOpenChange={() => toggleItem(item.title)}>
                         <CollapsibleTrigger asChild>
                           <SidebarMenuButton className="group w-full transition-all duration-200 hover:bg-sidebar-accent rounded-lg">
@@ -129,12 +132,11 @@ export const ModernSidebar = () => {
                             <div className="ml-4 mt-1 space-y-1 border-l border-sidebar-border/50 pl-4">
                               {item.items.map(subItem => (
                                 <SidebarMenuButton key={subItem.title} asChild>
-                                  <NavLink
-                                    to={subItem.url}
-                                    className="flex items-center gap-2 px-3 py-2 text-sm rounded-md transition-all"
-                                  >
-                                    <subItem.icon className="h-4 w-4 shrink-0" />
-                                    <span>{subItem.title}</span>
+                                  <NavLink to={subItem.url}>
+                                    <div className="flex items-center gap-2 px-3 py-2 text-sm rounded-md">
+                                      <subItem.icon className="h-4 w-4 shrink-0" />
+                                      <span>{subItem.title}</span>
+                                    </div>
                                   </NavLink>
                                 </SidebarMenuButton>
                               ))}
@@ -143,15 +145,21 @@ export const ModernSidebar = () => {
                         )}
                       </Collapsible>
                     ) : (
-                      // for top-level items without sub-items, use NavLink directly
-                      <SidebarMenuButton asChild>
-                        <NavLink
-                          to={item.url!}
-                          className="group w-full transition-all duration-200 hover:bg-sidebar-accent rounded-lg flex items-center px-3 py-2.5 text-sm font-medium text-sidebar-foreground"
-                        >
-                          <item.icon className="h-5 w-5 shrink-0" />
-                          {!isCollapsed && <span className="ml-3">{item.title}</span>}
-                        </NavLink>
+                      <SidebarMenuButton
+                        className="group w-full transition-all duration-200 hover:bg-sidebar-accent rounded-lg"
+                        onClick={() => navigate(item.url!)}
+                      >
+                        <div className="flex items-center justify-between w-full px-3 py-2.5 text-sm font-medium text-sidebar-foreground">
+                          <div className="flex items-center gap-3">
+                            <item.icon className="h-5 w-5 shrink-0" />
+                            {!isCollapsed && <span>{item.title}</span>}
+                          </div>
+                          {!isCollapsed && (
+                            <div className="flex-none">
+                              <ChevronRight className="h-4 w-4 text-transparent" />
+                            </div>
+                          )}
+                        </div>
                       </SidebarMenuButton>
                     )}
                   </SidebarMenuItem>
