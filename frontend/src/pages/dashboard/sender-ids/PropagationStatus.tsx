@@ -76,7 +76,7 @@ export default function SenderIdPropagationStatus() {
     switch (status) {
       case 'propagated':
         return (
-          <Badge className="bg-success/10 text-success border-success/20">Propagated</Badge>
+          <Badge className="bg-success/10 text-success border-success/20 hover:bg-success/10">Propagated</Badge>
         );
       case 'failed':
         return <Badge variant="destructive">Failed</Badge>;
