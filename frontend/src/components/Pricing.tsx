@@ -104,7 +104,7 @@ export const Pricing = () => {
                   variant={plan.popular ? "default" : "outline"}
                   asChild
                 >
-                  <a href={`/top-up/${plan.uuid}`}>
+                  <a href={`/console/top-up/${plan.uuid}`}>
                     Select Plan
                   </a>
                 </Button>
