@@ -26,6 +26,7 @@ import RequestSenderID from "./pages/dashboard/sender-ids/RequestSenderID";
 import RequestPasswordResetPage from "./pages/ResetPasswordRequest";
 import ResetPasswordPage from "./pages/ResetPassword";
 import UploadAgreement from "./pages/dashboard/sender-ids/UploadSignedAgreement";
+import SenderIdPropagationStatus from "./pages/dashboard/sender-ids/PropagationStatus";
 
 const queryClient = new QueryClient();
 
@@ -72,6 +73,7 @@ const App = () => (
             <Route path="settings/api" element={<div>API Settings</div>} />
             <Route path="settings/notifications" element={<div>Notification Settings</div>} />
             <Route path="sender-ids/:uuid/upload-agreement" element={<UploadAgreement />}/>
+            <Route path="sender-ids/:uuid/propagation" element={<SenderIdPropagationStatus />}/>
           </Route>
           
           {/* ADD ALL CUSTOM ROUTES ABOVE THE CATCH-ALL "*" ROUTE */}
