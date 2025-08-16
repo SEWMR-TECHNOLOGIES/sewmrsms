@@ -173,7 +173,7 @@ export default function UserSenderRequests() {
             {/* New download agreement to sign (if not approved) */}
             {!isApproved && (
               <a
-                href={downloadAgreementApi}
+                href={`https://api.sewmrsms.co.tz/api/v1/requests/${request.uuid}/download-agreement`}
                 target="_blank"
                 rel="noreferrer"
                 className="text-primary underline text-sm"

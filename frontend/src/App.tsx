@@ -71,7 +71,7 @@ const App = () => (
             <Route path="settings/profile" element={<div>Profile Settings</div>} />
             <Route path="settings/api" element={<div>API Settings</div>} />
             <Route path="settings/notifications" element={<div>Notification Settings</div>} />
-            <Route path="/console/sender-ids/:uuid/upload-agreement" element={<UploadAgreement />}/>
+            <Route path="sender-ids/:uuid/upload-agreement" element={<UploadAgreement />}/>
           </Route>
           
           {/* ADD ALL CUSTOM ROUTES ABOVE THE CATCH-ALL "*" ROUTE */}
