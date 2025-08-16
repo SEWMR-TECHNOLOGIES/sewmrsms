@@ -15,7 +15,7 @@ from sqlalchemy import func, or_
 from sqlalchemy.orm import Session
 from api.deps import get_db
 from api.user_auth import get_current_user
-from backend.app.models.user_subscription import UserSubscription
+from models.user_subscription import UserSubscription
 from models.api_access_tokens import ApiAccessToken
 from models.password_reset_tokens import PasswordResetToken
 from models.user import User
