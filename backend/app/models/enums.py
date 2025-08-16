@@ -8,7 +8,7 @@ class PaymentMethodEnum(enum.Enum):
     card = 'card'
     cash = 'cash'
     other = 'other'
-
+    
 class PaymentStatusEnum(enum.Enum):
     pending = 'pending'
     completed = 'completed'
