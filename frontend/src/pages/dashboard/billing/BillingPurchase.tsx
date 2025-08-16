@@ -3,154 +3,53 @@ import { CreditCard, Check, Star, Zap, Shield, Headphones } from 'lucide-react';
 import { Button } from '@/components/ui/button';
 import { Card, CardContent, CardDescription, CardHeader, CardTitle } from '@/components/ui/card';
 import { Badge } from '@/components/ui/badge';
-import { supabase } from '@/integrations/supabase/client';
-import { useToast } from '@/hooks/use-toast';
+import { Link } from 'react-router-dom';
 import { cn } from '@/lib/utils';
 
-// Your actual pricing packages from the pricing page
-const pricingPackages = [
-  {
-    id: 'starter',
-    name: 'Starter',
-    description: 'Perfect for small businesses',
-    credits: 1000,
-    price: 9.99,
-    features: [
-      '1,000 SMS Credits',
-      'Basic Analytics',
-      'Standard Support',
-      'Delivery Reports',
-      'API Access'
-    ],
-    is_popular: false,
-  },
-  {
-    id: 'business',
-    name: 'Business',
-    description: 'Most popular for growing businesses',
-    credits: 5000,
-    price: 39.99,
-    features: [
-      '5,000 SMS Credits',
-      'Advanced Analytics',
-      'Priority Support',
-      'Custom Sender ID',
-      'Bulk Messaging',
-      'Template Management'
-    ],
-    is_popular: true,
-  },
-  {
-    id: 'enterprise',
-    name: 'Enterprise',
-    description: 'For large scale operations',
-    credits: 15000,
-    price: 99.99,
-    features: [
-      '15,000 SMS Credits',
-      'Premium Analytics',
-      '24/7 Support',
-      'Multiple Sender IDs',
-      'Advanced API',
-      'Custom Integration',
-      'Dedicated Account Manager'
-    ],
-    is_popular: false,
-  },
-  {
-    id: 'unlimited',
-    name: 'Unlimited',
-    description: 'Maximum capacity for enterprises',
-    credits: 50000,
-    price: 249.99,
-    features: [
-      '50,000 SMS Credits',
-      'Real-time Analytics',
-      '24/7 Premium Support',
-      'Unlimited Sender IDs',
-      'White-label Solution',
-      'Custom Infrastructure',
-      'SLA Guarantee'
-    ],
-    is_popular: false,
-  },
-];
-
 export default function BillingPurchase() {
-  const [loading, setLoading] = useState(false);
-  const [purchasing, setPurchasing] = useState<string | null>(null);
-  const { toast } = useToast();
+  const [plans, setPlans] = useState([]);
+  const [loading, setLoading] = useState(true);
 
-  const handlePurchase = async (packageData: typeof pricingPackages[0]) => {
-    setPurchasing(packageData.id);
-    
-    try {
-      const { data: { user } } = await supabase.auth.getUser();
-      if (!user) {
-        toast({
-          title: "Authentication required",
-          description: "Please sign in to purchase credits",
-          variant: "destructive",
-        });
-        return;
+  useEffect(() => {
+    async function fetchPlans() {
+      try {
+        const res = await fetch("https://api.sewmrsms.co.tz/api/v1/plans");
+        const data = await res.json();
+        if (data.success && Array.isArray(data.data)) {
+          setPlans(data.data);
+        } else {
+          console.error("Unexpected response:", data);
+        }
+      } catch (error) {
+        console.error("Error fetching plans:", error);
+      } finally {
+        setLoading(false);
       }
-
-      // Create a transaction record
-      const { error: transactionError } = await supabase
-        .from('credit_transactions')
-        .insert({
-          user_id: user.id,
-          package_id: packageData.id,
-          amount: packageData.price,
-          credits: packageData.credits,
-          transaction_type: 'purchase',
-          status: 'completed',
-          payment_method: 'demo',
-          payment_reference: `demo_${Date.now()}`,
-        });
-
-      if (transactionError) throw transactionError;
-
-      // Update user credits
-      const { error: creditError } = await supabase
-        .from('user_credits')
-        .upsert({
-          user_id: user.id,
-          credits: packageData.credits,
-          total_purchased: packageData.credits,
-        }, {
-          onConflict: 'user_id',
-          ignoreDuplicates: false
-        });
-
-      if (creditError) throw creditError;
-
-      toast({
-        title: "Purchase successful!",
-        description: `${packageData.credits.toLocaleString()} credits have been added to your account`,
-      });
-
-    } catch (error) {
-      console.error('Error processing purchase:', error);
-      toast({
-        title: "Purchase failed",
-        description: "There was an error processing your purchase. Please try again.",
-        variant: "destructive",
-      });
-    } finally {
-      setPurchasing(null);
     }
-  };
+    fetchPlans();
+  }, []);
 
-  const getIcon = (packageName: string) => {
-    switch (packageName.toLowerCase()) {
-      case 'starter': return Zap;
-      case 'business': return Star;
-      case 'enterprise': return Shield;
-      case 'unlimited': return Headphones;
+  const getIcon = (planName) => {
+    switch (planName?.toLowerCase()) {
+      case 'nyati': return Zap;
+      case 'kifaru': return Star;
+      case 'simba': return Shield;
+      case 'twiga': return Headphones;
+      case 'tembo': return CreditCard;
       default: return CreditCard;
     }
   };
+
+  if (loading) {
+    return (
+      <div className="fixed inset-0 flex items-center justify-center bg-white z-50">
+        <div
+          className="animate-spin rounded-full h-16 w-16 border-t-4 border-solid border-gray-200"
+          style={{ borderTopColor: "hsl(6, 99%, 64%)" }}
+        ></div>
+      </div>
+    );
+  }
 
   return (
     <div className="space-y-8">
@@ -164,72 +63,51 @@ export default function BillingPurchase() {
 
       {/* Pricing Cards */}
       <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-4 gap-6">
-        {pricingPackages.map((pkg) => {
-          const Icon = getIcon(pkg.name);
+        {plans.map((plan) => {
+          const Icon = getIcon(plan.name);
           return (
             <Card 
-              key={pkg.id} 
+              key={plan.uuid} 
               className={cn(
-                "relative transition-all duration-200 hover:shadow-lg hover:scale-105",
-                pkg.is_popular && "border-primary shadow-primary/20 shadow-lg"
+                "relative transition-all duration-200 hover:shadow-lg hover:scale-105"
               )}
             >
-              {pkg.is_popular && (
-                <Badge className="absolute -top-2 left-1/2 transform -translate-x-1/2 bg-primary text-primary-foreground">
-                  Most Popular
-                </Badge>
-              )}
-              
               <CardHeader className="text-center pb-2">
                 <div className="w-12 h-12 mx-auto mb-4 bg-primary/10 rounded-full flex items-center justify-center">
                   <Icon className="h-6 w-6 text-primary" />
                 </div>
-                <CardTitle className="text-xl">{pkg.name}</CardTitle>
-                <CardDescription>{pkg.description}</CardDescription>
+                <CardTitle className="text-xl">{plan.name}</CardTitle>
+                <CardDescription>{plan.best_for}</CardDescription>
               </CardHeader>
 
               <CardContent className="space-y-6">
                 {/* Price */}
                 <div className="text-center">
-                  <div className="text-3xl font-bold">${pkg.price}</div>
+                  <div className="text-3xl font-bold">{plan.price_per_sms} TZS</div>
                   <div className="text-sm text-muted-foreground">
-                    {pkg.credits.toLocaleString()} SMS Credits
+                    {plan.start_sms_count.toLocaleString()}+ SMS
                   </div>
                   <div className="text-xs text-muted-foreground mt-1">
-                    ${(pkg.price / pkg.credits * 1000).toFixed(2)} per 1,000 credits
+                    {plan.price_per_sms} TZS per SMS
                   </div>
                 </div>
 
                 {/* Features */}
                 <div className="space-y-2">
-                  {pkg.features.map((feature, index) => (
+                  {plan.benefits?.map((benefit, index) => (
                     <div key={index} className="flex items-center gap-2 text-sm">
                       <Check className="h-4 w-4 text-primary shrink-0" />
-                      <span>{feature}</span>
+                      <span>{benefit}</span>
                     </div>
                   ))}
                 </div>
 
                 {/* Purchase Button */}
-                <Button
-                  onClick={() => handlePurchase(pkg)}
-                  disabled={purchasing === pkg.id}
-                  className={cn(
-                    "w-full",
-                    pkg.is_popular && "bg-primary hover:bg-primary/90"
-                  )}
-                >
-                  {purchasing === pkg.id ? (
-                    <>
-                      <div className="animate-spin rounded-full h-4 w-4 border-b-2 border-white mr-2"></div>
-                      Processing...
-                    </>
-                  ) : (
-                    <>
-                      <CreditCard className="h-4 w-4 mr-2" />
-                      Purchase Now
-                    </>
-                  )}
+                <Button asChild className="w-full">
+                  <Link to={`/top-up/${plan.uuid}`}>
+                    <CreditCard className="h-4 w-4 mr-2" />
+                    Purchase Now
+                  </Link>
                 </Button>
               </CardContent>
             </Card>
