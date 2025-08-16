@@ -50,7 +50,7 @@ const App = () => (
           <Route path="/reset-password" element={<ResetPasswordPage />} />
           
           {/* Dashboard Routes */}
-          <Route path="/dashboard" element={<DashboardLayout />}>
+          <Route path="/console" element={<DashboardLayout />}>
             <Route index element={<Dashboard />} />
             <Route path="contacts" element={<Contacts />} />
             <Route path="contacts/new" element={<div>New Contact Form</div>} />

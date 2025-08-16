@@ -26,48 +26,48 @@ interface MenuItem {
 }
 
 const menuItems: MenuItem[] = [
-  { title: 'Dashboard', url: '/dashboard', icon: LayoutDashboard },
+  { title: 'Dashboard', url: '/console', icon: LayoutDashboard },
   { 
     title: 'Contacts', icon: Users, items: [
-      { title: 'My Contacts', url: '/dashboard/contacts', icon: Users },
-      { title: 'Add Contact', url: '/dashboard/contacts/new', icon: UserPlus },
-      { title: 'Import Contacts', url: '/dashboard/contacts/import', icon: Import },
-      { title: 'Contact Groups', url: '/dashboard/contacts/groups', icon: Users },
+      { title: 'My Contacts', url: '/console/contacts', icon: Users },
+      { title: 'Add Contact', url: '/console/contacts/new', icon: UserPlus },
+      { title: 'Import Contacts', url: '/console/contacts/import', icon: Import },
+      { title: 'Contact Groups', url: '/console/contacts/groups', icon: Users },
     ]
   },
   { 
     title: 'Messages', icon: MessageSquare, items: [
-      { title: 'Quick Send', url: '/dashboard/messages/quick-send', icon: Send },
-      { title: 'From Template', url: '/dashboard/messages/template', icon: FileText },
-      { title: 'Bulk Send', url: '/dashboard/messages/bulk', icon: MessageSquare },
-      { title: 'Message History', url: '/dashboard/messages/history', icon: History },
-      { title: 'Templates', url: '/dashboard/messages/templates', icon: FileText },
+      { title: 'Quick Send', url: '/console/messages/quick-send', icon: Send },
+      { title: 'From Template', url: '/console/messages/template', icon: FileText },
+      { title: 'Bulk Send', url: '/console/messages/bulk', icon: MessageSquare },
+      { title: 'Message History', url: '/console/messages/history', icon: History },
+      { title: 'Templates', url: '/console/messages/templates', icon: FileText },
     ]
   },
   { title: 'Sender IDs', icon: Shield, items: [
-      { title: 'My Sender IDs', url: '/dashboard/sender-ids', icon: Shield },
-      { title: 'Request New', url: '/dashboard/sender-ids/request', icon: UserPlus },
-      { title: 'Network Status', url: '/dashboard/sender-ids/networks', icon: TrendingUp },
+      { title: 'My Sender IDs', url: '/console/sender-ids', icon: Shield },
+      { title: 'Request New', url: '/console/sender-ids/request', icon: UserPlus },
+      { title: 'Network Status', url: '/console/sender-ids/networks', icon: TrendingUp },
     ]
   },
   { title: 'Reports', icon: BarChart3, items: [
-      { title: 'Delivery Reports', url: '/dashboard/reports/delivery', icon: TrendingUp },
-      { title: 'Analytics', url: '/dashboard/reports/analytics', icon: BarChart3 },
-      { title: 'Usage Reports', url: '/dashboard/reports/usage', icon: BarChart3 },
+      { title: 'Delivery Reports', url: '/console/reports/delivery', icon: TrendingUp },
+      { title: 'Analytics', url: '/console/reports/analytics', icon: BarChart3 },
+      { title: 'Usage Reports', url: '/console/reports/usage', icon: BarChart3 },
     ]
   },
   { title: 'Billing', icon: CreditCard, items: [
-      { title: 'Purchase Credits', url: '/dashboard/billing/purchase', icon: ShoppingCart },
-      { title: 'Payment History', url: '/dashboard/billing/history', icon: History },
-      { title: 'Invoices', url: '/dashboard/billing/invoices', icon: Receipt },
-      { title: 'Usage', url: '/dashboard/billing/usage', icon: BarChart3 },
+      { title: 'Purchase Credits', url: '/console/billing/purchase', icon: ShoppingCart },
+      { title: 'Payment History', url: '/console/billing/history', icon: History },
+      { title: 'Invoices', url: '/console/billing/invoices', icon: Receipt },
+      { title: 'Usage', url: '/console/billing/usage', icon: BarChart3 },
     ]
   },
   { title: 'Settings', icon: Settings, items: [
-      { title: 'Profile', url: '/dashboard/settings/profile', icon: User },
-      { title: 'API Keys', url: '/dashboard/settings/api', icon: Key },
-      { title: 'Notifications', url: '/dashboard/settings/notifications', icon: Bell },
-      { title: 'Security', url: '/dashboard/settings/security', icon: Shield },
+      { title: 'Profile', url: '/console/settings/profile', icon: User },
+      { title: 'API Keys', url: '/console/settings/api', icon: Key },
+      { title: 'Notifications', url: '/console/settings/notifications', icon: Bell },
+      { title: 'Security', url: '/console/settings/security', icon: Shield },
     ]
   },
 ];
