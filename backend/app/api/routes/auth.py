@@ -11,10 +11,11 @@ from fastapi import APIRouter, Cookie, Depends, HTTPException, Request, Response
 from fastapi.responses import JSONResponse, RedirectResponse
 import pytz
 from uuid import uuid4
-from sqlalchemy import or_
+from sqlalchemy import func, or_
 from sqlalchemy.orm import Session
 from api.deps import get_db
 from api.user_auth import get_current_user
+from backend.app.models.user_subscription import UserSubscription
 from models.api_access_tokens import ApiAccessToken
 from models.password_reset_tokens import PasswordResetToken
 from models.user import User
@@ -302,6 +303,7 @@ async def accept_reset(token: str, db: Session = Depends(get_db)):
         key="reset_token",
         value=token,
         domain=COOKIE_DOMAIN,
+        path="/", 
         httponly=True,
         secure=IS_PRODUCTION,
         samesite="lax",
@@ -409,7 +411,11 @@ async def validate_token(session_token: str = Cookie(None), db: Session = Depend
 
 @router.post("/logout")
 async def logout(response: Response):
-    response.delete_cookie("session_token", domain=".sewmrsms.co.tz", path="/")
+    response.delete_cookie(
+        "session_token",
+        domain=COOKIE_DOMAIN,
+        path="/"                  
+    )
     return {
         "success": True,
         "message": "Logged out successfully",
@@ -448,10 +454,15 @@ async def generate_api_token(
     }
 
 @router.get("/me")
-async def get_current_user_endpoint(current_user: User = Depends(get_current_user)):
+async def get_current_user_endpoint(current_user: User = Depends(get_current_user), db: Session = Depends(get_db)):
     """
     Returns the authenticated user's information based on session cookie or Bearer token.
     """
+    # Sum remaining_sms across all subscriptions
+    total_remaining_sms = db.query(
+        func.coalesce(func.sum(UserSubscription.remaining_sms), 0)
+    ).filter(UserSubscription.user_id == current_user.id).scalar()
+
     return {
         "success": True,
         "message": "User authenticated",
@@ -462,6 +473,7 @@ async def get_current_user_endpoint(current_user: User = Depends(get_current_use
             "username": current_user.username,
             "first_name": current_user.first_name,
             "last_name": current_user.last_name,
-            "phone": current_user.phone
+            "phone": current_user.phone,
+            "remaining_sms": total_remaining_sms
         }
     }

@@ -15,25 +15,46 @@ import { Badge } from '@/components/ui/badge';
 import { SidebarTrigger } from '@/components/ui/sidebar';
 import { useNavigate } from 'react-router-dom';
 import { useToast } from '@/hooks/use-toast';
+import { useAuth } from '@/components/AuthGuard';
 
 export const DashboardHeader = () => {
   const navigate = useNavigate();
   const { toast } = useToast();
+  const { user } = useAuth(); 
 
-  const handleLogout = () => {
-    localStorage.removeItem('isLoggedIn');
-    toast({
-      title: "Logged out successfully",
-      description: "You have been logged out of your account.",
-    });
-    navigate('/');
+  const handleLogout = async () => {
+    try {
+      const res = await fetch("https://api.sewmrsms.co.tz/api/v1/auth/logout", {
+        method: "POST",
+        credentials: "include", 
+      });
+      const data = await res.json();
+
+      if (data.success) {
+        toast({
+          title: "Logged out successfully",
+          description: "You have been logged out of your account.",
+        });
+        navigate("/");
+      } else {
+        throw new Error(data.message || "Logout failed");
+      }
+    } catch (err: any) {
+      console.error(err);
+      toast({
+        title: "Error",
+        description: err.message || "Unable to logout",
+        variant: "destructive",
+      });
+    }
   };
+
 
   return (
     <header className="h-16 border-b border-border/40 bg-background/95 backdrop-blur supports-[backdrop-filter]:bg-background/60">
       <div className="flex h-16 items-center px-6">
         <SidebarTrigger className="mr-4" />
-        
+
         <div className="flex items-center space-x-4 flex-1">
           {/* Search */}
           <div className="relative max-w-md flex-1">
@@ -46,9 +67,9 @@ export const DashboardHeader = () => {
         </div>
 
         <div className="flex items-center space-x-4">
-          {/* Credits Badge */}
+          {/* SMS Credits Badge */}
           <Badge variant="secondary" className="bg-primary/10 text-primary">
-            2,500 Credits
+            {user?.remaining_sms ?? 0} SMS
           </Badge>
 
           {/* Notifications */}
@@ -62,26 +83,31 @@ export const DashboardHeader = () => {
             <DropdownMenuTrigger asChild>
               <Button variant="ghost" className="relative h-8 w-8 rounded-full">
                 <Avatar className="h-8 w-8">
-                  <AvatarImage src="" alt="User" />
-                  <AvatarFallback>JS</AvatarFallback>
+                  <AvatarImage src="" alt={user?.username || "User"} />
+                  <AvatarFallback>
+                    {user?.first_name?.[0]}
+                    {user?.last_name?.[0]}
+                  </AvatarFallback>
                 </Avatar>
               </Button>
             </DropdownMenuTrigger>
             <DropdownMenuContent className="w-56" align="end">
               <DropdownMenuLabel className="font-normal">
                 <div className="flex flex-col space-y-1">
-                  <p className="text-sm font-medium leading-none">John Smith</p>
+                  <p className="text-sm font-medium leading-none">
+                    {user ? `${user.first_name} ${user.last_name}` : "Loading..."}
+                  </p>
                   <p className="text-xs leading-none text-muted-foreground">
-                    john@example.com
+                    {user?.email}
                   </p>
                 </div>
               </DropdownMenuLabel>
               <DropdownMenuSeparator />
-              <DropdownMenuItem onClick={() => navigate('/dashboard/settings/profile')}>
+              <DropdownMenuItem onClick={() => navigate('/console/settings/profile')}>
                 <User className="mr-2 h-4 w-4" />
                 <span>Profile</span>
               </DropdownMenuItem>
-              <DropdownMenuItem onClick={() => navigate('/dashboard/settings')}>
+              <DropdownMenuItem onClick={() => navigate('/console/settings')}>
                 <span>Settings</span>
               </DropdownMenuItem>
               <DropdownMenuSeparator />
