@@ -17,7 +17,9 @@ from datetime import datetime
 import pytz
 import uuid
 import httpx
-
+from fastapi.responses import StreamingResponse
+from weasyprint import HTML
+from io import BytesIO
 from core.config import UPLOAD_SERVICE_URL, MAX_FILE_SIZE
 
 router = APIRouter()
@@ -376,3 +378,54 @@ async def get_user_sender_id_requests(
         "message": f"{len(data)} sender ID requests retrieved for user {current_user.username}",
         "data": data
     }
+
+@router.get("/requests/{sender_request_uuid}/download-agreement")
+async def download_sender_id_agreement(
+    sender_request_uuid: str,
+    current_user: User = Depends(get_current_user),
+    db: Session = Depends(get_db),
+):
+    # Fetch request to confirm ownership
+    request_obj = db.query(SenderIdRequest).filter(
+        SenderIdRequest.uuid == sender_request_uuid,
+        SenderIdRequest.user_id == current_user.id
+    ).first()
+
+    if not request_obj:
+        raise HTTPException(status_code=404, detail="Sender ID request not found or unauthorized")
+
+    # HTML content for the PDF
+    html_content = f"""
+    <html>
+    <head>
+        <style>
+            body {{ font-family: Arial, sans-serif; padding: 40px; }}
+            h1 {{ color: #EF4444; }}
+            p {{ margin: 5px 0; }}
+            .label {{ font-weight: bold; }}
+        </style>
+    </head>
+    <body>
+        <h1>Sender ID Agreement</h1>
+        <p><span class="label">Sender Alias:</span> {request_obj.sender_alias}</p>
+        <p><span class="label">Company Name:</span> {request_obj.company_name}</p>
+        <p><span class="label">Sample Message:</span> {request_obj.sample_message}</p>
+        <p><span class="label">Status:</span> {request_obj.status}</p>
+        {f'<p><span class="label">Remarks:</span> {request_obj.remarks}</p>' if request_obj.remarks else ''}
+        <p><span class="label">Created At:</span> {request_obj.created_at.strftime('%Y-%m-%d %H:%M:%S') if request_obj.created_at else 'N/A'}</p>
+        <p><span class="label">Updated At:</span> {request_obj.updated_at.strftime('%Y-%m-%d %H:%M:%S') if request_obj.updated_at else 'N/A'}</p>
+    </body>
+    </html>
+    """
+
+    pdf_file = BytesIO()
+    HTML(string=html_content).write_pdf(target=pdf_file)
+    pdf_file.seek(0)
+
+    return StreamingResponse(
+        pdf_file,
+        media_type="application/pdf",
+        headers={
+            "Content-Disposition": f"attachment; filename=sender_id_agreement_{request_obj.sender_alias}.pdf"
+        }
+    )
