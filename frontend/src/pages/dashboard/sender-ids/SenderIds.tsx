@@ -167,7 +167,7 @@ export default function UserSenderRequests() {
                 rel="noreferrer"
                 className="text-primary underline text-sm"
               >
-                Download Agreement
+                Uploaded Agreement
               </a>
             )}
 
