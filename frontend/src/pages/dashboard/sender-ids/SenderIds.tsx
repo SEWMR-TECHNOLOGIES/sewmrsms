@@ -274,7 +274,7 @@ export default function UserSenderRequests() {
             <p className="text-muted-foreground mb-4">
               Get started by requesting your first sender ID to send SMS messages
             </p>
-            <Button onClick={() => navigate('/dashboard/sender-ids/request')}>
+            <Button onClick={() => navigate('/console/sender-ids/request')}>
               <Plus className="h-4 w-4 mr-2" />
               Request Your First Sender ID
             </Button>
