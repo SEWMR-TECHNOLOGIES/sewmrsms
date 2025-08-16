@@ -399,13 +399,10 @@ async def download_sender_id_agreement(
 
     # Include student note only if request is a student request
     student_note_html = f"""
-      <p><strong>Special student provision</strong></p>
-      <div class="note">
-        If this request originates from a verified student account, Provider may assign the temporary
-        sender ID <strong>EasyTextAPI</strong> for testing and educational purposes. This ID is
-        pre-configured and intended only for testing. Student requests require uploading a valid
-        student identification document (PDF) and are subject to Provider validation.
-      </div>
+    <p><strong>Special student provision</strong></p>
+    <div class="note">
+    You have provided a verified student ID and are now signing this Agreement. By signing, you confirm that you will use the temporary sender ID <strong>EasyTextAPI</strong> for testing and academic purposes only. This ID is pre-configured for students and intended solely for project or educational use.
+    </div>
     """ if request_obj.is_student_request else ""
 
     html_content = f"""<!DOCTYPE html>
@@ -422,7 +419,7 @@ body {{ font-family: Arial, Helvetica, sans-serif; font-size:12px; line-height:1
 .company-name {{ font-size:18px; font-weight:bold; margin:0 0 4px 0; }}
 .company-meta {{ font-size:11px; color:#444; margin:0; }}
 .title {{ text-align:center; font-size:16px; font-weight:bold; margin:10px 0 18px 0; text-transform:uppercase; }}
-.box {{ width:100%; border:1px solid #d6d6d6; padding:12px; margin-bottom:14px; }}
+.box {{ width:100%; border: none; padding:12px; margin-bottom:14px; }}
 .box .heading {{ font-size:12px; font-weight:bold; margin-bottom:8px; text-decoration:underline; }}
 .dl-table {{ width:100%; border-collapse: collapse; margin-top:6px; }}
 .dl-table td {{ vertical-align: top; padding:2px 6px; font-size:12px; }}
@@ -460,22 +457,40 @@ body {{ font-family: Arial, Helvetica, sans-serif; font-size:12px; line-height:1
 
 <div class="title">Sender ID Agreement</div>
 
-<div class="box">
-<div class="heading">Service Provider</div>
-<table class="dl-table">
-<tr><td class="dl-key">Business Name</td><td class="dl-val">SEWMR SMS</td></tr>
-<tr><td class="dl-key">Company</td><td class="dl-val">SEWMR TECHNOLOGIES</td></tr>
-<tr><td class="dl-key">Address</td><td class="dl-val">P.O Box 15961, Nairobi Road, Ngarenaro, Arusha, Tanzania</td></tr>
-</table>
+<div class="box" style="border:none;">
+  <div class="heading">Service Provider</div>
+  <table class="dl-table" style="border:none; border-collapse: collapse;">
+    <tr>
+      <td class="dl-key" style="border:none;">Business Name</td>
+      <td class="dl-val" style="border:none;">SEWMR SMS</td>
+    </tr>
+    <tr>
+      <td class="dl-key" style="border:none;">Company</td>
+      <td class="dl-val" style="border:none;">SEWMR TECHNOLOGIES</td>
+    </tr>
+    <tr>
+      <td class="dl-key" style="border:none;">Address</td>
+      <td class="dl-val" style="border:none;">P.O Box 15961, Nairobi Road, Ngarenaro, Arusha, Tanzania</td>
+    </tr>
+  </table>
 </div>
 
-<div class="box">
-<div class="heading">Client</div>
-<table class="dl-table">
-<tr><td class="dl-key">Company Name</td><td class="dl-val">{request_obj.company_name}</td></tr>
-<tr><td class="dl-key">Requested Sender ID</td><td class="dl-val">{request_obj.sender_alias}</td></tr>
-<tr><td class="dl-key">Sample Message</td><td class="dl-val">{request_obj.sample_message}</td></tr>
-</table>
+<div class="box" style="border:none;">
+  <div class="heading">Client</div>
+  <table class="dl-table" style="border:none; border-collapse: collapse;">
+    <tr>
+      <td class="dl-key" style="border:none;">Company Name</td>
+      <td class="dl-val" style="border:none;">{request_obj.company_name}</td>
+    </tr>
+    <tr>
+      <td class="dl-key" style="border:none;">Requested Sender ID</td>
+      <td class="dl-val" style="border:none;">{request_obj.sender_alias}</td>
+    </tr>
+    <tr>
+      <td class="dl-key" style="border:none;">Sample Message</td>
+      <td class="dl-val" style="border:none;">{request_obj.sample_message}</td>
+    </tr>
+  </table>
 </div>
 
 <div class="agreement">
