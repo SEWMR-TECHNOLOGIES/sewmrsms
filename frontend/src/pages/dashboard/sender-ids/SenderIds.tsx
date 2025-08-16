@@ -1,5 +1,5 @@
 import React, { useState, useEffect } from 'react';
-import { Plus, Shield, CheckCircle, XCircle, Clock, AlertCircle } from 'lucide-react';
+import { Plus, Shield, CheckCircle, XCircle, Clock, AlertCircle, Search } from 'lucide-react';
 import { Button } from '@/components/ui/button';
 import { Card, CardContent, CardDescription, CardHeader, CardTitle } from '@/components/ui/card';
 import { Badge } from '@/components/ui/badge';
@@ -9,6 +9,7 @@ import { format } from 'date-fns';
 import { useNavigate, Link } from 'react-router-dom';
 import type { ColumnDef } from '@tanstack/react-table';
 import { Loader } from '@/components/ui/loader';
+import { Input } from '@/components/ui/input';
 
 interface SenderID {
   uuid: string;
@@ -229,18 +230,24 @@ export default function UserSenderRequests() {
       </div>
 
       {/* Search + Pagination info */}
-      <div className="flex justify-between items-center">
-        <input
-          type="text"
-          placeholder="Search sender IDs..."
-          value={searchQuery}
-          onChange={(e) => setSearchQuery(e.target.value)}
-          className="border p-2 rounded-md w-1/3"
-        />
-        <div className="text-sm text-muted-foreground">
+      <div className="flex items-center justify-between gap-4">
+        {/* Search */}
+        <div className="relative max-w-md flex-1">
+          <Search className="absolute left-3 top-1/2 transform -translate-y-1/2 text-muted-foreground h-4 w-4" />
+          <Input
+            placeholder="Search sender IDs..."
+            value={searchQuery}
+            onChange={(e) => setSearchQuery(e.target.value)}
+            className="pl-10 bg-muted/50 border-0 focus-visible:ring-1 w-full"
+          />
+        </div>
+
+        {/* Pagination Info */}
+        <div className="text-sm text-muted-foreground whitespace-nowrap">
           Page {page} of {totalPages || 1}
         </div>
       </div>
+
 
       {/* Table */}
       <Card className="relative">
