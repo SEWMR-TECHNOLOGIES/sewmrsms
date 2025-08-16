@@ -18,7 +18,8 @@ import pytz
 import uuid
 import httpx
 from fastapi.responses import StreamingResponse
-from weasyprint import HTML
+from io import BytesIO
+from xhtml2pdf import pisa
 from io import BytesIO
 from core.config import UPLOAD_SERVICE_URL, MAX_FILE_SIZE
 
@@ -378,13 +379,13 @@ async def get_user_sender_id_requests(
         "message": f"{len(data)} sender ID requests retrieved for user {current_user.username}",
         "data": data
     }
+
 @router.get("/requests/{sender_request_uuid}/download-agreement")
 async def download_sender_id_agreement(
     sender_request_uuid: str,
-    current_user: User = Depends(get_current_user),
+    current_user=Depends(get_current_user),
     db: Session = Depends(get_db),
 ):
-    # Fetch request to confirm ownership
     request_obj = db.query(SenderIdRequest).filter(
         SenderIdRequest.uuid == sender_request_uuid,
         SenderIdRequest.user_id == current_user.id
@@ -404,146 +405,127 @@ async def download_sender_id_agreement(
       </div>
     """ if request_obj.is_student_request else ""
 
-    # HTML content for PDF
-    html_content = f"""
-<!DOCTYPE html>
+    html_content = f"""<!DOCTYPE html>
 <html lang="en">
 <head>
-  <meta charset="utf-8" />
-  <title>Sender ID Agreement — SEWMR TECHNOLOGIES</title>
-  <style>
-    /* all your styles here - keep them unchanged */
-    @page {{ size: A4; margin: 28mm 20mm; }}
-    html, body {{ height: 100%; font-family: "DejaVu Sans", Arial, Helvetica, sans-serif; font-size: 12px; line-height: 1.45; color: #222; margin:0; padding:0; }}
-    .wrap {{ width:100%; box-sizing:border-box; }}
-    .header-table {{ width:100%; border-collapse: collapse; margin-bottom:18px; }}
-    .header-left {{ vertical-align: top; padding-right: 10px; }}
-    .header-right {{ text-align:right; vertical-align:top; padding-left:10px; }}
-    .company-name {{ font-size:18px; font-weight:bold; letter-spacing:0.6px; margin:0 0 4px 0; }}
-    .company-meta {{ font-size:11px; color:#444; margin:0; }}
-    .title {{ text-align:center; font-size:16px; font-weight:bold; margin:10px 0 18px 0; text-transform:uppercase; letter-spacing:1px; }}
-    .box {{ width:100%; border:1px solid #d6d6d6; padding:12px; box-sizing:border-box; margin-bottom:14px; }}
-    .box .heading {{ font-size:12px; font-weight:bold; margin-bottom:8px; text-decoration:underline; }}
-    .box p {{ margin:4px 0; font-size:12px; }}
-    .dl-table {{ width:100%; border-collapse: collapse; margin-top:6px; }}
-    .dl-table td {{ vertical-align: top; padding:2px 6px; font-size:12px; }}
-    .dl-key {{ width:30%; color:#333; font-weight:bold; }}
-    .dl-val {{ width:70%; color:#222; }}
-    .agreement {{ margin:14px 0; text-align:justify; font-size:12px; }}
-    .agreement ul {{ margin:8px 0 8px 18px; }}
-    .agreement li {{ margin:6px 0; }}
-    .sign-table {{ width:100%; border-collapse: collapse; margin-top:28px; }}
-    .sign-cell {{ width:50%; padding-top:40px; vertical-align: bottom; text-align:center; font-size:12px; }}
-    .sig-line {{ display:block; border-top:1px solid #444; width:85%; margin:0 auto 6px auto; height:1px; }}
-    .sig-caption {{ font-size:11px; color:#444; }}
-    .footer {{ border-top:1px solid #e6e6e6; margin-top:24px; padding-top:8px; font-size:11px; color:#666; text-align:center; }}
-    .meta {{ font-size:10px; color:#666; margin-top:6px; }}
-    .note {{ background:#fff7e6; border:1px solid #f1d6a7; padding:8px; margin-top:10px; font-size:12px; }}
-  </style>
+<meta charset="utf-8">
+<title>Sender ID Agreement — SEWMR TECHNOLOGIES</title>
+<style>
+/* Keep most styles unchanged; adjust as needed for xhtml2pdf */
+body {{ font-family: Arial, Helvetica, sans-serif; font-size:12px; line-height:1.4; color:#222; }}
+.wrap {{ width:100%; box-sizing:border-box; }}
+.header-table {{ width:100%; border-collapse: collapse; margin-bottom:18px; }}
+.header-left {{ vertical-align: top; padding-right: 10px; }}
+.header-right {{ text-align:right; vertical-align:top; padding-left:10px; }}
+.company-name {{ font-size:18px; font-weight:bold; margin:0 0 4px 0; }}
+.company-meta {{ font-size:11px; color:#444; margin:0; }}
+.title {{ text-align:center; font-size:16px; font-weight:bold; margin:10px 0 18px 0; text-transform:uppercase; }}
+.box {{ width:100%; border:1px solid #d6d6d6; padding:12px; margin-bottom:14px; }}
+.box .heading {{ font-size:12px; font-weight:bold; margin-bottom:8px; text-decoration:underline; }}
+.dl-table {{ width:100%; border-collapse: collapse; margin-top:6px; }}
+.dl-table td {{ vertical-align: top; padding:2px 6px; font-size:12px; }}
+.dl-key {{ width:30%; font-weight:bold; color:#333; }}
+.dl-val {{ width:70%; color:#222; }}
+.agreement {{ margin:14px 0; text-align:justify; font-size:12px; }}
+.agreement ul {{ margin:8px 0 8px 18px; }}
+.agreement li {{ margin:6px 0; }}
+.sign-table {{ width:100%; border-collapse: collapse; margin-top:28px; }}
+.sign-cell {{ width:50%; padding-top:40px; vertical-align: bottom; text-align:center; font-size:12px; }}
+.sig-line {{ display:block; border-top:1px solid #444; width:85%; margin:0 auto 6px auto; height:1px; }}
+.sig-caption {{ font-size:11px; color:#444; }}
+.footer {{ border-top:1px solid #e6e6e6; margin-top:24px; padding-top:8px; font-size:11px; color:#666; text-align:center; }}
+.meta {{ font-size:10px; color:#666; margin-top:6px; }}
+.note {{ background:#fff7e6; border:1px solid #f1d6a7; padding:8px; margin-top:10px; font-size:12px; }}
+</style>
 </head>
 <body>
-  <div class="wrap">
-    <!-- Header -->
-    <table class="header-table">
-      <tr>
-        <td class="header-left" style="width:65%;">
-          <div class="company-name">SEWMR TECHNOLOGIES</div>
-          <p class="company-meta">P.O Box 15961</p>
-          <p class="company-meta">Nairobi Road, Ngarenaro</p>
-          <p class="company-meta">Arusha, Tanzania</p>
-        </td>
-        <td class="header-right" style="width:35%;">
-          <img src="https://data.sewmrtechnologies.com/assets/images/sewmrtech-logo.png" style="max-height:70px; display:block; margin-left:auto;">
-          <p class="company-meta" style="margin-top:6px;">Phone: +255 653 750 805 • Email: support@sewmrsms.co.tz</p>
-        </td>
-      </tr>
-    </table>
+<div class="wrap">
+<table class="header-table">
+<tr>
+<td class="header-left" style="width:65%;">
+<div class="company-name">SEWMR TECHNOLOGIES</div>
+<p class="company-meta">P.O Box 15961</p>
+<p class="company-meta">Nairobi Road, Ngarenaro</p>
+<p class="company-meta">Arusha, Tanzania</p>
+</td>
+<td class="header-right" style="width:35%;">
+<img src="https://data.sewmrtechnologies.com/assets/images/sewmrtech-logo.png" style="max-height:70px; display:block; margin-left:auto;">
+<p class="company-meta" style="margin-top:6px;">Phone: +255 653 750 805 • Email: support@sewmrsms.co.tz</p>
+</td>
+</tr>
+</table>
 
-    <div class="title">Sender ID Agreement</div>
+<div class="title">Sender ID Agreement</div>
 
-    <!-- Provider -->
-    <div class="box">
-      <div class="heading">Service Provider (Our Details)</div>
-      <table class="dl-table">
-        <tr><td class="dl-key">Business Name</td><td class="dl-val">SEWMR SMS</td></tr>
-        <tr><td class="dl-key">Company</td><td class="dl-val">SEWMR TECHNOLOGIES</td></tr>
-        <tr><td class="dl-key">Address</td><td class="dl-val">P.O Box 15961, Nairobi Road, Ngarenaro, Arusha, Tanzania</td></tr>
-      </table>
-    </div>
+<div class="box">
+<div class="heading">Service Provider (Our Details)</div>
+<table class="dl-table">
+<tr><td class="dl-key">Business Name</td><td class="dl-val">SEWMR SMS</td></tr>
+<tr><td class="dl-key">Company</td><td class="dl-val">SEWMR TECHNOLOGIES</td></tr>
+<tr><td class="dl-key">Address</td><td class="dl-val">P.O Box 15961, Nairobi Road, Ngarenaro, Arusha, Tanzania</td></tr>
+</table>
+</div>
 
-    <!-- Client -->
-    <div class="box">
-      <div class="heading">Client Details</div>
-      <table class="dl-table">
-        <tr><td class="dl-key">Company Name</td><td class="dl-val">{request_obj.company_name}</td></tr>
-        <tr><td class="dl-key">Requested Sender ID</td><td class="dl-val">{request_obj.sender_alias}</td></tr>
-        <tr><td class="dl-key">Sample Message</td><td class="dl-val">{request_obj.sample_message}</td></tr>
-      </table>
-    </div>
+<div class="box">
+<div class="heading">Client Details</div>
+<table class="dl-table">
+<tr><td class="dl-key">Company Name</td><td class="dl-val">{request_obj.company_name}</td></tr>
+<tr><td class="dl-key">Requested Sender ID</td><td class="dl-val">{request_obj.sender_alias}</td></tr>
+<tr><td class="dl-key">Sample Message</td><td class="dl-val">{request_obj.sample_message}</td></tr>
+</table>
+</div>
 
-    <div class="agreement">
-      <p>
-        This Sender ID Agreement ("Agreement") is entered into by and between 
-        <strong>SEWMR TECHNOLOGIES, the owner and operator of SEWMR SMS</strong> ("Provider") 
-        and the Client identified above ("Client"). The Provider agrees to assign 
-        and enable the requested Sender ID for the Client subject to the terms 
-        set out below.
-      </p>
+<div class="agreement">
+<p>This Sender ID Agreement ("Agreement") is entered into by and between 
+<strong>SEWMR TECHNOLOGIES, the owner and operator of SEWMR SMS</strong> ("Provider") 
+and the Client identified above ("Client"). The Provider agrees to assign 
+and enable the requested Sender ID for the Client subject to the terms set out below.</p>
 
-      <p><strong>Terms and obligations</strong></p>
-      <ul>
-        <li>The Client shall only use the assigned Sender ID for legitimate, lawful communications.
-          The Client must not send unsolicited marketing, phishing, fraudulent, offensive, or otherwise
-          prohibited messages.</li>
-        <li>The Client is solely responsible for the content of messages sent using the Sender ID
-          and must comply with local and international regulations, carrier policies, and data protection rules.</li>
-        <li>Provider reserves the right to suspend, revoke, or modify the Sender ID if misuse, abuse,
-          or network non-compliance is detected.</li>
-        <li>The Client will cooperate with Provider and carriers in any investigations related to
-          message complaints or regulatory inquiries.</li>
-        <li>This Agreement is governed by the laws of the United Republic of Tanzania and any disputes
-          shall be subject to the competent courts in Tanzania.</li>
-      </ul>
+<p><strong>Terms and obligations</strong></p>
+<ul>
+<li>The Client shall only use the assigned Sender ID for legitimate, lawful communications. The Client must not send unsolicited marketing, phishing, fraudulent, offensive, or otherwise prohibited messages.</li>
+<li>The Client is solely responsible for the content of messages sent using the Sender ID and must comply with local and international regulations, carrier policies, and data protection rules.</li>
+<li>Provider reserves the right to suspend, revoke, or modify the Sender ID if misuse, abuse, or network non-compliance is detected.</li>
+<li>The Client will cooperate with Provider and carriers in any investigations related to message complaints or regulatory inquiries.</li>
+<li>This Agreement is governed by the laws of the United Republic of Tanzania and any disputes shall be subject to the competent courts in Tanzania.</li>
+</ul>
 
-      {student_note_html}
+{student_note_html}
 
-      <p style="margin-top:14px;">
-        Both parties agree to the terms above and indicate acceptance by signing below.
-      </p>
-    </div>
+<p style="margin-top:14px;">Both parties agree to the terms above and indicate acceptance by signing below.</p>
+</div>
 
-    <!-- Signatures -->
-    <table class="sign-table">
-      <tr>
-        <td class="sign-cell">
-          <span class="sig-line"></span>
-          <div class="sig-caption">For SEWMR TECHNOLOGIES — Authorized Signatory</div>
-          <div class="meta">Name: ______________________ &nbsp;&nbsp; Date: __ / __ / ____</div>
-        </td>
-        <td class="sign-cell">
-          <span class="sig-line"></span>
-          <div class="sig-caption">For Client — Authorized Signatory</div>
-          <div class="meta">Name: ______________________ &nbsp;&nbsp; Date: __ / __ / ____</div>
-        </td>
-      </tr>
-    </table>
+<table class="sign-table">
+<tr>
+<td class="sign-cell">
+<span class="sig-line"></span>
+<div class="sig-caption">For SEWMR TECHNOLOGIES — Authorized Signatory</div>
+<div class="meta">Name: ______________________ &nbsp;&nbsp; Date: __ / __ / ____</div>
+</td>
+<td class="sign-cell">
+<span class="sig-line"></span>
+<div class="sig-caption">For Client — Authorized Signatory</div>
+<div class="meta">Name: ______________________ &nbsp;&nbsp; Date: __ / __ / ____</div>
+</td>
+</tr>
+</table>
 
-    <div class="footer">
-      SEWMR TECHNOLOGIES • SEWMR SMS — P.O Box 15961, Nairobi Road, Ngarenaro, Arusha, Tanzania • support@sewmrsms.co.tz
-    </div>
-  </div>
+<div class="footer">
+SEWMR TECHNOLOGIES • SEWMR SMS — P.O Box 15961, Nairobi Road, Ngarenaro, Arusha, Tanzania • support@sewmrsms.co.tz
+</div>
+</div>
 </body>
 </html>
-    """
+"""
 
     pdf_file = BytesIO()
-    HTML(string=html_content).write_pdf(target=pdf_file)
+    pisa_status = pisa.CreatePDF(html_content, dest=pdf_file)
+    if pisa_status.err:
+        raise HTTPException(status_code=500, detail="Error generating PDF")
     pdf_file.seek(0)
-
+    
     return StreamingResponse(
         pdf_file,
         media_type="application/pdf",
-        headers={
-            "Content-Disposition": f"attachment; filename=sender_id_agreement_{request_obj.sender_alias}.pdf"
-        }
+        headers={"Content-Disposition": f"attachment; filename=sender_id_agreement_{request_obj.sender_alias}.pdf"}
     )
