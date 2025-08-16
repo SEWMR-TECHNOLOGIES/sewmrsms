@@ -11,7 +11,6 @@ import { useNavigate } from 'react-router-dom';
 export default function RequestSenderID() {
   const [formData, setFormData] = useState({
     sender_id: '',
-    business_name: '',
     organization: '',
     sample_message: '',
   });
@@ -24,7 +23,6 @@ export default function RequestSenderID() {
   };
 
   const handleSenderIdChange = (value: string) => {
-    // Only allow alphanumeric characters and limit to 11 characters
     const cleaned = value.replace(/[^a-zA-Z0-9 ]/g, '').toUpperCase();
     if (cleaned.length <= 11) handleInputChange('sender_id', cleaned);
   };
@@ -32,7 +30,7 @@ export default function RequestSenderID() {
   const handleSubmit = async (e: React.FormEvent) => {
     e.preventDefault();
 
-    if (!formData.sender_id || !formData.business_name || !formData.organization || !formData.sample_message) {
+    if (!formData.sender_id || !formData.organization || !formData.sample_message) {
       toast({
         variant: 'destructive',
         title: 'Missing Information',
@@ -53,13 +51,13 @@ export default function RequestSenderID() {
     setLoading(true);
 
     try {
-      const res = await fetch('https://api.sewmrsms.co.tz/api/v1/sender-id/request', {
+      const res = await fetch('https://api.sewmrsms.co.tz/api/v1/sender-ids/request', {
         method: 'POST',
         headers: { 'Content-Type': 'application/json' },
         credentials: 'include',
         body: JSON.stringify({
           alias: formData.sender_id,
-          company_name: formData.business_name,
+          company_name: formData.organization,
           sample_message: formData.sample_message,
         }),
       });
@@ -72,7 +70,7 @@ export default function RequestSenderID() {
           title: 'Request submitted successfully',
           description: data.message,
         });
-        navigate('/dashboard/sender-ids');
+        navigate('/console/sender-ids');
       } else {
         toast({
           variant: 'destructive',
@@ -95,7 +93,7 @@ export default function RequestSenderID() {
     <div className="space-y-6">
       {/* Header */}
       <div className="flex items-center gap-4">
-        <Button variant="ghost" size="icon" onClick={() => navigate('/dashboard/sender-ids')}>
+        <Button variant="ghost" size="icon" onClick={() => navigate('/console/sender-ids')}>
           <ArrowLeft className="h-4 w-4" />
         </Button>
         <div className="space-y-1">
@@ -140,23 +138,8 @@ export default function RequestSenderID() {
                 </div>
 
                 <div className="space-y-2">
-                  <Label htmlFor="business_name">
-                    Business Name <span className="text-destructive">*</span>
-                  </Label>
-                  <Input
-                    id="business_name"
-                    value={formData.business_name}
-                    onChange={(e) => handleInputChange('business_name', e.target.value)}
-                    placeholder="Your Business Name Ltd"
-                  />
-                  <p className="text-sm text-muted-foreground">
-                    The legal name of your business or organization
-                  </p>
-                </div>
-
-                <div className="space-y-2">
                   <Label htmlFor="organization">
-                    Organization <span className="text-destructive">*</span>
+                    Organization / Company <span className="text-destructive">*</span>
                   </Label>
                   <Input
                     id="organization"
