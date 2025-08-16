@@ -9,7 +9,7 @@ from models.network import Network
 from models.sender_id_propagation import SenderIdPropagation
 from models.sender_id import SenderId
 from models.models import SenderIdRequest
-from models.enums import SenderIdRequestStatusEnum
+from models.enums import PropagationStatusEnum, SenderIdRequestStatusEnum
 from models.user import User
 from api.deps import get_db
 from utils.validation import (validate_sender_alias)
@@ -283,9 +283,9 @@ async def request_student_sender_id(
 def get_sender_id_propagation_status(
     sender_request_uuid: str,
     db: Session = Depends(get_db),
-    current_user = Depends(get_current_user)
+    current_user=Depends(get_current_user)
 ):
-    # Fetch sender_id_request to confirm ownership
+    # Confirm sender request ownership
     request_obj = db.query(SenderIdRequest).filter(
         SenderIdRequest.uuid == sender_request_uuid,
         SenderIdRequest.user_id == current_user.id
@@ -294,30 +294,26 @@ def get_sender_id_propagation_status(
     if not request_obj:
         raise HTTPException(status_code=404, detail="Sender ID request not found or unauthorized")
 
-    # Join with networks to get name and color
-    propagations = (
-        db.query(SenderIdPropagation, Network)
-        .join(Network, SenderIdPropagation.network_id == Network.id)
-        .filter(SenderIdPropagation.request_id == request_obj.id)
-        .all()
-    )
+    # Fetch all networks
+    all_networks = db.query(Network).all()
 
-    # If no propagation data, return a helpful message
-    if not propagations:
-        return {
-            "success": True,
-            "message": "No propagation records found for this Sender ID request",
-            "data": []
-        }
+    # Fetch existing propagation records for this request
+    existing_propagations = db.query(SenderIdPropagation).filter(
+        SenderIdPropagation.request_id == request_obj.id
+    ).all()
+
+    # Map network_id -> propagation
+    propagation_map = {p.network_id: p for p in existing_propagations}
 
     data = []
-    for propagation, network in propagations:
+    for network in all_networks:
+        propagation = propagation_map.get(network.id)
         data.append({
             "network_name": network.name,
             "network_uuid": str(network.uuid),
-            "color_code": network.color_code,
-            "status": propagation.status.value if propagation.status else None,
-            "updated_at": propagation.updated_at.strftime("%Y-%m-%d %H:%M:%S") if propagation.updated_at else None
+            "color_code": network.color_code,  # optional, UI can ignore
+            "status": propagation.status.value if propagation else PropagationStatusEnum.pending.value,
+            "updated_at": propagation.updated_at.strftime("%Y-%m-%d %H:%M:%S") if propagation and propagation.updated_at else None
         })
 
     return {
