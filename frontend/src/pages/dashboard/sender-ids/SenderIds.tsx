@@ -174,7 +174,7 @@ export default function UserSenderRequests() {
             {/* Download agreement to sign: disabled if in_review */}
             {!isApproved && (
               <a
-                href={`https://api.sewmrsms.co.tz/api/v1/requests/${request.uuid}/download-agreement`}
+                href={`https://api.sewmrsms.co.tz/api/v1/sender-ids/requests/${request.uuid}/download-agreement`}
                 target="_blank"
                 rel="noreferrer"
                 className={`text-primary underline text-sm ${isUnderReview ? 'pointer-events-none opacity-50' : ''}`}

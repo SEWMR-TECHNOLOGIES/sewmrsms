@@ -382,6 +382,7 @@ async def download_sender_id_agreement(
     current_user=Depends(get_current_user),
     db: Session = Depends(get_db),
 ):
+    # Fetch request and verify ownership
     request_obj = db.query(SenderIdRequest).filter(
         SenderIdRequest.uuid == sender_request_uuid,
         SenderIdRequest.user_id == current_user.id
@@ -390,7 +391,7 @@ async def download_sender_id_agreement(
     if not request_obj:
         raise HTTPException(status_code=404, detail="Sender ID request not found or unauthorized")
 
-    # Only include student note if request is student request
+    # Include student note only if request is a student request
     student_note_html = f"""
       <p><strong>Special student provision</strong></p>
       <div class="note">
@@ -407,8 +408,7 @@ async def download_sender_id_agreement(
 <meta charset="utf-8">
 <title>Sender ID Agreement — SEWMR TECHNOLOGIES</title>
 <style>
-/* Keep most styles unchanged; adjust as needed for xhtml2pdf */
-body {{ font-family: Arial, Helvetica, sans-serif; font-size:12px; line-height:1.4; color:#222; }}
+body {{ font-family: Arial, Helvetica, sans-serif; font-size:12px; line-height:1.45; color:#222; margin:0; padding:0; }}
 .wrap {{ width:100%; box-sizing:border-box; }}
 .header-table {{ width:100%; border-collapse: collapse; margin-bottom:18px; }}
 .header-left {{ vertical-align: top; padding-right: 10px; }}
@@ -436,6 +436,7 @@ body {{ font-family: Arial, Helvetica, sans-serif; font-size:12px; line-height:1
 </head>
 <body>
 <div class="wrap">
+
 <table class="header-table">
 <tr>
 <td class="header-left" style="width:65%;">
@@ -454,7 +455,7 @@ body {{ font-family: Arial, Helvetica, sans-serif; font-size:12px; line-height:1
 <div class="title">Sender ID Agreement</div>
 
 <div class="box">
-<div class="heading">Service Provider (Our Details)</div>
+<div class="heading">Service Provider</div>
 <table class="dl-table">
 <tr><td class="dl-key">Business Name</td><td class="dl-val">SEWMR SMS</td></tr>
 <tr><td class="dl-key">Company</td><td class="dl-val">SEWMR TECHNOLOGIES</td></tr>
@@ -463,7 +464,7 @@ body {{ font-family: Arial, Helvetica, sans-serif; font-size:12px; line-height:1
 </div>
 
 <div class="box">
-<div class="heading">Client Details</div>
+<div class="heading">Client</div>
 <table class="dl-table">
 <tr><td class="dl-key">Company Name</td><td class="dl-val">{request_obj.company_name}</td></tr>
 <tr><td class="dl-key">Requested Sender ID</td><td class="dl-val">{request_obj.sender_alias}</td></tr>
@@ -509,6 +510,7 @@ and enable the requested Sender ID for the Client subject to the terms set out b
 <div class="footer">
 SEWMR TECHNOLOGIES • SEWMR SMS — P.O Box 15961, Nairobi Road, Ngarenaro, Arusha, Tanzania • support@sewmrsms.co.tz
 </div>
+
 </div>
 </body>
 </html>
@@ -519,7 +521,7 @@ SEWMR TECHNOLOGIES • SEWMR SMS — P.O Box 15961, Nairobi Road, Ngarenaro, Aru
     if pisa_status.err:
         raise HTTPException(status_code=500, detail="Error generating PDF")
     pdf_file.seek(0)
-    
+
     return StreamingResponse(
         pdf_file,
         media_type="application/pdf",
