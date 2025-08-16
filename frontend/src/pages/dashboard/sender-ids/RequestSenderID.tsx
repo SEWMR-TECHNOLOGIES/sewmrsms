@@ -5,7 +5,6 @@ import { Card, CardContent, CardDescription, CardHeader, CardTitle } from '@/com
 import { Input } from '@/components/ui/input';
 import { Label } from '@/components/ui/label';
 import { Textarea } from '@/components/ui/textarea';
-import { supabase } from '@/integrations/supabase/client';
 import { useToast } from '@/hooks/use-toast';
 import { useNavigate } from 'react-router-dom';
 
@@ -21,37 +20,32 @@ export default function RequestSenderID() {
   const navigate = useNavigate();
 
   const handleInputChange = (field: string, value: string) => {
-    setFormData(prev => ({
-      ...prev,
-      [field]: value
-    }));
+    setFormData(prev => ({ ...prev, [field]: value }));
   };
 
   const handleSenderIdChange = (value: string) => {
     // Only allow alphanumeric characters and limit to 11 characters
-    const cleaned = value.replace(/[^a-zA-Z0-9]/g, '').toUpperCase();
-    if (cleaned.length <= 11) {
-      handleInputChange('sender_id', cleaned);
-    }
+    const cleaned = value.replace(/[^a-zA-Z0-9 ]/g, '').toUpperCase();
+    if (cleaned.length <= 11) handleInputChange('sender_id', cleaned);
   };
 
   const handleSubmit = async (e: React.FormEvent) => {
     e.preventDefault();
-    
+
     if (!formData.sender_id || !formData.business_name || !formData.organization || !formData.sample_message) {
       toast({
-        title: "Missing Information",
-        description: "Please fill in all required fields",
-        variant: "destructive",
+        variant: 'destructive',
+        title: 'Missing Information',
+        description: 'Please fill in all required fields',
       });
       return;
     }
 
     if (formData.sender_id.length < 3) {
       toast({
-        title: "Invalid Sender ID",
-        description: "Sender ID must be at least 3 characters long",
-        variant: "destructive",
+        variant: 'destructive',
+        title: 'Invalid Sender ID',
+        description: 'Sender ID must be at least 3 characters long',
       });
       return;
     }
@@ -59,63 +53,38 @@ export default function RequestSenderID() {
     setLoading(true);
 
     try {
-      const { data: { user } } = await supabase.auth.getUser();
-      if (!user) {
-        toast({
-          title: "Authentication required",
-          description: "Please sign in to request a sender ID",
-          variant: "destructive",
-        });
-        return;
-      }
-
-      // First, submit to your API
-      const apiResponse = await fetch('https://sewmrsmsapi.sewmrtechnologies.com/sender-id-registration', {
+      const res = await fetch('https://api.sewmrsms.co.tz/api/v1/sender-id/request', {
         method: 'POST',
-        headers: {
-          'Content-Type': 'application/json',
-        },
+        headers: { 'Content-Type': 'application/json' },
+        credentials: 'include',
         body: JSON.stringify({
-          sender_id: formData.sender_id,
-          business_name: formData.business_name,
-          organization: formData.organization,
+          alias: formData.sender_id,
+          company_name: formData.business_name,
           sample_message: formData.sample_message,
-          user_id: user.id,
         }),
       });
 
-      if (!apiResponse.ok) {
-        throw new Error('Failed to submit sender ID request to API');
-      }
+      const data = await res.json();
 
-      // Then save to Supabase database
-      const { error } = await supabase
-        .from('sender_ids')
-        .insert({
-          user_id: user.id,
-          sender_id: formData.sender_id,
-          business_name: formData.business_name,
-          organization: formData.organization,
-          sample_message: formData.sample_message,
-          status: 'pending',
-          networks: [],
+      if (data.success) {
+        toast({
+          variant: 'success',
+          title: 'Request submitted successfully',
+          description: data.message,
         });
-
-      if (error) throw error;
-
+        navigate('/dashboard/sender-ids');
+      } else {
+        toast({
+          variant: 'destructive',
+          title: 'Submission failed',
+          description: data.message || 'Unable to submit request',
+        });
+      }
+    } catch (err) {
       toast({
-        title: "Request submitted successfully!",
-        description: "Your sender ID request has been submitted for review. You'll be notified once it's processed.",
-      });
-
-      navigate('/dashboard/sender-ids');
-
-    } catch (error) {
-      console.error('Error submitting sender ID request:', error);
-      toast({
-        title: "Submission failed",
-        description: "There was an error submitting your request. Please try again.",
-        variant: "destructive",
+        variant: 'destructive',
+        title: 'Network error',
+        description: 'Unable to reach the server. Try again shortly.',
       });
     } finally {
       setLoading(false);
@@ -126,18 +95,12 @@ export default function RequestSenderID() {
     <div className="space-y-6">
       {/* Header */}
       <div className="flex items-center gap-4">
-        <Button 
-          variant="ghost" 
-          size="icon" 
-          onClick={() => navigate('/dashboard/sender-ids')}
-        >
+        <Button variant="ghost" size="icon" onClick={() => navigate('/dashboard/sender-ids')}>
           <ArrowLeft className="h-4 w-4" />
         </Button>
         <div className="space-y-1">
           <h1 className="text-3xl font-bold tracking-tight">Request Sender ID</h1>
-          <p className="text-muted-foreground">
-            Submit your sender ID request for approval
-          </p>
+          <p className="text-muted-foreground">Submit your sender ID request for approval</p>
         </div>
       </div>
 
@@ -172,9 +135,7 @@ export default function RequestSenderID() {
                     Maximum 11 characters, alphanumeric only. This will appear as the sender of your SMS messages.
                   </p>
                   {formData.sender_id && (
-                    <p className="text-sm text-primary">
-                      Characters used: {formData.sender_id.length}/11
-                    </p>
+                    <p className="text-sm text-primary">Characters used: {formData.sender_id.length}/11</p>
                   )}
                 </div>
 
@@ -224,11 +185,7 @@ export default function RequestSenderID() {
                   </p>
                 </div>
 
-                <Button 
-                  type="submit" 
-                  className="w-full" 
-                  disabled={loading}
-                >
+                <Button type="submit" className="w-full" disabled={loading}>
                   {loading ? (
                     <>
                       <div className="animate-spin rounded-full h-4 w-4 border-b-2 border-white mr-2"></div>
@@ -262,7 +219,7 @@ export default function RequestSenderID() {
                   <li>• Network propagation</li>
                 </ul>
               </div>
-              
+
               <div className="space-y-2">
                 <h4 className="font-medium">Timeline</h4>
                 <p className="text-sm text-muted-foreground">

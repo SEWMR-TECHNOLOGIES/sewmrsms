@@ -105,7 +105,7 @@ export default function BillingPurchase() {
 
                   {/* Purchase Button */}
                   <Button asChild className="w-full">
-                    <Link to={`/top-up/${plan.uuid}`}>
+                    <Link to={`/console/top-up/${plan.uuid}`}>
                       <CreditCard className="h-4 w-4 mr-2" />
                       Purchase Now
                     </Link>
