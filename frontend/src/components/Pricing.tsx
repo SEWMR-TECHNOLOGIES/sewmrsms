@@ -1,71 +1,41 @@
+import React, { useState, useEffect } from "react";
 import { Button } from "@/components/ui/button";
 import { Badge } from "@/components/ui/badge";
 import { Check, Star } from "lucide-react";
 
-const plans = [
-  {
-    name: "Tembo",
-    price: "22",
-    minimum: "1",
-    popular: false,
-    features: [
-      "1 or more SMS",
-      "API access included",
-      "24/7 email support",
-      "99.9% service uptime",
-    ],
-  },
-  {
-    name: "Twiga",
-    price: "20",
-    minimum: "6,000",
-    popular: true,
-    features: [
-      "6,000+ SMS messages",
-      "API access included",
-      "24/7 email support",
-      "99.9% service uptime",
-    ],
-  },
-  {
-    name: "Simba",
-    price: "18",
-    minimum: "55,000",
-    popular: false,
-    features: [
-      "55,000+ SMS messages",
-      "API access included",
-      "24/7 email support",
-      "99.9% service uptime",
-    ],
-  },
-  {
-    name: "Kifaru",
-    price: "16",
-    minimum: "410,000",
-    popular: false,
-    features: [
-      "410,000+ SMS messages",
-      "API access included",
-      "24/7 email support",
-      "99.9% service uptime",
-    ],
-  },
-  {
-    name: "Nyati",
-    price: "14",
-    minimum: "500,001",
-    popular: false,
-    features: [
-      "500,001+ SMS messages",
-      "API access included",
-      "24/7 email support",
-      "99.9% service uptime",
-    ],
-  },
-];
-
 export const Pricing = () => {
+  const [plans, setPlans] = useState([]);
+  const [loading, setLoading] = useState(true);
+
+  useEffect(() => {
+    async function fetchPlans() {
+      try {
+        const res = await fetch("https://api.sewmrsms.co.tz/api/v1/plans");
+        const data = await res.json();
+        if (data.success && Array.isArray(data.data)) {
+          setPlans(data.data);
+        } else {
+          console.error("Unexpected response:", data);
+        }
+      } catch (error) {
+        console.error("Error fetching plans:", error);
+      } finally {
+        setLoading(false);
+      }
+    }
+    fetchPlans();
+  }, []);
+
+  if (loading) {
+    return (
+      <div className="text-center py-20">
+        <div className="animate-spin rounded-full h-16 w-16 border-t-4 border-solid border-gray-200 mx-auto"
+             style={{ borderTopColor: "hsl(6, 99%, 64%)" }}></div>
+        <p className="mt-4 text-muted-foreground">Loading plans...</p>
+      </div>
+    );
+  }
+
   return (
     <section id="pricing" className="py-20 px-4 sm:px-6 lg:px-8 bg-muted/30">
       <div className="container mx-auto">
@@ -83,7 +53,7 @@ export const Pricing = () => {
         <div className="grid md:grid-cols-2 lg:grid-cols-3 xl:grid-cols-5 gap-6">
           {plans.map((plan, index) => (
             <div
-              key={index}
+              key={plan.uuid || index}
               className={`relative p-6 bg-card rounded-lg border transition-all duration-300 hover:shadow-lg hover:-translate-y-1 ${
                 plan.popular
                   ? "border-primary shadow-primary/20 scale-105"
@@ -107,25 +77,23 @@ export const Pricing = () => {
                   </h3>
                   <div className="space-y-1">
                     <div className="text-3xl font-bold text-primary">
-                      TZS {plan.price}
+                      TZS {plan.price_per_sms}
                     </div>
                     <p className="text-sm text-muted-foreground">
                       per SMS
                     </p>
                     <p className="text-sm text-muted-foreground">
-                      Min. {plan.minimum} messages
+                      Min. {plan.start_sms_count.toLocaleString()} messages
                     </p>
                   </div>
                 </div>
 
                 {/* Features */}
                 <ul className="space-y-3">
-                  {plan.features.map((feature, featureIndex) => (
+                  {plan.benefits?.map((feature, featureIndex) => (
                     <li key={featureIndex} className="flex items-start space-x-3">
                       <Check className="h-4 w-4 text-success mt-0.5 flex-shrink-0" />
-                      <span className="text-sm text-muted-foreground">
-                        {feature}
-                      </span>
+                      <span className="text-sm text-muted-foreground">{feature}</span>
                     </li>
                   ))}
                 </ul>
@@ -134,8 +102,11 @@ export const Pricing = () => {
                 <Button
                   className="w-full"
                   variant={plan.popular ? "default" : "outline"}
+                  asChild
                 >
-                  Select Plan
+                  <a href={`/top-up/${plan.uuid}`}>
+                    Select Plan
+                  </a>
                 </Button>
               </div>
             </div>
