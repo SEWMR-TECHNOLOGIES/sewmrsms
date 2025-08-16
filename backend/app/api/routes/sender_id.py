@@ -428,7 +428,7 @@ body {{ font-family: Arial, Helvetica, sans-serif; font-size:12px; line-height:1
 .agreement {{ margin:14px 0; text-align:justify; font-size:12px; }}
 .agreement ul {{ margin:8px 0 8px 18px; }}
 .agreement li {{ margin:6px 0; }}
-.sign-table {{ width:100%; border-collapse: collapse; margin-top:28px; }}
+.sign-table {{ width:100%; border-collapse: collapse; margin-top:15px; }}
 .sign-cell {{ width:50%; padding-top:40px; vertical-align: bottom; text-align:center; font-size:12px; }}
 .sig-line {{ display:block; border-top:1px solid #444; width:85%; margin:0 auto 6px auto; height:1px; }}
 .sig-caption {{ font-size:11px; color:#444; }}
@@ -449,13 +449,13 @@ body {{ font-family: Arial, Helvetica, sans-serif; font-size:12px; line-height:1
 <p class="company-meta">Arusha, Tanzania</p>
 </td>
 <td class="header-right" style="width:35%;">
-<img src="https://data.sewmrtechnologies.com/assets/images/sewmrtech-logo.png" style="max-height:70px; display:block; margin-left:auto;">
+<img src="https://data.sewmrtechnologies.com/assets/images/sewmrtech-logo.png" style="max-height:50px; display:block; margin-left:auto;">
 <p class="company-meta" style="margin-top:6px;">Phone: +255 653 750 805 • Email: support@sewmrsms.co.tz</p>
 </td>
 </tr>
 </table>
 
-<div class="title">Sender ID Agreement</div>
+<div class="title">SENDER ID REQUEST AGREEMENT</div>
 
 <div class="box" style="border:none;">
   <div class="heading">Service Provider</div>
