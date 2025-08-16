@@ -61,18 +61,24 @@ async def request_sender_id(
             "data": None
         }
 
-    # Check if alias already exists for this user in SenderIdRequests (pending/approved)
-    exists = db.query(SenderIdRequest).filter(
+    # Check if alias already exists for this user in SenderIdRequests (pending/approved/in_review)
+    existing_request = db.query(SenderIdRequest).filter(
         SenderIdRequest.user_id == current_user.id,
         SenderIdRequest.sender_alias == alias,
         or_(
             SenderIdRequest.status == SenderIdRequestStatusEnum.pending.value,
-            SenderIdRequest.status == SenderIdRequestStatusEnum.approved.value
+            SenderIdRequest.status == SenderIdRequestStatusEnum.approved.value,
+            SenderIdRequest.status == SenderIdRequestStatusEnum.in_review.value
         )
     ).first()
 
-    if exists:
-        return {"success": False, "message": "Alias already requested or approved", "data": None}
+    if existing_request:
+        status_message = existing_request.status.replace("_", " ").capitalize()
+        return {
+            "success": False,
+            "message": f"Sender ID '{alias}' is already submitted and it is currently {status_message}.",
+            "data": None
+        }
 
     now = datetime.now(pytz.timezone("Africa/Nairobi")).replace(tzinfo=None)
 
