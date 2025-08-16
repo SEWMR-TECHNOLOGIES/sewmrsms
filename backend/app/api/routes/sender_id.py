@@ -264,7 +264,7 @@ async def request_student_sender_id(
     
     return {
         "success": True,
-        "message": "We have received your student sender ID request. Once approved, EasyTextAPI will be assigned to your account.",
+        "message": "We have received your student Sender ID request. Once approved, EasyTextAPI will be added to your account. Meanwhile, please download, sign, and upload the Sender ID agreement to complete your request.",
         "data": {
             "id": new_request.id,
             "uuid": str(new_request.uuid),
