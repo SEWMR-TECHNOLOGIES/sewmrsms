@@ -107,7 +107,7 @@ async def request_sender_id(
         }
     }
 
-@router.post("/sender-ids/{sender_request_uuid}/upload-signed-agreement")
+@router.post("/{sender_request_uuid}/upload-signed-agreement")
 async def upload_sender_id_document(
     request: Request,
     sender_request_uuid: uuid.UUID = Path(...),
