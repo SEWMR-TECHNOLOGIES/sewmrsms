@@ -106,6 +106,7 @@ export const ModernSidebar = () => {
                 return (
                   <SidebarMenuItem key={item.title}>
                     {hasItems ? (
+                      // keep collapsible for items with sub-items
                       <Collapsible open={isOpen} onOpenChange={() => toggleItem(item.title)}>
                         <CollapsibleTrigger asChild>
                           <SidebarMenuButton className="group w-full transition-all duration-200 hover:bg-sidebar-accent rounded-lg">
@@ -130,14 +131,7 @@ export const ModernSidebar = () => {
                                 <SidebarMenuButton key={subItem.title} asChild>
                                   <NavLink
                                     to={subItem.url}
-                                    className={({ isActive }) =>
-                                      cn(
-                                        "flex items-center gap-2 px-3 py-2 text-sm rounded-md transition-all",
-                                        isActive
-                                          ? "bg-primary/10 text-primary font-medium"
-                                          : "text-sidebar-foreground/70 hover:text-sidebar-foreground hover:bg-sidebar-accent/50"
-                                      )
-                                    }
+                                    className="flex items-center gap-2 px-3 py-2 text-sm rounded-md transition-all"
                                   >
                                     <subItem.icon className="h-4 w-4 shrink-0" />
                                     <span>{subItem.title}</span>
@@ -149,20 +143,14 @@ export const ModernSidebar = () => {
                         )}
                       </Collapsible>
                     ) : (
+                      // for top-level items without sub-items, use NavLink directly
                       <SidebarMenuButton asChild>
                         <NavLink
                           to={item.url!}
-                          className={({ isActive }) =>
-                            cn(
-                              "flex items-center gap-3 px-3 py-2.5 text-sm rounded-lg w-full transition-all",
-                              isActive
-                                ? "bg-primary/10 text-primary font-medium"
-                                : "text-sidebar-foreground/70 hover:text-sidebar-foreground hover:bg-sidebar-accent/50"
-                            )
-                          }
+                          className="group w-full transition-all duration-200 hover:bg-sidebar-accent rounded-lg flex items-center px-3 py-2.5 text-sm font-medium text-sidebar-foreground"
                         >
                           <item.icon className="h-5 w-5 shrink-0" />
-                          {!isCollapsed && <span>{item.title}</span>}
+                          {!isCollapsed && <span className="ml-3">{item.title}</span>}
                         </NavLink>
                       </SidebarMenuButton>
                     )}
