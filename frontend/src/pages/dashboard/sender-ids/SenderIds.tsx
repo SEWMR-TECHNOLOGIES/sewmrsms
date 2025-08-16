@@ -1,5 +1,5 @@
 import React, { useState, useEffect } from 'react';
-import { Plus, Shield, CheckCircle, XCircle, Clock, AlertCircle, FileText } from 'lucide-react';
+import { Plus, Shield, CheckCircle, XCircle, Clock, AlertCircle } from 'lucide-react';
 import { Button } from '@/components/ui/button';
 import { Card, CardContent, CardDescription, CardHeader, CardTitle } from '@/components/ui/card';
 import { Badge } from '@/components/ui/badge';
@@ -89,7 +89,6 @@ export default function UserSenderRequests() {
   );
 
   const paginatedSenderIds = filteredSenderIds.slice((page - 1) * perPage, page * perPage);
-
   const totalPages = Math.ceil(filteredSenderIds.length / perPage);
 
   const columns: ColumnDef<SenderID>[] = [
@@ -172,6 +171,64 @@ export default function UserSenderRequests() {
         </Button>
       </div>
 
+      {/* Stats Cards */}
+      <div className="grid grid-cols-1 md:grid-cols-4 gap-4">
+        <Card>
+          <CardContent className="p-6">
+            <div className="flex items-center justify-between">
+              <div>
+                <p className="text-sm font-medium text-muted-foreground">Total Requests</p>
+                <p className="text-2xl font-bold">{senderIds.length}</p>
+              </div>
+              <Shield className="h-8 w-8 text-primary" />
+            </div>
+          </CardContent>
+        </Card>
+
+        <Card>
+          <CardContent className="p-6">
+            <div className="flex items-center justify-between">
+              <div>
+                <p className="text-sm font-medium text-muted-foreground">Approved</p>
+                <p className="text-2xl font-bold text-success">
+                  {senderIds.filter(s => s.status === 'approved').length}
+                </p>
+              </div>
+              <CheckCircle className="h-8 w-8 text-success" />
+            </div>
+          </CardContent>
+        </Card>
+
+        <Card>
+          <CardContent className="p-6">
+            <div className="flex items-center justify-between">
+              <div>
+                <p className="text-sm font-medium text-muted-foreground">Pending / Review</p>
+                <p className="text-2xl font-bold text-warning">
+                  {senderIds.filter(s => s.status === 'pending' || s.status === 'under_review').length}
+                </p>
+              </div>
+              <Clock className="h-8 w-8 text-warning" />
+            </div>
+          </CardContent>
+        </Card>
+
+        <Card>
+          <CardContent className="p-6">
+            <div className="flex items-center justify-between">
+              <div>
+                <p className="text-sm font-medium text-muted-foreground">Rejected</p>
+                <p className="text-2xl font-bold text-destructive">
+                  {senderIds.filter(s => s.status === 'rejected').length}
+                </p>
+              </div>
+              <XCircle className="h-8 w-8 text-destructive" />
+            </div>
+          </CardContent>
+        </Card>
+      </div>
+
+      {/* Search + Pagination info */}
       <div className="flex justify-between items-center">
         <input
           type="text"
@@ -185,16 +242,13 @@ export default function UserSenderRequests() {
         </div>
       </div>
 
+      {/* Table */}
       <Card className="relative">
         {loading && <Loader overlay />}
         <CardContent>
-          <DataTable
-            columns={columns}
-            data={paginatedSenderIds}
-          />
+          <DataTable columns={columns} data={paginatedSenderIds} />
         </CardContent>
       </Card>
-
 
       {/* Pagination Controls */}
       {totalPages > 1 && (
@@ -204,6 +258,7 @@ export default function UserSenderRequests() {
         </div>
       )}
 
+      {/* Empty State */}
       {senderIds.length === 0 && !loading && (
         <Card className="text-center py-12">
           <CardContent>
