@@ -82,7 +82,10 @@ export const ModernSidebar = () => {
   };
 
   return (
-    <Sidebar className={cn("h-full border-r border-sidebar-border bg-gradient-to-b from-sidebar-background to-sidebar-background/95 backdrop-blur-xl", isCollapsed ? "w-16" : "w-72")}>
+    <Sidebar className={cn(
+      "h-full border-r border-sidebar-border bg-gradient-to-b from-sidebar-background to-sidebar-background/95 backdrop-blur-xl",
+      isCollapsed ? "w-16" : "w-72"
+    )}>
       <SidebarHeader className="border-b border-sidebar-border bg-sidebar-background/50 backdrop-blur">
         <div className="flex items-center gap-3 px-6 py-4">
           <div className="flex h-8 w-8 items-center justify-center rounded-lg bg-primary text-primary-foreground font-bold text-sm">S</div>
@@ -99,7 +102,7 @@ export const ModernSidebar = () => {
         <SidebarGroup>
           <SidebarGroupContent>
             <SidebarMenu className="space-y-1">
-              {menuItems.map((item) => {
+              {menuItems.map(item => {
                 const isOpen = openItems.includes(item.title);
                 const hasItems = item.items && item.items.length > 0;
 
@@ -109,7 +112,7 @@ export const ModernSidebar = () => {
                       <CollapsibleTrigger asChild>
                         <SidebarMenuButton className="group w-full transition-all duration-200 hover:bg-sidebar-accent rounded-lg">
                           <div className="flex items-center justify-between w-full px-3 py-2.5 text-sm font-medium text-sidebar-foreground">
-                            <div className="flex items-center gap-3">
+                            <div className={cn("flex items-center gap-3", isCollapsed && "justify-center w-full")}>
                               <item.icon className="h-5 w-5 shrink-0" />
                               {!isCollapsed && <span>{item.title}</span>}
                             </div>
