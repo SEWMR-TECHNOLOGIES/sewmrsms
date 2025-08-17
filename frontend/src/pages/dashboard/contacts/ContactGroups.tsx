@@ -239,7 +239,7 @@ export default function ContactGroups() {
                 <TableRow key={group.uuid}>
                   <TableCell>{group.name}</TableCell>
                   <TableCell>{group.description || 'No description'}</TableCell>
-                  <TableCell><Badge variant="secondary">{group.contact_count} contacts</Badge></TableCell>
+                  <TableCell><Badge variant="secondary">{group.contact_count === 0 ? "No contacts" : group.contact_count === 1 ? "1 contact" : `${group.contact_count} contacts`}</Badge></TableCell>
                   <TableCell>{formatDate(group.created_at)}</TableCell>
                   <TableCell>{formatDate(group.updated_at)}</TableCell>
                   <TableCell className="flex space-x-2">
@@ -391,39 +391,45 @@ export default function ContactGroups() {
       {/* Quick Stats Cards */}
       <div className="grid gap-4 md:grid-cols-3">
         <Card>
-          <CardHeader className="flex flex-row items-center justify-between space-y-0 pb-2">
+            <CardHeader className="flex flex-row items-center justify-between space-y-0 pb-2">
             <CardTitle className="text-sm font-medium">Total Groups</CardTitle>
             <Users className="h-4 w-4 text-muted-foreground" />
-          </CardHeader>
-          <CardContent>
-            <div className="text-2xl font-bold">{groups.length}</div>
-          </CardContent>
+            </CardHeader>
+            <CardContent>
+            <div className="text-2xl font-bold">
+                {groups.length > 0 ? groups.length : "No groups yet"}
+            </div>
+            </CardContent>
         </Card>
 
         <Card>
-          <CardHeader className="flex flex-row items-center justify-between space-y-0 pb-2">
+            <CardHeader className="flex flex-row items-center justify-between space-y-0 pb-2">
             <CardTitle className="text-sm font-medium">Total Contacts</CardTitle>
             <Users className="h-4 w-4 text-muted-foreground" />
-          </CardHeader>
-          <CardContent>
+            </CardHeader>
+            <CardContent>
             <div className="text-2xl font-bold">
-              {groups.reduce((sum, g) => sum + g.contact_count, 0).toLocaleString()}
+                {groups.reduce((sum, g) => sum + g.contact_count, 0) > 0
+                ? groups.reduce((sum, g) => sum + g.contact_count, 0).toLocaleString()
+                : "No contacts yet"}
             </div>
-          </CardContent>
+            </CardContent>
         </Card>
 
         <Card>
-          <CardHeader className="flex flex-row items-center justify-between space-y-0 pb-2">
+            <CardHeader className="flex flex-row items-center justify-between space-y-0 pb-2">
             <CardTitle className="text-sm font-medium">Largest Group</CardTitle>
             <Users className="h-4 w-4 text-muted-foreground" />
-          </CardHeader>
-          <CardContent>
+            </CardHeader>
+            <CardContent>
             <div className="text-2xl font-bold">
-              {groups.length > 0 ? Math.max(...groups.map(g => g.contact_count)).toLocaleString() : 0}
+                {groups.length > 0 && Math.max(...groups.map(g => g.contact_count)) > 0
+                ? Math.max(...groups.map(g => g.contact_count)).toLocaleString()
+                : "No contacts in groups"}
             </div>
-          </CardContent>
+            </CardContent>
         </Card>
-      </div>
+        </div>
     </div>
   );
 }
