@@ -65,7 +65,7 @@ export default function ContactGroups() {
   // search + pagination
   const [searchQuery, setSearchQuery] = useState("");
   const [page, setPage] = useState(1);
-  const perPage = 10;
+  const [perPage] = useState(10);
 
   // fetch groups (table loader only)
   const fetchGroups = async () => {
@@ -185,12 +185,7 @@ export default function ContactGroups() {
 
   // search and pagination computations
   const filteredGroups = groups.filter(g => g.name.toLowerCase().includes(searchQuery.trim().toLowerCase()));
-  const totalPages = Math.max(1, Math.ceil(filteredGroups.length / perPage));
-  // auto-clamp page if filtering reduces pages
-  useEffect(() => {
-    if (page > totalPages) setPage(1);
-  }, [filteredGroups.length, totalPages, page]);
-
+  const totalPages = Math.ceil(filteredGroups.length / perPage);
   const paginatedGroups = filteredGroups.slice((page - 1) * perPage, page * perPage);
 
   // small helpers for stats using numeric coercion
@@ -251,13 +246,13 @@ export default function ContactGroups() {
           <Input
             placeholder="Search by group name..."
             value={searchQuery}
-            onChange={e => { setSearchQuery(e.target.value); setPage(1); }}
+            onChange={e => setSearchQuery(e.target.value)}
             className="pl-10 bg-muted/50 border-0 focus-visible:ring-1 w-full"
           />
         </div>
 
         <div className="text-sm text-muted-foreground whitespace-nowrap">
-          Page {page} of {totalPages}
+          Page {page} of {totalPages || 1}
         </div>
       </div>
 
@@ -356,8 +351,8 @@ export default function ContactGroups() {
       {/* Pagination controls */}
       {totalPages > 1 && (
         <div className="flex justify-end gap-2">
-          <Button disabled={page === 1} onClick={() => setPage(prev => Math.max(1, prev - 1))}>Previous</Button>
-          <Button disabled={page === totalPages} onClick={() => setPage(prev => Math.min(totalPages, prev + 1))}>Next</Button>
+          <Button disabled={page === 1} onClick={() => setPage(page - 1)}>Previous</Button>
+          <Button disabled={page === totalPages} onClick={() => setPage(page + 1)}>Next</Button>
         </div>
       )}
 
