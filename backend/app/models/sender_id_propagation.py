@@ -1,5 +1,5 @@
 # backend/app/models/sender_id_propagation.py
-from sqlalchemy import Column, Integer, ForeignKey, Enum, DateTime
+from sqlalchemy import Column, Integer, ForeignKey, Enum, DateTime, Text
 from sqlalchemy.dialects.postgresql import UUID
 from sqlalchemy.sql import func
 import uuid
@@ -15,5 +15,7 @@ class SenderIdPropagation(Base):
     request_id = Column(Integer, ForeignKey('sender_id_requests.id', ondelete='CASCADE'), nullable=False)
     network_id = Column(Integer, ForeignKey('networks.id', ondelete='CASCADE'), nullable=False)
     status = Column(Enum(PropagationStatusEnum), default=PropagationStatusEnum.pending)
+    details = Column(Text, nullable=False, default='No additional details provided')
     created_at = Column(DateTime, nullable=False, server_default=func.now())
     updated_at = Column(DateTime, nullable=False, server_default=func.now(), onupdate=func.now())
+

@@ -6,6 +6,7 @@ from sqlalchemy.ext.declarative import declarative_base
 from sqlalchemy.sql import func
 import enum
 import uuid
+from sqlalchemy.orm import relationship
 
 Base = declarative_base()
 
@@ -97,6 +98,7 @@ class Contact(Base):
     is_blacklisted = Column(Boolean, default=False)
     created_at = Column(DateTime, nullable=False, server_default=func.now())
     updated_at = Column(DateTime, nullable=False, server_default=func.now(), onupdate=func.now())
+    group = relationship("ContactGroup", backref="contacts", lazy="joined")
 
 
 class Network(Base):
@@ -212,7 +214,6 @@ class SenderIdRequest(Base):
     created_at = Column(DateTime, nullable=False, server_default=func.now())
     updated_at = Column(DateTime, nullable=False, server_default=func.now(), onupdate=func.now())
 
-
 class SenderIdPropagation(Base):
     __tablename__ = 'sender_id_propagations'
 
@@ -221,6 +222,7 @@ class SenderIdPropagation(Base):
     request_id = Column(Integer, ForeignKey('sender_id_requests.id', ondelete='CASCADE'), nullable=False)
     network_id = Column(Integer, ForeignKey('networks.id', ondelete='CASCADE'), nullable=False)
     status = Column(Enum(PropagationStatusEnum), default=PropagationStatusEnum.pending)
+    details = Column(Text, nullable=False, default='No additional details provided')
     created_at = Column(DateTime, nullable=False, server_default=func.now())
     updated_at = Column(DateTime, nullable=False, server_default=func.now(), onupdate=func.now())
 

@@ -70,7 +70,7 @@ export const DashboardHeader = () => {
         <div className="flex items-center space-x-4">
           {/* SMS Credits Badge */}
           <Badge variant="secondary" className="bg-primary/10 text-primary">
-            {user?.remaining_sms ?? 0} SMS
+            {user?.remaining_sms ?? 0} Credits
           </Badge>
 
           {/* Notifications */}

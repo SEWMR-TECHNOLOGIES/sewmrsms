@@ -317,14 +317,33 @@ def get_sender_id_propagation_status(
         data.append({
             "network_name": network.name,
             "network_uuid": str(network.uuid),
-            "color_code": network.color_code,  # optional, UI can ignore
+            "color_code": network.color_code,  # optional
             "status": propagation.status.value if propagation else PropagationStatusEnum.pending.value,
-            "updated_at": propagation.updated_at.strftime("%Y-%m-%d %H:%M:%S") if propagation and propagation.updated_at else None
+            "updated_at": propagation.updated_at.strftime("%Y-%m-%d %H:%M:%S") 
+                          if propagation and propagation.updated_at else None,
+            "details": propagation.details if propagation and propagation.details else "No additional details provided"
         })
+
+    # Compute overall status
+    all_statuses = [item["status"] for item in data]
+    if all(s == "propagated" for s in all_statuses):
+        overall_status = "propagated"
+    elif all(s == "failed" for s in all_statuses):
+        overall_status = "failed"
+    elif any(s == "propagated" for s in all_statuses):
+        overall_status = "partial"
+    else:
+        overall_status = "pending"
+
+    # Last checked timestamp
+    last_checked = datetime.now(pytz.timezone("Africa/Nairobi")).replace(tzinfo=None).isoformat()
 
     return {
         "success": True,
         "message": "Propagation status retrieved successfully",
+        "sender_id": request_obj.sender_alias,
+        "overall_status": overall_status,
+        "last_checked": last_checked,
         "data": data
     }
 

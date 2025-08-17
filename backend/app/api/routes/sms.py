@@ -388,6 +388,8 @@ async def quick_send_group_sms(
     contacts_query = db.query(Contact).filter(Contact.user_id == user.id, Contact.is_blacklisted == False)
     if group_uuid_str == "all":
         contacts = contacts_query.all()
+    elif group_uuid_str == "none":
+        contacts = contacts_query.filter(Contact.group_id == None).all()  
     else:
         try:
             group_uuid = uuid.UUID(group_uuid_str)

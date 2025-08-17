@@ -4,7 +4,7 @@ from fastapi import APIRouter, Path, Request, Depends, UploadFile, File, HTTPExc
 from fastapi.responses import JSONResponse
 from sqlalchemy.orm import Session
 from sqlalchemy import and_, func, or_
-from typing import List, Optional
+from typing import Dict, List, Optional
 from datetime import datetime
 import pytz
 from utils.helpers import normalize_str, parse_contacts_csv, parse_contacts_textarea
@@ -64,6 +64,67 @@ async def create_contact_group(
             "created_at": now.strftime("%Y-%m-%d %H:%M:%S")
         }
     }
+
+@router.get("/grouped")
+def get_all_contacts_grouped(
+    current_user: User = Depends(get_current_user),
+    db: Session = Depends(get_db)
+):
+    # Fetch all contacts for the user
+    contacts = db.query(Contact).filter(Contact.user_id == current_user.id).all()
+
+    grouped_contacts: Dict[str, List[Dict]] = {}
+    grouped_contacts["all"] = []   # Virtual "all" group
+    grouped_contacts["none"] = []  # Virtual "none" group for ungrouped
+
+    for c in contacts:
+        contact_dict = {
+            "id": c.id,
+            "uuid": str(c.uuid),
+            "name": c.name,
+            "phone": c.phone,
+            "email": c.email,
+            "group_uuid": str(c.group.uuid) if c.group else None,
+            "group_name": c.group.name if c.group else "Ungrouped",
+            "created_at": c.created_at.strftime("%Y-%m-%d %H:%M:%S")
+        }
+
+        # Add to virtual "all"
+        grouped_contacts["all"].append(contact_dict)
+
+        # Add to actual group if exists
+        if c.group:
+            gid = str(c.group.uuid)
+            if gid not in grouped_contacts:
+                grouped_contacts[gid] = []
+            grouped_contacts[gid].append(contact_dict)
+        else:
+            # Add to virtual "none" if ungrouped
+            grouped_contacts["none"].append(contact_dict)
+
+    # Convert each group to include count and display name
+    grouped_with_count = {}
+    for key, lst in grouped_contacts.items():
+        if key == "all":
+            display_name = "All Contacts"
+        elif key == "none":
+            display_name = "Ungrouped"
+        else:
+            # Take first contact's group name as actual name
+            display_name = lst[0]["group_name"] if lst else "Unnamed Group"
+
+        grouped_with_count[key] = {
+            "count": len(lst),
+            "group_name": display_name,
+            "contacts": lst
+        }
+
+    return {
+        "success": True,
+        "message": f"Fetched {len(contacts)} contacts grouped",
+        "data": grouped_with_count
+    }
+
 
 @router.get("/groups")
 def list_contact_groups(

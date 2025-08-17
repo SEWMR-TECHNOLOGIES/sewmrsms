@@ -196,9 +196,11 @@ CREATE TABLE sender_id_propagations (
   request_id INT NOT NULL REFERENCES sender_id_requests(id) ON DELETE CASCADE,
   network_id INT NOT NULL REFERENCES networks(id) ON DELETE CASCADE,
   status propagation_status_enum DEFAULT 'pending',
+  details TEXT NOT NULL DEFAULT 'No additional details provided',
   created_at TIMESTAMP NOT NULL DEFAULT CURRENT_TIMESTAMP,
   updated_at TIMESTAMP NOT NULL DEFAULT CURRENT_TIMESTAMP
 );
+
 
 -- User subscriptions
 CREATE TABLE user_subscriptions (
