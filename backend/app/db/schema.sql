@@ -51,9 +51,11 @@ CREATE TABLE contact_groups (
   uuid UUID NOT NULL DEFAULT uuid_generate_v4() UNIQUE,
   user_id INT NOT NULL REFERENCES users(id) ON DELETE CASCADE,
   name TEXT NOT NULL,
+  description TEXT,
   created_at TIMESTAMP NOT NULL DEFAULT CURRENT_TIMESTAMP,
   updated_at TIMESTAMP NOT NULL DEFAULT CURRENT_TIMESTAMP
 );
+
 
 -- Contacts
 CREATE TABLE contacts (

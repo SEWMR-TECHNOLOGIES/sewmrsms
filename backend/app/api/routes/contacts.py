@@ -65,6 +65,71 @@ async def create_contact_group(
         }
     }
 
+@router.put("/groups/edit/{group_uuid}")
+async def edit_contact_group(
+    group_uuid: str,
+    request: Request,
+    current_user: User = Depends(get_current_user),
+    db: Session = Depends(get_db)
+):
+    # Ensure content type is JSON
+    content_type = request.headers.get("content-type", "")
+    if "application/json" not in content_type.lower():
+        return {
+            "success": False,
+            "message": "Invalid content type. Expected application/json",
+            "data": None
+        }
+
+    data = await request.json()
+    name = data.get("name", "").strip()
+    description = data.get("description")  # can be None or empty
+
+    if not name:
+        return {"success": False, "message": "Contact group name is required", "data": None}
+
+    # Fetch the group
+    group = db.query(ContactGroup).filter(
+        ContactGroup.uuid == group_uuid,
+        ContactGroup.user_id == current_user.id
+    ).first()
+
+    if not group:
+        return {"success": False, "message": "Contact group not found or no permission", "data": None}
+
+    # Check for duplicate name excluding current group (case-insensitive)
+    exists = db.query(ContactGroup).filter(
+        ContactGroup.user_id == current_user.id,
+        func.lower(ContactGroup.name) == func.lower(name),
+        ContactGroup.id != group.id
+    ).first()
+    if exists:
+        return {"success": False, "message": "Another contact group with this name already exists", "data": None}
+
+    # Update fields
+    group.name = name
+    group.description = description.strip() if description and description.strip() else None
+    group.updated_at = datetime.now(pytz.timezone("Africa/Nairobi")).replace(tzinfo=None)
+
+    try:
+        db.commit()
+        db.refresh(group)
+    except Exception as e:
+        return {"success": False, "message": f"Database error: {str(e)}", "data": None}
+
+    return {
+        "success": True,
+        "message": "Contact group updated successfully",
+        "data": {
+            "id": group.id,
+            "uuid": str(group.uuid),
+            "name": group.name,
+            "description": group.description if group.description else "No description provided",
+            "created_at": group.created_at.strftime("%Y-%m-%d %H:%M:%S"),
+            "updated_at": group.updated_at.strftime("%Y-%m-%d %H:%M:%S")
+        }
+    }
+
 @router.get("/grouped")
 def get_all_contacts_grouped(
     current_user: User = Depends(get_current_user),
@@ -139,7 +204,10 @@ def list_contact_groups(
             "id": g.id,
             "uuid": str(g.uuid),
             "name": g.name,
+            "description": g.description if g.description else "No description provided",
+            "contact_count": len(contacts),
             "created_at": g.created_at.strftime("%Y-%m-%d %H:%M:%S"),
+            "updated_at": g.updated_at.strftime("%Y-%m-%d %H:%M:%S"),
             "contacts": [
                 {
                     "id": c.id,
@@ -151,7 +219,12 @@ def list_contact_groups(
                 } for c in contacts
             ]
         })
-    return {"success": True, "message": f"Found {len(groups)} contact groups", "data": data}
+    return {
+        "success": True,
+        "message": f"Found {len(groups)} contact groups",
+        "data": data
+    }
+
 
 @router.get("/groups/{group_uuid}")
 def get_contact_group(
@@ -174,7 +247,10 @@ def get_contact_group(
             "id": group.id,
             "uuid": str(group.uuid),
             "name": group.name,
+            "description": group.description if group.description else "No description provided",
             "created_at": group.created_at.strftime("%Y-%m-%d %H:%M:%S"),
+            "updated_at": group.updated_at.strftime("%Y-%m-%d %H:%M:%S"),
+            "contact_count": len(contacts),
             "contacts": [
                 {
                     "id": c.id,
@@ -187,6 +263,7 @@ def get_contact_group(
             ]
         }
     }
+
 @router.post("/add-contacts")
 async def create_contacts(
     request: Request,

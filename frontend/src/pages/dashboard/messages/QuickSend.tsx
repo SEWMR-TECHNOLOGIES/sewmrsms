@@ -223,6 +223,7 @@ export default function QuickSend() {
       const response = await fetch(endpoint, {
         method: 'POST',
         headers: { 'Content-Type': 'application/json' },
+        credentials: 'include', 
         body: JSON.stringify({
           sender_id: selectedSender,
           message,
