@@ -1,24 +1,29 @@
-import React, { useState, useEffect } from 'react';
-import { Card, CardContent, CardDescription, CardHeader, CardTitle } from '@/components/ui/card';
-import { Button } from '@/components/ui/button';
-import { Input } from '@/components/ui/input';
-import { Label } from '@/components/ui/label';
-import { Badge } from '@/components/ui/badge';
-import { Table, TableBody, TableCell, TableHead, TableHeader, TableRow } from '@/components/ui/table';
+import React, { useEffect, useState } from "react";
+import { Card, CardContent, CardHeader, CardTitle, CardDescription } from "@/components/ui/card";
+import { Button } from "@/components/ui/button";
+import { Input } from "@/components/ui/input";
+import { Badge } from "@/components/ui/badge";
+import {
+  Table,
+  TableBody,
+  TableCell,
+  TableHead,
+  TableHeader,
+  TableRow,
+} from "@/components/ui/table";
 import {
   AlertDialog,
   AlertDialogAction,
   AlertDialogCancel,
   AlertDialogContent,
-  AlertDialogDescription,
   AlertDialogFooter,
   AlertDialogHeader,
   AlertDialogTitle,
   AlertDialogTrigger,
-} from '@/components/ui/alert-dialog';
-import { Loader } from '@/components/ui/loader';
-import { Users, Plus, Trash2, Edit } from 'lucide-react';
-import { useToast } from '@/hooks/use-toast';
+} from "@/components/ui/alert-dialog";
+import { Loader } from "@/components/ui/loader";
+import { Users, Plus, Trash2, Edit, Search } from "lucide-react";
+import { useToast } from "@/hooks/use-toast";
 
 interface ContactGroup {
   id: string;
@@ -30,40 +35,55 @@ interface ContactGroup {
   updated_at: string;
 }
 
-const BASE_URL = 'https://api.sewmrsms.co.tz/api/v1/contacts';
+const BASE_URL = "https://api.sewmrsms.co.tz/api/v1/contacts";
 
 export default function ContactGroups() {
+  const { toast } = useToast();
+
+  // data
   const [groups, setGroups] = useState<ContactGroup[]>([]);
+
+  // table loading only
   const [loading, setLoading] = useState(true);
 
-  // Button/loading states
+  // create form
+  const [newGroupName, setNewGroupName] = useState("");
+  const [newGroupDescription, setNewGroupDescription] = useState("");
   const [creating, setCreating] = useState(false);
-  const [newGroupName, setNewGroupName] = useState('');
-  const [newGroupDescription, setNewGroupDescription] = useState('');
 
-  // Edit modal state
+  // edit modal
   const [editingGroup, setEditingGroup] = useState<ContactGroup | null>(null);
   const [updating, setUpdating] = useState(false);
 
-  // Delete dialog state (controlled single dialog)
+  // delete dialog
   const [deletingGroup, setDeletingGroup] = useState<ContactGroup | null>(null);
   const [deletingUuid, setDeletingUuid] = useState<string | null>(null);
 
-  // Row-level refresh indicator (general)
+  // small spinner for row-level refreshes
   const [refreshing, setRefreshing] = useState(false);
 
-  const { toast } = useToast();
+  // search + pagination
+  const [searchQuery, setSearchQuery] = useState("");
+  const [page, setPage] = useState(1);
+  const perPage = 10;
 
-  // Fetch all contact groups
+  // fetch groups (table loader only)
   const fetchGroups = async () => {
     setLoading(true);
     try {
-      const res = await fetch(`${BASE_URL}/groups`, { credentials: 'include' });
+      const res = await fetch(`${BASE_URL}/groups`, { credentials: "include" });
       const json = await res.json();
-      if (res.ok && json.success) setGroups(json.data);
-      else throw new Error(json.message || 'Failed to fetch groups');
-    } catch (error: any) {
-      toast({ title: 'Error', description: error?.message || 'Failed to load contact groups', variant: 'destructive' });
+      if (!res.ok || !json.success) {
+        throw new Error(json.message || "Failed to fetch groups");
+      }
+      // ensure numeric contact_count
+      const normalized: ContactGroup[] = json.data.map((g: any) => ({
+        ...g,
+        contact_count: Number(g.contact_count || 0),
+      }));
+      setGroups(normalized);
+    } catch (err: any) {
+      toast({ title: "Error", description: err?.message || "Failed to load contact groups", variant: "destructive" });
     } finally {
       setLoading(false);
     }
@@ -73,102 +93,112 @@ export default function ContactGroups() {
     fetchGroups();
   }, []);
 
-  // Create group
+  // create group
   const createGroup = async () => {
     if (!newGroupName.trim()) {
-      toast({ title: 'Error', description: 'Please enter a group name', variant: 'destructive' });
+      toast({ title: "Error", description: "Please enter a group name", variant: "destructive" });
       return;
     }
 
     setCreating(true);
     try {
       const res = await fetch(`${BASE_URL}/groups/create`, {
-        method: 'POST',
-        credentials: 'include',
-        headers: { 'Content-Type': 'application/json' },
+        method: "POST",
+        credentials: "include",
+        headers: { "Content-Type": "application/json" },
         body: JSON.stringify({ name: newGroupName, description: newGroupDescription }),
       });
       const json = await res.json();
 
       if (!res.ok || !json.success) {
-        toast({ title: 'Error', description: json.message || 'Failed to create group', variant: 'destructive' });
+        toast({ title: "Error", description: json.message || "Failed to create group", variant: "destructive" });
         return;
       }
 
-      setGroups([json.data, ...groups]);
-      setNewGroupName('');
-      setNewGroupDescription('');
-      toast({ title: 'Success', description: json.message || 'Contact group created', variant: 'success' });
-    } catch (error: any) {
-      toast({ title: 'Error', description: error?.message || 'Failed to create group', variant: 'destructive' });
+      const newItem = { ...json.data, contact_count: Number(json.data.contact_count || 0) } as ContactGroup;
+      setGroups(prev => [newItem, ...prev]);
+      setNewGroupName("");
+      setNewGroupDescription("");
+      toast({ title: "Success", description: json.message || "Contact group created", variant: "success" });
+    } catch (err: any) {
+      toast({ title: "Error", description: err?.message || "Failed to create group", variant: "destructive" });
     } finally {
       setCreating(false);
     }
   };
 
-  // Edit group (Save from modal)
+  // edit group
   const editGroup = async () => {
     if (!editingGroup) return;
     if (!editingGroup.name.trim()) {
-      toast({ title: 'Error', description: 'Please enter a group name', variant: 'destructive' });
+      toast({ title: "Error", description: "Please enter a group name", variant: "destructive" });
       return;
     }
-
     setUpdating(true);
     try {
       const res = await fetch(`${BASE_URL}/groups/edit/${editingGroup.uuid}`, {
-        method: 'PUT',
-        credentials: 'include',
-        headers: { 'Content-Type': 'application/json' },
+        method: "PUT",
+        credentials: "include",
+        headers: { "Content-Type": "application/json" },
         body: JSON.stringify({ name: editingGroup.name, description: editingGroup.description }),
       });
       const json = await res.json();
-
       if (!res.ok || !json.success) {
-        toast({ title: 'Error', description: json.message || 'Failed to update group', variant: 'destructive' });
+        toast({ title: "Error", description: json.message || "Failed to update group", variant: "destructive" });
         return;
       }
 
-      setGroups(groups.map(g => (g.uuid === editingGroup.uuid ? json.data : g)));
-      // leave modal open until we explicitly close (we'll close after success)
+      setGroups(prev => prev.map(g => (g.uuid === editingGroup.uuid ? { ...json.data, contact_count: Number(json.data.contact_count || 0) } : g)));
+      // close modal only after success
       setEditingGroup(null);
-      toast({ title: 'Success', description: json.message || 'Contact group updated', variant: 'success' });
-    } catch (error: any) {
-      toast({ title: 'Error', description: error?.message || 'Failed to update contact group', variant: 'destructive' });
+      toast({ title: "Success", description: json.message || "Contact group updated", variant: "success" });
+    } catch (err: any) {
+      toast({ title: "Error", description: err?.message || "Failed to update contact group", variant: "destructive" });
     } finally {
       setUpdating(false);
     }
   };
 
-  // Delete group (confirmed via controlled dialog)
+  // delete group
   const deleteGroup = async (uuid: string) => {
     if (!uuid) return;
-    setDeletingUuid(uuid); // mark which row is being deleted
+    setDeletingUuid(uuid);
     setRefreshing(true);
     try {
-      const res = await fetch(`${BASE_URL}/groups/${uuid}/remove`, { method: 'DELETE', credentials: 'include' });
+      const res = await fetch(`${BASE_URL}/groups/${uuid}/remove`, { method: "DELETE", credentials: "include" });
       const json = await res.json();
-
       if (!res.ok || !json.success) {
-        toast({ title: 'Error', description: json.message || 'Failed to delete group', variant: 'destructive' });
+        toast({ title: "Error", description: json.message || "Failed to delete group", variant: "destructive" });
         return;
       }
 
-      setGroups(groups.filter(g => g.uuid !== uuid));
-      // close dialog only after success
-      setDeletingGroup(null);
-      toast({ title: 'Success', description: json.message || 'Contact group deleted', variant: 'success' });
-    } catch (error: any) {
-      toast({ title: 'Error', description: error?.message || 'Failed to delete contact group', variant: 'destructive' });
+      setGroups(prev => prev.filter(g => g.uuid !== uuid));
+      setDeletingGroup(null); // close dialog after success
+      toast({ title: "Success", description: json.message || "Contact group deleted", variant: "success" });
+    } catch (err: any) {
+      toast({ title: "Error", description: err?.message || "Failed to delete contact group", variant: "destructive" });
     } finally {
       setDeletingUuid(null);
       setRefreshing(false);
     }
   };
 
-  const formatDate = (dateString: string) => new Date(dateString).toLocaleDateString('en-US', { year: 'numeric', month: 'short', day: 'numeric' });
+  // search and pagination computations
+  const filteredGroups = groups.filter(g => g.name.toLowerCase().includes(searchQuery.trim().toLowerCase()));
+  const totalPages = Math.max(1, Math.ceil(filteredGroups.length / perPage));
+  // auto-clamp page if filtering reduces pages
+  useEffect(() => {
+    if (page > totalPages) setPage(1);
+  }, [filteredGroups.length, totalPages, page]);
 
-  if (loading) return <Loader overlay />;
+  const paginatedGroups = filteredGroups.slice((page - 1) * perPage, page * perPage);
+
+  // small helpers for stats using numeric coercion
+  const totalContacts = groups.reduce((sum, g) => sum + Number(g.contact_count || 0), 0);
+  const largestGroup = groups.length > 0 ? Math.max(...groups.map(g => Number(g.contact_count || 0))) : 0;
+
+  const formatDate = (dateString: string) =>
+    new Date(dateString).toLocaleDateString("en-US", { year: "numeric", month: "short", day: "numeric" });
 
   return (
     <div className="space-y-6">
@@ -177,14 +207,17 @@ export default function ContactGroups() {
         <p className="text-muted-foreground">Organize your contacts into groups for targeted messaging.</p>
       </div>
 
-      {/* Create Group */}
+      {/* Create Group inline */}
       <Card>
         <CardHeader>
-          <CardTitle className="flex items-center gap-2"><Plus className="h-5 w-5" />Create New Group</CardTitle>
+          <CardTitle className="flex items-center gap-2">
+            <Plus className="h-5 w-5" />
+            Create New Group
+          </CardTitle>
           <CardDescription>Organize your contacts into a new group</CardDescription>
         </CardHeader>
-        <CardContent className="space-y-4">
-          <div className="flex items-center space-x-2">
+        <CardContent>
+          <div className="flex items-center gap-2">
             <Input
               className="flex-1"
               placeholder="Group Name"
@@ -197,11 +230,7 @@ export default function ContactGroups() {
               value={newGroupDescription}
               onChange={e => setNewGroupDescription(e.target.value)}
             />
-            <Button
-              onClick={createGroup}
-              disabled={creating || !newGroupName.trim()}
-              className="flex items-center gap-2"
-            >
+            <Button onClick={createGroup} disabled={creating || !newGroupName.trim()} className="flex items-center gap-2">
               {creating ? (
                 <>
                   <div className="animate-spin rounded-full h-4 w-4 border-b-2 border-white" />
@@ -215,14 +244,37 @@ export default function ContactGroups() {
         </CardContent>
       </Card>
 
-      {/* Groups Table */}
+      {/* Search + pagination info */}
+      <div className="flex items-center justify-between gap-4">
+        <div className="relative max-w-md flex-1">
+          <Search className="absolute left-3 top-1/2 transform -translate-y-1/2 text-muted-foreground h-4 w-4" />
+          <Input
+            placeholder="Search by group name..."
+            value={searchQuery}
+            onChange={e => { setSearchQuery(e.target.value); setPage(1); }}
+            className="pl-10 bg-muted/50 border-0 focus-visible:ring-1 w-full"
+          />
+        </div>
+
+        <div className="text-sm text-muted-foreground whitespace-nowrap">
+          Page {page} of {totalPages}
+        </div>
+      </div>
+
+      {/* Table card: loader overlays on table only */}
       <Card>
         <CardHeader>
-          <CardTitle className="flex items-center gap-2"><Users className="h-5 w-5" />Your Contact Groups ({groups.length})</CardTitle>
+          <CardTitle className="flex items-center gap-2">
+            <Users className="h-5 w-5" />
+            Your Contact Groups ({groups.length})
+          </CardTitle>
           <CardDescription>Manage your contact groups</CardDescription>
         </CardHeader>
+
         <CardContent className="relative">
-          {refreshing && <Loader overlay />}
+          {/* loader overlay on table only */}
+          {loading && <Loader overlay />}
+
           <Table>
             <TableHeader>
               <TableRow>
@@ -235,15 +287,18 @@ export default function ContactGroups() {
               </TableRow>
             </TableHeader>
             <TableBody>
-              {groups.map(group => (
+              {paginatedGroups.map(group => (
                 <TableRow key={group.uuid}>
                   <TableCell>{group.name}</TableCell>
-                  <TableCell>{group.description || 'No description'}</TableCell>
-                  <TableCell><Badge variant="secondary">{group.contact_count === 0 ? "No contacts" : group.contact_count === 1 ? "1 contact" : `${group.contact_count} contacts`}</Badge></TableCell>
+                  <TableCell>{group.description || "No description"}</TableCell>
+                  <TableCell>
+                    <Badge variant="secondary">
+                      {group.contact_count === 0 ? "No contacts" : group.contact_count === 1 ? "1 contact" : `${group.contact_count} contacts`}
+                    </Badge>
+                  </TableCell>
                   <TableCell>{formatDate(group.created_at)}</TableCell>
                   <TableCell>{formatDate(group.updated_at)}</TableCell>
                   <TableCell className="flex space-x-2">
-                    {/* Edit trigger: opens edit modal */}
                     <Button
                       variant="outline"
                       size="sm"
@@ -263,13 +318,12 @@ export default function ContactGroups() {
                       )}
                     </Button>
 
-                    {/* Delete trigger: open controlled delete dialog by setting deletingGroup */}
                     <Button
                       variant="outline"
                       size="sm"
                       onClick={() => setDeletingGroup(group)}
                       className="flex items-center gap-2"
-                      disabled={!!deletingUuid} // disable while any delete in progress
+                      disabled={!!deletingUuid}
                     >
                       {deletingUuid === group.uuid ? (
                         <>
@@ -285,25 +339,44 @@ export default function ContactGroups() {
                   </TableCell>
                 </TableRow>
               ))}
+
+              {/* empty state for filtered results */}
+              {paginatedGroups.length === 0 && !loading && (
+                <TableRow>
+                  <TableCell colSpan={6} className="text-center py-6 text-muted-foreground">
+                    {filteredGroups.length === 0 ? "No groups found" : "No items on this page"}
+                  </TableCell>
+                </TableRow>
+              )}
             </TableBody>
           </Table>
         </CardContent>
       </Card>
 
-      {/* Edit Modal */}
+      {/* Pagination controls */}
+      {totalPages > 1 && (
+        <div className="flex justify-end gap-2">
+          <Button disabled={page === 1} onClick={() => setPage(prev => Math.max(1, prev - 1))}>Previous</Button>
+          <Button disabled={page === totalPages} onClick={() => setPage(prev => Math.min(totalPages, prev + 1))}>Next</Button>
+        </div>
+      )}
+
+      {/* Edit modal - prevents closing while updating */}
       {editingGroup && (
-        <AlertDialog open={!!editingGroup} onOpenChange={(open) => {
-          // prevent closing while updating
-          if (!open && updating) return;
-          if (!open) setEditingGroup(null);
-        }}>
+        <AlertDialog
+          open={!!editingGroup}
+          onOpenChange={(open) => {
+            if (!open && updating) return; // prevent close while updating
+            if (!open) setEditingGroup(null);
+          }}
+        >
           <AlertDialogContent>
             <AlertDialogHeader>
               <AlertDialogTitle>Edit Contact Group</AlertDialogTitle>
-              <AlertDialogDescription>Edit name or description for "{editingGroup.name}"</AlertDialogDescription>
             </AlertDialogHeader>
-            <CardContent className="space-y-2">
-              <div className="flex items-center space-x-2">
+
+            <div className="p-4">
+              <div className="flex items-center gap-2">
                 <Input
                   className="flex-1"
                   value={editingGroup.name}
@@ -311,12 +384,12 @@ export default function ContactGroups() {
                 />
                 <Input
                   className="flex-1"
-                  value={editingGroup.description || ''}
+                  value={editingGroup.description || ""}
                   onChange={e => setEditingGroup({ ...editingGroup, description: e.target.value })}
-                  placeholder="Description (optional)"
                 />
               </div>
-            </CardContent>
+            </div>
+
             <AlertDialogFooter>
               <AlertDialogCancel onClick={() => !updating && setEditingGroup(null)} disabled={updating}>
                 {updating ? (
@@ -325,10 +398,10 @@ export default function ContactGroups() {
                     Cancelling...
                   </div>
                 ) : (
-                  'Cancel'
+                  "Cancel"
                 )}
               </AlertDialogCancel>
-              {/* Use AlertDialogAction as save; keep it disabled while updating */}
+
               <AlertDialogAction onClick={editGroup} disabled={updating}>
                 {updating ? (
                   <div className="flex items-center gap-2">
@@ -336,7 +409,7 @@ export default function ContactGroups() {
                     Saving...
                   </div>
                 ) : (
-                  'Save Changes'
+                  "Save Changes"
                 )}
               </AlertDialogAction>
             </AlertDialogFooter>
@@ -344,19 +417,27 @@ export default function ContactGroups() {
         </AlertDialog>
       )}
 
-      {/* Controlled Delete Dialog (single instance) */}
-      <AlertDialog open={!!deletingGroup} onOpenChange={(open) => {
-        // prevent closing while delete in progress for this group
-        if (!open && deletingUuid) return;
-        if (!open) setDeletingGroup(null);
-      }}>
+      {/* Controlled Delete Dialog */}
+      <AlertDialog
+        open={!!deletingGroup}
+        onOpenChange={(open) => {
+          if (!open && deletingUuid) return;
+          if (!open) setDeletingGroup(null);
+        }}
+      >
         <AlertDialogContent>
           <AlertDialogHeader>
             <AlertDialogTitle>Delete Contact Group</AlertDialogTitle>
-            <AlertDialogDescription>
-              {deletingGroup ? `Are you sure you want to delete "${deletingGroup.name}"? This will remove ${deletingGroup.contact_count} contacts. This action cannot be undone.` : 'Are you sure?'}
-            </AlertDialogDescription>
           </AlertDialogHeader>
+
+          <div className="p-4">
+            <p className="text-sm text-muted-foreground">
+              {deletingGroup
+                ? `Are you sure you want to delete "${deletingGroup.name}"? This will remove ${deletingGroup.contact_count} contacts. This action cannot be undone.`
+                : "Are you sure?"}
+            </p>
+          </div>
+
           <AlertDialogFooter>
             <AlertDialogCancel onClick={() => !deletingUuid && setDeletingGroup(null)} disabled={!!deletingUuid}>
               {deletingUuid ? (
@@ -365,11 +446,10 @@ export default function ContactGroups() {
                   Cancelling...
                 </div>
               ) : (
-                'Cancel'
+                "Cancel"
               )}
             </AlertDialogCancel>
 
-            {/* We use a normal button-ish action (AlertDialogAction) but deleteGroup controls closing */}
             <AlertDialogAction
               onClick={() => deletingGroup && deleteGroup(deletingGroup.uuid)}
               className="bg-destructive text-destructive-foreground hover:bg-destructive/90"
@@ -381,7 +461,7 @@ export default function ContactGroups() {
                   Deleting...
                 </div>
               ) : (
-                'Delete Group'
+                "Delete Group"
               )}
             </AlertDialogAction>
           </AlertDialogFooter>
@@ -391,45 +471,37 @@ export default function ContactGroups() {
       {/* Quick Stats Cards */}
       <div className="grid gap-4 md:grid-cols-3">
         <Card>
-            <CardHeader className="flex flex-row items-center justify-between space-y-0 pb-2">
+          <CardHeader className="flex flex-row items-center justify-between space-y-0 pb-2">
             <CardTitle className="text-sm font-medium">Total Groups</CardTitle>
             <Users className="h-4 w-4 text-muted-foreground" />
-            </CardHeader>
-            <CardContent>
-            <div className="text-2xl font-bold">
-                {groups.length > 0 ? groups.length : "No groups yet"}
-            </div>
-            </CardContent>
+          </CardHeader>
+          <CardContent>
+            <div className="text-2xl font-bold">{groups.length > 0 ? groups.length : "No groups yet"}</div>
+          </CardContent>
         </Card>
 
         <Card>
-            <CardHeader className="flex flex-row items-center justify-between space-y-0 pb-2">
+          <CardHeader className="flex flex-row items-center justify-between space-y-0 pb-2">
             <CardTitle className="text-sm font-medium">Total Contacts</CardTitle>
             <Users className="h-4 w-4 text-muted-foreground" />
-            </CardHeader>
-            <CardContent>
+          </CardHeader>
+          <CardContent>
             <div className="text-2xl font-bold">
-                {groups.reduce((sum, g) => sum + g.contact_count, 0) > 0
-                ? groups.reduce((sum, g) => sum + g.contact_count, 0).toLocaleString()
-                : "No contacts yet"}
+              {totalContacts > 0 ? totalContacts.toLocaleString() : "No contacts yet"}
             </div>
-            </CardContent>
+          </CardContent>
         </Card>
 
         <Card>
-            <CardHeader className="flex flex-row items-center justify-between space-y-0 pb-2">
+          <CardHeader className="flex flex-row items-center justify-between space-y-0 pb-2">
             <CardTitle className="text-sm font-medium">Largest Group</CardTitle>
             <Users className="h-4 w-4 text-muted-foreground" />
-            </CardHeader>
-            <CardContent>
-            <div className="text-2xl font-bold">
-                {groups.length > 0 && Math.max(...groups.map(g => g.contact_count)) > 0
-                ? Math.max(...groups.map(g => g.contact_count)).toLocaleString()
-                : "No contacts in groups"}
-            </div>
-            </CardContent>
+          </CardHeader>
+          <CardContent>
+            <div className="text-2xl font-bold">{largestGroup > 0 ? largestGroup.toLocaleString() : "No contacts in groups"}</div>
+          </CardContent>
         </Card>
-        </div>
+      </div>
     </div>
   );
 }
