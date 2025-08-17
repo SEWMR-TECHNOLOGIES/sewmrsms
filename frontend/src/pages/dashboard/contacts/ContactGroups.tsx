@@ -287,40 +287,42 @@ export default function ContactGroups() {
         </AlertDialog>
       )}
 
-      {/* Stats Cards */}
-      <div className="grid gap-4 md:grid-cols-3">
+        {/* Stats Cards */}
+        <div className="grid gap-4 md:grid-cols-3">
         <Card>
-          <CardHeader className="flex justify-between pb-2">
+            <CardHeader className="flex flex-row items-center justify-between space-y-0 pb-2">
             <CardTitle className="text-sm font-medium">Total Groups</CardTitle>
             <Users className="h-4 w-4 text-muted-foreground" />
-          </CardHeader>
-          <CardContent>
+            </CardHeader>
+            <CardContent>
             <div className="text-2xl font-bold">{groups.length}</div>
-          </CardContent>
+            </CardContent>
         </Card>
 
         <Card>
-          <CardHeader className="flex justify-between pb-2">
+            <CardHeader className="flex flex-row items-center justify-between space-y-0 pb-2">
             <CardTitle className="text-sm font-medium">Total Contacts</CardTitle>
             <Users className="h-4 w-4 text-muted-foreground" />
-          </CardHeader>
-          <CardContent>
-            <div className="text-2xl font-bold">{groups.reduce((sum, g) => sum + g.contact_count, 0)}</div>
-          </CardContent>
+            </CardHeader>
+            <CardContent>
+            <div className="text-2xl font-bold">
+                {groups.reduce((sum, group) => sum + group.contact_count, 0).toLocaleString()}
+            </div>
+            </CardContent>
         </Card>
 
         <Card>
-          <CardHeader className="flex justify-between pb-2">
+            <CardHeader className="flex flex-row items-center justify-between space-y-0 pb-2">
             <CardTitle className="text-sm font-medium">Largest Group</CardTitle>
             <Users className="h-4 w-4 text-muted-foreground" />
-          </CardHeader>
-          <CardContent>
+            </CardHeader>
+            <CardContent>
             <div className="text-2xl font-bold">
-              {groups.length > 0 ? Math.max(...groups.map(g => g.contact_count)) : 0}
+                {groups.length > 0 ? Math.max(...groups.map(g => g.contact_count)).toLocaleString() : "0"}
             </div>
-          </CardContent>
+            </CardContent>
         </Card>
-      </div>
+        </div>
     </div>
   );
 }
