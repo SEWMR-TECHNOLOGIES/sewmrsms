@@ -14,6 +14,8 @@ import { Alert, AlertDescription } from '@/components/ui/alert';
 import { format } from 'date-fns';
 import { ToggleSwitch } from '@/components/ui/toggle-switch';
 
+const BASE_URL = 'https://api.sewmrsms.co.tz/api/v1';
+
 interface SenderIdOption {
   value: string;
   label: string;
@@ -39,11 +41,9 @@ export default function QuickSend() {
   const [loading, setLoading] = useState(false);
   const [recipientMode, setRecipientMode] = useState<'manual' | 'group'>('manual');
 
-  // New: manual valid recipients count state and invalid toast guard
   const [manualCount, setManualCount] = useState<number>(0);
   const [lastInvalidToastCount, setLastInvalidToastCount] = useState<number>(0);
 
-  // Time picker
   const pad = (n: number) => n.toString().padStart(2, '0');
   const [hourSel, setHourSel] = useState<string>('00');
   const [minuteSel, setMinuteSel] = useState<string>('00');
@@ -54,7 +54,7 @@ export default function QuickSend() {
     const fetchData = async () => {
       try {
         // Fetch sender IDs
-        const senderRes = await fetch('https://api.sewmrsms.co.tz/api/v1/sender-ids', { credentials: 'include' });
+        const senderRes = await fetch(`${BASE_URL}/sender-ids`, { credentials: 'include' });
         const senderData = await senderRes.json();
         if (senderData.success && Array.isArray(senderData.data)) {
           setSenders(senderData.data.map((s: any) => ({
@@ -64,7 +64,7 @@ export default function QuickSend() {
         }
 
         // Fetch grouped contacts
-        const groupRes = await fetch('https://api.sewmrsms.co.tz/api/v1/contacts/grouped', { credentials: 'include' });
+        const groupRes = await fetch(`${BASE_URL}/contacts/grouped`, { credentials: 'include' });
         const groupData = await groupRes.json();
         if (groupData.success && groupData.data) {
           const groups: ContactGroup[] = [];
@@ -89,7 +89,6 @@ export default function QuickSend() {
 
     fetchData();
   }, []);
-
 
   const contactGroupOptions = contactGroups.map(g => ({
     value: g.value,
@@ -132,7 +131,6 @@ export default function QuickSend() {
     }
   }, [scheduledFor]);
 
-  // SMS parts logic
   const GSM_7BIT_BASIC =
     "@£$¥èéùìòÇ\nØø\rÅåΔ_ΦΓΛΩΠΨΣΘΞ\x1BÆæßÉ !\"#¤%&'()*+,-./0123456789:;<=>?¡ABCDEFGHIJKLMNOPQRSTUVWXYZabcdefghijklmnopqrstuvwxyz";
   const GSM_7BIT_EXTENDED = "^{}\\[~]|€";
@@ -159,13 +157,11 @@ export default function QuickSend() {
     }
   }
 
-  // Helper: validate Tanzania number format: 255 + (6 or 7) + 8 digits
   const validTzPhone = (s: string) => {
     const normalized = s.replace(/\s+/g, '');
     return /^255[67]\d{8}$/.test(normalized);
   };
 
-  // --- Inside QuickSendPage, near handleRecipientsTextChange ---
   const [invalidLines, setInvalidLines] = useState<string[]>([]);
   
   const handleRecipientsTextChange = (text: string) => {
@@ -192,7 +188,6 @@ export default function QuickSend() {
     }
   };
 
-  // Keep current logic for sending; no changes besides using recipientsText/manualCount where needed
   const handleSend = async () => {
     if (!selectedSender || !message.trim() ||
       (recipientMode === 'manual' && !recipientsText.trim()) ||
@@ -216,11 +211,15 @@ export default function QuickSend() {
         description: 'No valid recipients in manual mode. Please correct the numbers.',
         variant: 'destructive',
       });
-      return; // prevent sending
+      return;
     }
+
     setLoading(true);
     try {
-      const endpoint = recipientMode === 'group' ? '/quick-send/group' : '/quick-send';
+      const endpoint = recipientMode === 'group' 
+        ? `${BASE_URL}/sms/quick-send/group` 
+        : `${BASE_URL}/sms/quick-send`;
+
       const response = await fetch(endpoint, {
         method: 'POST',
         headers: { 'Content-Type': 'application/json' },
