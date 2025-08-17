@@ -228,7 +228,7 @@ export default function QuickSend() {
           sender_id: selectedSender,
           message,
           recipients: recipientMode === 'manual' ? recipientsText : undefined,
-          group: recipientMode === 'group' ? selectedGroup : undefined,
+          group_uuid: recipientMode === 'group' ? selectedGroup : undefined,
           schedule: scheduleFlag,
           scheduled_for: scheduledStr,
         }),
@@ -237,7 +237,7 @@ export default function QuickSend() {
       const result = await response.json();
 
       if (result.success) {
-        toast({ title: "Success", description: result.message });
+        toast({ title: "Success", description: result.message, variant: "success" });
         setRecipientsText('');
         setSelectedGroup('');
         setMessage('');
