@@ -1,4 +1,5 @@
 # backend/app/api/messaging.py
+import re
 from typing import Optional
 import uuid
 from fastapi import APIRouter, File, Form, Request, Depends, HTTPException, Header, UploadFile
@@ -8,6 +9,8 @@ from datetime import datetime
 import pytz
 from api.deps import get_db
 from api.user_auth import get_current_user_optional
+from models.contact import Contact
+from models.contact_group import ContactGroup
 from models.models import SmsCallback, SmsTemplate
 from models.template_column import TemplateColumn
 from utils.helpers import generate_messages, parse_excel_or_csv
@@ -21,6 +24,8 @@ from models.user import User
 from models.sender_id import SenderId
 from models.user_subscription import UserSubscription
 from services.sms_gateway_service import SmsGatewayService
+
+PLACEHOLDER_PATTERN = re.compile(r"\{(\w+)\}")
 
 router = APIRouter()
 
@@ -300,6 +305,207 @@ async def quick_send_sms(
             user_id=user.id,
             phone_number=phone,
             message=message,
+            message_id=str(message_id) if message_id else None,
+            sent_at=now
+        ))
+
+    db.add(subscription)
+    db.commit()
+
+    return {
+        "success": sent_count > 0,
+        "message": f"Sent SMS to {sent_count} recipients. {len(errors)} errors.",
+        "errors": errors,
+        "data": {
+            "total_sent": sent_count,
+            "total_parts_used": total_parts_used,
+            "remaining_sms": remaining_sms,
+            "sent_messages": sent_messages
+        }
+    }
+
+@router.post("/quick-send/group")
+async def quick_send_group_sms(
+    request: Request,
+    current_user: Optional[User] = Depends(get_current_user_optional),
+    authorization: Optional[str] = Header(None),
+    db: Session = Depends(get_db),
+):
+    # Validate content type
+    content_type = request.headers.get("content-type", "")
+    if "application/json" not in content_type.lower():
+        raise HTTPException(status_code=415, detail="Invalid content type. Expected application/json")
+
+    data = await request.json()
+    sender_id_uuid = data.get("sender_id")
+    message_template = data.get("message")
+    group_uuid_str = data.get("group_uuid")
+    schedule_flag = data.get("schedule", False)
+    scheduled_for_str = data.get("scheduled_for")
+    schedule_name = data.get("schedule_name", "").strip() if schedule_flag else None
+
+    if not sender_id_uuid:
+        raise HTTPException(status_code=400, detail="sender_id is required")
+    if not message_template or not message_template.strip():
+        raise HTTPException(status_code=400, detail="message is required")
+    if not group_uuid_str:
+        raise HTTPException(status_code=400, detail="group_uuid is required")
+
+    try:
+        sender_uuid = uuid.UUID(sender_id_uuid)
+    except ValueError:
+        raise HTTPException(status_code=400, detail="sender_id must be a valid UUID")
+
+    now = datetime.now(pytz.timezone("Africa/Nairobi")).replace(tzinfo=None)
+    scheduled_for = None
+    if schedule_flag:
+        if not scheduled_for_str:
+            raise HTTPException(status_code=400, detail="scheduled_for datetime is required when schedule")
+        try:
+            scheduled_for = datetime.strptime(scheduled_for_str, "%Y-%m-%d %H:%M:%S")
+        except ValueError:
+            raise HTTPException(status_code=400, detail="scheduled_for must be in format 'YYYY-MM-DD HH:MM:SS'")
+
+    # Determine user (JWT or API token)
+    user = current_user
+    if user is None:
+        if not authorization or not authorization.lower().startswith("bearer "):
+            raise HTTPException(status_code=401, detail="Missing authorization. Provide JWT or API token.")
+        raw_token = authorization.split(" ", 1)[1].strip()
+        user = verify_api_token(db, raw_token)
+        if not user:
+            raise HTTPException(status_code=401, detail="Invalid or expired API token")
+
+    # Verify sender
+    sender = db.query(SenderId).filter(
+        SenderId.uuid == sender_uuid,
+        SenderId.user_id == user.id
+    ).first()
+    if not sender:
+        raise HTTPException(status_code=404, detail="Sender ID not found or not owned by user")
+
+    # Fetch contacts
+    contacts_query = db.query(Contact).filter(Contact.user_id == user.id, Contact.is_blacklisted == False)
+    if group_uuid_str == "all":
+        contacts = contacts_query.all()
+    else:
+        try:
+            group_uuid = uuid.UUID(group_uuid_str)
+        except ValueError:
+            raise HTTPException(status_code=400, detail="group_uuid must be a valid UUID or 'all'")
+        group = db.query(ContactGroup).filter(ContactGroup.uuid == group_uuid, ContactGroup.user_id == user.id).first()
+        if not group:
+            raise HTTPException(status_code=404, detail="Contact group not found")
+        contacts = contacts_query.filter(Contact.group_id == group.id).all()
+
+    if not contacts:
+        return {"success": False, "message": "No contacts found in this group", "errors": [], "data": None}
+
+    errors = []
+    personalized_messages = []
+
+    for contact in contacts:
+        if not validate_phone(contact.phone):
+            errors.append({"recipient": contact.phone, "error": "Invalid phone number format"})
+            continue
+
+        # Replace placeholders
+        personalized_msg = message_template
+        placeholders = PLACEHOLDER_PATTERN.findall(message_template)
+        for ph in placeholders:
+            value = getattr(contact, ph, None)
+            personalized_msg = personalized_msg.replace(f"{{{ph}}}", value if value else "")
+
+        personalized_messages.append((contact.phone, personalized_msg))
+
+    if not personalized_messages:
+        return {"success": False, "message": "No valid contacts with usable phone numbers", "errors": errors, "data": None}
+
+    # Handle scheduled send
+    if schedule_flag:
+        if not schedule_name:
+            schedule_name = (message_template[:50] + "...") if len(message_template) > 50 else message_template
+
+        sms_schedule = SmsSchedule(
+            user_id=user.id,
+            sender_id=sender.id,
+            title=schedule_name,
+            scheduled_for=scheduled_for,
+            status=ScheduleStatusEnum.pending.value,
+            created_at=now,
+            updated_at=now
+        )
+        db.add(sms_schedule)
+        db.flush()
+
+        for phone, msg in personalized_messages:
+            sched_msg = SmsScheduledMessage(
+                schedule_id=sms_schedule.id,
+                phone_number=phone,
+                message=msg,
+                status=MessageStatusEnum.pending.value,
+                created_at=now,
+                updated_at=now
+            )
+            db.add(sched_msg)
+
+        db.commit()
+        return {
+            "success": True,
+            "message": f"Scheduled SMS to {len(personalized_messages)} recipients.",
+            "errors": errors,
+            "data": {
+                "schedule_uuid": str(sms_schedule.uuid),
+                "scheduled_for": scheduled_for.isoformat(),
+                "total_recipients": len(personalized_messages),
+                "failed_recipients": len(errors)
+            }
+        }
+
+    # Immediate send
+    subscription = db.query(UserSubscription).filter(
+        UserSubscription.user_id == user.id,
+        UserSubscription.status == "active"
+    ).first()
+    if not subscription or subscription.remaining_sms <= 0:
+        raise HTTPException(status_code=403, detail="Insufficient SMS balance or no active subscription")
+
+    sms_service = SmsGatewayService(sender.alias)
+    sent_count = 0
+    total_parts_used = 0
+    remaining_sms = subscription.remaining_sms
+    sent_messages = []
+
+    for phone, msg in personalized_messages:
+        parts_needed, _, _ = sms_service.get_sms_parts_and_length(msg)
+        if parts_needed > remaining_sms:
+            errors.append({"recipient": phone, "error": "Insufficient SMS balance for message parts"})
+            continue
+
+        now = datetime.now(pytz.timezone("Africa/Nairobi")).replace(tzinfo=None)
+        send_result = await sms_service.send_sms_with_parts_check(phone, msg)
+        if not send_result.get("success"):
+            errors.append({"recipient": phone, "error": f"Failed to send SMS: {send_result.get('message', 'Unknown error')}"})
+            continue
+
+        remaining_sms -= parts_needed
+        subscription.used_sms += parts_needed
+        total_parts_used += parts_needed
+        sent_count += 1
+
+        gateway_data = send_result.get("data", {}) or {}
+        message_id = gateway_data.get("message_id")
+
+        sent_messages.append({
+            "recipient": phone,
+            "sms_gateway_response": gateway_data
+        })
+
+        db.add(SentMessage(
+            sender_alias=sender.alias,
+            user_id=user.id,
+            phone_number=phone,
+            message=msg,
             message_id=str(message_id) if message_id else None,
             sent_at=now
         ))
