@@ -56,7 +56,7 @@ const App = () => (
           <Route path="/console" element={<DashboardLayout />}>
             <Route index element={<Dashboard />} />
             <Route path="contacts" element={<Contacts />} />
-            <Route path="groups" element={<ContactGroups />} />
+            <Route path="contacts/groups" element={<ContactGroups />} />
             <Route path="contacts/new" element={<div>New Contact Form</div>} />
             <Route path="contacts/import" element={<div>Import Contacts</div>} />
             <Route path="messages/quick-send" element={<QuickSend />} />
