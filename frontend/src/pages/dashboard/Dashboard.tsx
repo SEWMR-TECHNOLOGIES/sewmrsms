@@ -89,7 +89,7 @@ export default function Dashboard() {
         </div>
         <div className="flex items-center space-x-2">
           <Button asChild>
-            <Link to="/dashboard/messages/quick-send">
+            <Link to="/console/messages/quick-send">
               <Send className="mr-2 h-4 w-4" />
               Quick Send
             </Link>
@@ -186,7 +186,7 @@ export default function Dashboard() {
           <CardContent>
             <div className="grid gap-3">
               <Button asChild variant="outline" className="justify-start">
-                <Link to="/dashboard/messages/quick-send">
+                <Link to="/console/messages/quick-send">
                   <Send className="mr-2 h-4 w-4" />
                   Send SMS
                 </Link>

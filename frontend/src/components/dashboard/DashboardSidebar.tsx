@@ -54,7 +54,7 @@ const menuItems = [
     title: 'Messages',
     icon: MessageSquare,
     items: [
-      { title: 'Quick Send', url: '/dashboard/messages/quick-send', icon: Zap },
+      { title: 'Quick Send', url: '/console/messages/quick-send', icon: Zap },
       { title: 'Send from Template', url: '/dashboard/messages/template', icon: FileText },
       { title: 'Message History', url: '/dashboard/messages/history', icon: MessageSquare },
       { title: 'Templates', url: '/dashboard/messages/templates', icon: FileText },
