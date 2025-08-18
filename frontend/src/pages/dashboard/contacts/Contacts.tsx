@@ -129,6 +129,66 @@ export default function Contacts() {
     setEditGroup(contact.group_uuid || 'none');
   };
 
+  // CSV export 
+  const exportContactsCSV = () => {
+    if (contacts.length === 0) {
+      toast({ title: 'Info', description: 'No contacts to export', variant: 'default' });
+      return;
+    }
+
+    const headers = ['Name', 'Phone', 'Email', 'Group', 'Status', 'Created At', 'Updated At'];
+    const rows = contacts.map(c => [
+      `"${c.name}"`,
+      `"${c.phone}"`,
+      `"${c.email || ''}"`,
+      `"${c.group_name || ''}"`,
+      `"${c.blacklisted ? 'Blocked' : 'Active'}"`,
+      `"${new Date(c.created_at).toLocaleString('en-GB')}"`,
+      `"${new Date(c.updated_at).toLocaleString('en-GB')}"`,
+    ]);
+
+    const csvContent = [headers.join(','), ...rows.map(r => r.join(','))].join('\n');
+    const blob = new Blob([csvContent], { type: 'text/csv;charset=utf-8;' });
+    const url = URL.createObjectURL(blob);
+    const link = document.createElement('a');
+    link.href = url;
+    link.setAttribute('download', `contacts_${new Date().toISOString().split('T')[0]}.csv`);
+    document.body.appendChild(link);
+    link.click();
+    document.body.removeChild(link);
+  };
+
+  // VCF export
+  const exportContactsVCF = () => {
+    if (contacts.length === 0) {
+      toast({ title: 'Info', description: 'No contacts to export', variant: 'default' });
+      return;
+    }
+
+    let vcfContent = contacts.map(c => {
+      const [firstName, ...lastNameParts] = c.name.split(' ');
+      const lastName = lastNameParts.join(' ');
+      return [
+        'BEGIN:VCARD',
+        'VERSION:3.0',
+        `FN:${c.name}`,
+        `N:${lastName};${firstName};;;`,
+        `TEL;TYPE=CELL:${c.phone}`,
+        c.email ? `EMAIL:${c.email}` : '',
+        'END:VCARD',
+      ].filter(Boolean).join('\n');
+    }).join('\n');
+
+    const blob = new Blob([vcfContent], { type: 'text/vcard;charset=utf-8;' });
+    const url = URL.createObjectURL(blob);
+    const link = document.createElement('a');
+    link.href = url;
+    link.setAttribute('download', `contacts_${new Date().toISOString().split('T')[0]}.vcf`);
+    document.body.appendChild(link);
+    link.click();
+    document.body.removeChild(link);
+  };
+
   const editContact = async () => {
     if (!editingContact) return;
     if (!editName.trim() || !editPhone.trim()) {
@@ -241,16 +301,16 @@ export default function Contacts() {
           <p className="text-muted-foreground">Manage your contact database and organize recipients.</p>
         </div>
         <div className="flex items-center space-x-2">
-          <Button variant="outline" asChild>
-            <Link to="/dashboard/contacts/import">
-              <Upload className="mr-2 h-4 w-4" /> Import
-            </Link>
+          <Button variant="outline" onClick={exportContactsCSV}>
+            <Download className="mr-2 h-4 w-4" /> Export CSV
           </Button>
-          <Button variant="outline">
-            <Download className="mr-2 h-4 w-4" /> Export
+
+          <Button variant="outline" onClick={exportContactsVCF}>
+            <Download className="mr-2 h-4 w-4" /> Export VCF
           </Button>
+
           <Button asChild>
-            <Link to="/dashboard/contacts/new">
+            <Link to="/console/contacts/new">
               <UserPlus className="mr-2 h-4 w-4" /> Add Contact
             </Link>
           </Button>
