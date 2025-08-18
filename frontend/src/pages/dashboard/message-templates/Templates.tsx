@@ -18,6 +18,8 @@ import {
   AlertDialogHeader,
   AlertDialogTitle,
 } from "@/components/ui/alert-dialog";
+import { SearchableSelect, SearchableSelectOption } from "@/components/ui/searchable-select";
+import { ToggleSwitch } from "@/components/ui/toggle-switch";
 
 interface TemplateColumn {
   id: string;
@@ -67,6 +69,13 @@ export default function TemplatesPage() {
   // delete
   const [deletingTemplate, setDeletingTemplate] = useState<SmsTemplate | null>(null);
   const [deletingUuid, setDeletingUuid] = useState<string | null>(null);
+
+    // add column modal
+  const [addingColumnTemplate, setAddingColumnTemplate] = useState<SmsTemplate | null>(null);
+  const [newColumnName, setNewColumnName] = useState("");
+  const [newColumnPosition, setNewColumnPosition] = useState<string>("");
+  const [newColumnPhone, setNewColumnPhone] = useState(false);
+  const [addingColumn, setAddingColumn] = useState(false);
 
   // fetch templates
   const fetchTemplates = async () => {
@@ -176,6 +185,39 @@ export default function TemplatesPage() {
     }
   };
 
+  // add column
+  const addColumn = async () => {
+    if (!addingColumnTemplate || !newColumnName.trim() || !newColumnPosition.trim()) return;
+    setAddingColumn(true);
+    try {
+      const res = await fetch(`${BASE_URL}/${addingColumnTemplate.uuid}/columns/add`, {
+        method: "POST",
+        credentials: "include",
+        headers: { "Content-Type": "application/json" },
+        body: JSON.stringify({
+          name: newColumnName.trim(),
+          position: parseInt(newColumnPosition, 10),
+          is_phone_column: newColumnPhone
+        })
+      });
+      const json = await res.json();
+      if (!res.ok || !json.success) throw new Error(json.message || "Failed to add column");
+
+      // Update template columns in state
+      setTemplates(prev => prev.map(t =>
+        t.uuid === addingColumnTemplate.uuid
+          ? { ...t, columns: [...t.columns, json.data] }
+          : t
+      ));
+
+      toast({ title: "Success", description: json.message || "Column added", variant: "success" });
+      setAddingColumnTemplate(null);
+      setNewColumnName(""); setNewColumnPosition(""); setNewColumnPhone(false);
+    } catch (err: any) {
+      toast({ title: "Error", description: err?.message || "Failed to add column", variant: "destructive" });
+    } finally { setAddingColumn(false); }
+  };
+
   // columns
   const columns: ColumnDef<SmsTemplate>[] = [
     { accessorKey: "name", header: "Name" },
@@ -188,6 +230,10 @@ export default function TemplatesPage() {
       header: "Actions",
       cell: ({ row }) => {
         const template = row.original;
+        const positionOptions: SearchableSelectOption[] = Array.from({ length: template.column_count }, (_, i) => ({
+          value: (i + 1).toString(),
+          label: `Column ${i + 1}`
+        }));
         return (
           <div className="flex gap-2">
             <Button
@@ -208,8 +254,8 @@ export default function TemplatesPage() {
             <Button variant="outline" size="sm" onClick={() => setDeletingTemplate(template)} disabled={!!deletingUuid}>
               <Trash2 className="mr-1 h-3 w-3" /> Delete
             </Button>
-            <Button variant="outline" size="sm">
-              <Plus className="mr-1 h-3 w-3" />
+            <Button variant="outline" size="sm" onClick={() => setAddingColumnTemplate(template)}>
+              <Plus className="mr-1 h-3 w-3" /> Add Column
             </Button>
           </div>
         );
@@ -258,7 +304,38 @@ export default function TemplatesPage() {
           <DataTable columns={columns} data={templates} searchPlaceholder="Search templates..." />
         </CardContent>
       </Card>
+ {/* Add Column Modal */}
+      {addingColumnTemplate && (
+        <AlertDialog open={!!addingColumnTemplate} onOpenChange={open => { if (!open && !addingColumn) setAddingColumnTemplate(null); }}>
+          <AlertDialogContent>
+            <AlertDialogHeader>
+              <AlertDialogTitle>Add Column to {addingColumnTemplate.name}</AlertDialogTitle>
+            </AlertDialogHeader>
+            <div className="p-4 flex flex-col gap-3">
+              <Input placeholder="Column Name" value={newColumnName} onChange={e => setNewColumnName(e.target.value)} />
 
+              <SearchableSelect
+                options={Array.from({ length: addingColumnTemplate.column_count }, (_, i) => ({ value: (i+1).toString(), label: `Column ${i+1}` }))}
+                value={newColumnPosition}
+                onValueChange={setNewColumnPosition}
+                placeholder="Select column position"
+              />
+
+              <div className="flex items-center justify-between">
+                <label className="text-sm font-medium">Is this the phone column?</label>
+                <ToggleSwitch checked={newColumnPhone} onChange={setNewColumnPhone} label="" />
+              </div>
+            </div>
+            <AlertDialogFooter>
+              <AlertDialogCancel onClick={() => !addingColumn && setAddingColumnTemplate(null)} disabled={addingColumn}>Cancel</AlertDialogCancel>
+              <AlertDialogAction onClick={addColumn} disabled={addingColumn || !newColumnName.trim() || !newColumnPosition}>
+                {addingColumn ? "Adding..." : "Add Column to Template"}
+              </AlertDialogAction>
+            </AlertDialogFooter>
+          </AlertDialogContent>
+        </AlertDialog>
+      )}
+      
       {/* Edit Modal */}
       {editingTemplate && (
         <AlertDialog open={!!editingTemplate} onOpenChange={open => { if (!open && !updating) setEditingTemplate(null); }}>
