@@ -81,7 +81,8 @@ async def create_sms_template(
             "name": new_template.name,
             "sample_message": new_template.sample_message,
             "column_count": new_template.column_count,
-            "created_at": now.strftime("%Y-%m-%d %H:%M:%S")
+            "created_at": new_template.created_at.strftime("%Y-%m-%d %H:%M:%S"),
+            "updated_at": new_template.updated_at.strftime("%Y-%m-%d %H:%M:%S")
         }
     }
 

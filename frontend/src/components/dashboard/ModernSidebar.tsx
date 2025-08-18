@@ -37,9 +37,7 @@ const menuItems: MenuItem[] = [
   { 
     title: 'Messages', icon: MessageSquare, items: [
       { title: 'Quick Send', url: '/console/messages/quick-send', icon: Send },
-      { title: 'From Template', url: '/console/messages/template', icon: FileText },
-      { title: 'Bulk Send', url: '/console/messages/bulk', icon: MessageSquare },
-      { title: 'Message History', url: '/console/messages/history', icon: History },
+      { title: 'From Template', url: '/console/messages/from-template', icon: FileText },
     ]
   },
   { 
