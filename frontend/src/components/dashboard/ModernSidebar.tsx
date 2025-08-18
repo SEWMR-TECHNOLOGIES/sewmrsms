@@ -47,7 +47,6 @@ const menuItems: MenuItem[] = [
   { title: 'Sender IDs', icon: Shield, items: [
       { title: 'My Sender IDs', url: '/console/sender-ids', icon: Shield },
       { title: 'Request New', url: '/console/sender-ids/request', icon: UserPlus },
-      { title: 'Network Status', url: '/console/sender-ids/networks', icon: TrendingUp },
     ]
   },
   { title: 'Reports', icon: BarChart3, items: [
