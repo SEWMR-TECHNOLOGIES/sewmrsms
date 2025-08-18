@@ -19,8 +19,6 @@ import { DashboardLayout } from "./components/dashboard/DashboardLayout";
 import Dashboard from "./pages/dashboard/Dashboard";
 import Contacts from "./pages/dashboard/contacts/Contacts";
 import QuickSend from "./pages/dashboard/messages/QuickSend";
-import BillingPurchase from "./pages/purchase/billing/BillingPurchase";
-import PaymentHistory from "./pages/purchase/billing/PaymentHistory";
 import SenderIds from "./pages/dashboard/sender-ids/SenderIds";
 import RequestSenderID from "./pages/dashboard/sender-ids/RequestSenderID";
 import RequestPasswordResetPage from "./pages/ResetPasswordRequest";
@@ -33,6 +31,8 @@ import CreateTemplate from "./pages/dashboard/message-templates/CreateTemplate";
 import TemplatesPage from "./pages/dashboard/message-templates/Templates";
 import QuickSendFile from "./pages/dashboard/messages/SendFromFile";
 import SendFromTemplate from "./pages/dashboard/messages/SendFromFile";
+import BillingPurchase from "./pages/dashboard/billing/BillingPurchase";
+import PaymentHistory from "./pages/dashboard/billing/PaymentHistory";
 
 const queryClient = new QueryClient();
 
