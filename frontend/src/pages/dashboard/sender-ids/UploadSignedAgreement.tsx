@@ -6,47 +6,18 @@ import { useToast } from "@/hooks/use-toast";
 import { useNavigate, useParams } from "react-router-dom";
 import { UploadProgress } from "@/components/ui/upload-progress";
 import { useUpload } from "@/hooks/useUpload";
+import { FileUpload } from "@/components/ui/file-upload";
 
 const MAX_FILE_SIZE = 524288; // 0.5 MB
 
 export default function UploadAgreement() {
   const { uuid } = useParams<{ uuid: string }>();
-  const [fileName, setFileName] = useState<string | null>(null);
   const [selectedFile, setSelectedFile] = useState<File | null>(null);
   const [loading, setLoading] = useState(false);
 
   const { progress, uploadFile, resetProgress } = useUpload();
   const { toast } = useToast();
   const navigate = useNavigate();
-
-  const handleFileSelect = (file: File | null) => {
-    if (!file) {
-      setFileName(null);
-      setSelectedFile(null);
-      return;
-    }
-
-    if (file.type !== "application/pdf") {
-      toast({
-        variant: "destructive",
-        title: "Invalid file type",
-        description: "Only PDF files are allowed.",
-      });
-      return;
-    }
-
-    if (file.size > MAX_FILE_SIZE) {
-      toast({
-        variant: "destructive",
-        title: "File too large",
-        description: "File size must be less than 0.5 MB.",
-      });
-      return;
-    }
-
-    setFileName(file.name);
-    setSelectedFile(file);
-  };
 
   const handleSubmit = async (e: React.FormEvent) => {
     e.preventDefault();
@@ -124,27 +95,20 @@ export default function UploadAgreement() {
         </CardHeader>
         <CardContent>
           <form onSubmit={handleSubmit} className="space-y-6">
-            <div className="flex items-center gap-3">
-              <Button
-                type="button"
-                variant="outline"
-                onClick={() => {
-                  const input = document.createElement("input");
-                  input.type = "file";
-                  input.accept = "application/pdf";
-                  input.onchange = (e) =>
-                    handleFileSelect((e.target as HTMLInputElement).files?.[0] || null);
-                  input.click();
-                }}
-              >
-                {fileName ? "Change file" : "Choose file"}
-              </Button>
-              <div className="text-sm text-muted-foreground">{fileName ?? "No file chosen"}</div>
+            <div className="space-y-2">
+              <FileUpload
+                accept=".pdf"
+                maxSize={0.5} // in MB
+                onFileSelect={(files) => setSelectedFile(files[0] || null)}
+              />
+              <div className="text-sm text-muted-foreground">
+                {selectedFile ? selectedFile.name : "No file chosen"}
+              </div>
             </div>
 
             {loading && <UploadProgress progress={progress} message="Uploading agreement..." />}
 
-            <Button type="submit" className="w-full" disabled={loading}>
+            <Button type="submit" className="w-full" disabled={loading || !selectedFile}>
               {loading ? (
                 <>
                   <div className="animate-spin rounded-full h-4 w-4 border-b-2 border-white mr-2"></div>

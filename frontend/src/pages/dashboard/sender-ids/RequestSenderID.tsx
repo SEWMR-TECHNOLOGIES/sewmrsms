@@ -58,27 +58,6 @@ export default function RequestSenderID() {
     setIsStudent(prev => !prev);
   };
 
-  const handleFileSelect = (file: File | null) => {
-    if (!file) {
-      setFileName(null);
-      setSelectedFile(null);
-      return;
-    }
-
-    if (file.type !== 'application/pdf') {
-      toast({ variant: 'destructive', title: 'Invalid file type', description: 'Only PDF files are allowed.' });
-      return;
-    }
-
-    if (file.size > MAX_FILE_SIZE) {
-      toast({ variant: 'destructive', title: 'File too large', description: 'File size must be less than 0.5 MB.' });
-      return;
-    }
-
-    setFileName(file.name);
-    setSelectedFile(file);
-  };
-
   const handleSubmit = async (e: React.FormEvent) => {
     e.preventDefault();
 
@@ -239,7 +218,7 @@ export default function RequestSenderID() {
                 {isStudent && (
                   <div className="space-y-2">
                     <Label htmlFor="student_id_file">Upload Student ID (PDF)</Label>
-                    <FileUpload accept=".pdf" maxSize={0.5} onFileSelect={(files) => handleFileSelect(files[0] || null)} />
+                    <FileUpload accept=".pdf" maxSize={0.5} onFileSelect={(files) => setSelectedFile(files[0] || null)} />
                     <div className="text-sm text-muted-foreground">{fileName ?? 'No file chosen'}</div>
                     {loading && <UploadProgress progress={progress} message="Uploading student ID..." />}
                   </div>
