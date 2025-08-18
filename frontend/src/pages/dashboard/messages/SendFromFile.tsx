@@ -1,11 +1,15 @@
 import React, { useState, useEffect } from 'react';
 import { useToast } from '@/hooks/use-toast';
-import { Card, CardContent, CardHeader, CardTitle, CardDescription } from '@/components/ui/card';
+import {
+  Card, CardContent, CardHeader, CardTitle, CardDescription,
+} from '@/components/ui/card';
 import { Button } from '@/components/ui/button';
 import { Textarea } from '@/components/ui/textarea';
 import { Badge } from '@/components/ui/badge';
 import { SearchableSelect } from '@/components/ui/searchable-select';
-import { Users, MessageSquare, Clock, Send, UploadCloud, PlusCircle } from 'lucide-react';
+import {
+  Users, MessageSquare, Clock, Send, PlusCircle, AlertCircle,
+} from 'lucide-react';
 import { Popover, PopoverContent, PopoverTrigger } from '@/components/ui/popover';
 import { Calendar } from '@/components/ui/calendar';
 import { Input } from '@/components/ui/input';
@@ -13,6 +17,9 @@ import { ToggleSwitch } from '@/components/ui/toggle-switch';
 import { format } from 'date-fns';
 import { FileUpload } from '@/components/ui/file-upload';
 import { UploadProgress } from '@/components/ui/upload-progress';
+import { Link } from 'react-router-dom';
+import { Label } from '@/components/ui/label';
+import { Alert, AlertDescription } from '@/components/ui/alert';
 
 const BASE_URL = 'https://api.sewmrsms.co.tz/api/v1';
 
@@ -35,7 +42,7 @@ export default function SendFromTemplate() {
   const [selectedTemplate, setSelectedTemplate] = useState<string>('');
   const [message, setMessage] = useState('');
   const [messageLength, setMessageLength] = useState(0);
-  const [file, setFile] = useState<File | null>(null);
+  const [selectedFile, setSelectedFile] = useState<File | null>(null);
   const [uploading, setUploading] = useState(false);
   const [uploadProgress, setUploadProgress] = useState(0);
   const [scheduleFlag, setScheduleFlag] = useState(false);
@@ -62,7 +69,7 @@ export default function SendFromTemplate() {
           setTemplates(tmplData.data.map((t: any) => ({
             value: t.uuid,
             label: t.name,
-            sample_message: t.sample_message || ''
+            sample_message: t.sample_message || '',
           })));
         }
       } catch (err) {
@@ -72,15 +79,16 @@ export default function SendFromTemplate() {
     fetchData();
   }, []);
 
-  // Append template's sample message when selected
+  // Replace message with template's sample when selected
   useEffect(() => {
     if (selectedTemplate) {
-      const tmpl = templates.find(t => t.value === selectedTemplate);
+      const tmpl = templates.find((t) => t.value === selectedTemplate);
       if (tmpl) {
-        setMessage(prev => prev ? `${prev}\n${tmpl.sample_message}` : tmpl.sample_message);
+        setMessage(tmpl.sample_message);
+        setMessageLength(tmpl.sample_message.length);
       }
     }
-  }, [selectedTemplate]);
+  }, [selectedTemplate, templates]);
 
   function applyTimeToDate(baseDate: Date | null, hours: number, minutes: number) {
     const d = baseDate ? new Date(baseDate) : new Date();
@@ -91,7 +99,7 @@ export default function SendFromTemplate() {
   function onTimeChange(newHour: string, newMinute: string) {
     setHourSel(newHour);
     setMinuteSel(newMinute);
-    setScheduledFor(prev => applyTimeToDate(prev, Number(newHour), Number(newMinute)));
+    setScheduledFor((prev) => applyTimeToDate(prev, Number(newHour), Number(newMinute)));
   }
 
   function onCalendarSelect(date: Date | undefined) {
@@ -118,26 +126,15 @@ export default function SendFromTemplate() {
   }, [scheduledFor]);
 
   const handleSend = async () => {
-    if (!selectedSender || !selectedTemplate || !message.trim() || !file) {
-      toast({ title: "Error", description: "Sender, template, message, and file are required", variant: "destructive" });
-      return;
-    }
-
-    // validate file
-    const validTypes = ['text/csv', 'application/vnd.ms-excel', 'application/vnd.openxmlformats-officedocument.spreadsheetml.sheet'];
-    if (!validTypes.includes(file.type)) {
-      toast({ title: 'Error', description: 'File must be CSV, XLS, or XLSX', variant: 'destructive' });
-      return;
-    }
-    if (file.size > 0.5 * 1024 * 1024) { // 0.5MB
-      toast({ title: 'Error', description: 'File size must not exceed 0.5 MB', variant: 'destructive' });
+    if (!selectedSender || !selectedTemplate || !message.trim() || !selectedFile) {
+      toast({ title: 'Error', description: 'Sender, template, message, and file are required', variant: 'destructive' });
       return;
     }
 
     let scheduledStr: string | undefined;
     if (scheduleFlag) {
       if (!scheduledFor) {
-        toast({ title: "Error", description: "Please select a scheduled date and time", variant: "destructive" });
+        toast({ title: 'Error', description: 'Please select a scheduled date and time', variant: 'destructive' });
         return;
       }
       scheduledStr = format(scheduledFor, 'yyyy-MM-dd HH:mm:ss');
@@ -147,7 +144,7 @@ export default function SendFromTemplate() {
     formData.append('sender_id', selectedSender);
     formData.append('message_template', message);
     formData.append('template_uuid', selectedTemplate);
-    formData.append('file', file);
+    formData.append('file', selectedFile);
     formData.append('schedule', String(scheduleFlag));
     if (scheduledStr) formData.append('scheduled_for', scheduledStr);
 
@@ -157,7 +154,7 @@ export default function SendFromTemplate() {
     try {
       // simulate progress
       const progressInterval = setInterval(() => {
-        setUploadProgress(prev => Math.min(prev + 10, 90));
+        setUploadProgress((prev) => Math.min(prev + 10, 90));
       }, 100);
 
       const res = await fetch(`${BASE_URL}/sms/send-from-file`, {
@@ -174,7 +171,7 @@ export default function SendFromTemplate() {
         toast({ title: 'Success', description: result.message, variant: 'success' });
         setMessage('');
         setMessageLength(0);
-        setFile(null);
+        setSelectedFile(null);
         setScheduledFor(null);
         setScheduleFlag(false);
       } else {
@@ -205,7 +202,7 @@ export default function SendFromTemplate() {
             <CardContent className="space-y-4">
 
               <div>
-                <label className="block mb-1 font-medium">Sender ID</label>
+                <Label className="mb-1">Sender ID</Label>
                 <SearchableSelect
                   options={senders}
                   value={selectedSender}
@@ -217,7 +214,7 @@ export default function SendFromTemplate() {
               </div>
 
               <div>
-                <label className="block mb-1 font-medium">Template</label>
+                <Label className="mb-1">Template</Label>
                 <div className="flex items-center gap-2">
                   <SearchableSelect
                     options={templates}
@@ -227,8 +224,10 @@ export default function SendFromTemplate() {
                     searchPlaceholder="Search template..."
                     className="flex-1"
                   />
-                  <Button variant="outline" size="icon" onClick={() => window.open('/templates/create', '_blank')}>
-                    <PlusCircle className="w-4 h-4" />
+                  <Button asChild variant="outline" size="icon">
+                    <Link to="/console/templates/create" target="_blank">
+                      <PlusCircle className="w-4 h-4" />
+                    </Link>
                   </Button>
                 </div>
                 <p className="text-xs text-muted-foreground mt-1">
@@ -237,10 +236,13 @@ export default function SendFromTemplate() {
               </div>
 
               <div>
-                <label className="block mb-1 font-medium">Message</label>
+                <Label className="mb-1">Message</Label>
                 <Textarea
                   value={message}
-                  onChange={(e) => { setMessage(e.target.value); setMessageLength(e.target.value.length); }}
+                  onChange={(e) => {
+                    setMessage(e.target.value);
+                    setMessageLength(e.target.value.length);
+                  }}
                   placeholder="Type your message here..."
                   className="min-h-[120px]"
                 />
@@ -249,16 +251,28 @@ export default function SendFromTemplate() {
                 </Badge>
               </div>
 
-              <div>
-                <label className="block mb-1 font-medium">Upload File</label>
+              <div className="space-y-2">
+                <Label>Upload File</Label>
                 <FileUpload
                   accept=".csv,.xls,.xlsx"
-                  maxSize={0.5}
-                  onFileSelect={(files) => setFile(files[0] || null)}
-                  onError={(message) => toast({ variant: "destructive", title: "File Error", description: message })}
+                  maxSize={10}
+                  onFileSelect={(files) => setSelectedFile(files[0] || null)}
+                  onError={(message) =>
+                    toast({ variant: 'destructive', title: 'File Error', description: message })
+                  }
                 />
-                {uploading && <UploadProgress progress={uploadProgress} message="Uploading file..." />}
+                <p className="text-sm text-muted-foreground">
+                  Supported formats: CSV, XLS, XLSX (max 10MB)
+                </p>
               </div>
+
+              <Alert>
+                <AlertCircle className="h-4 w-4" />
+                <AlertDescription>
+                  File should contain columns as specified in your template. The system will attempt to
+                  parse CSV first, then XLS, then XLSX formats.
+                </AlertDescription>
+              </Alert>
 
               <div className="space-y-2">
                 <ToggleSwitch checked={scheduleFlag} onChange={setScheduleFlag} label="Schedule Message" />
@@ -266,7 +280,11 @@ export default function SendFromTemplate() {
                   <Popover>
                     <PopoverTrigger>
                       <Input
-                        placeholder={scheduledFor ? format(scheduledFor, 'yyyy-MM-dd HH:mm:ss') : 'Select date & time (GMT+3)'}
+                        placeholder={
+                          scheduledFor
+                            ? format(scheduledFor, 'yyyy-MM-dd HH:mm:ss')
+                            : 'Select date & time (GMT+3)'
+                        }
                         readOnly
                         className="cursor-pointer"
                       />
@@ -277,8 +295,20 @@ export default function SendFromTemplate() {
                         <div className="space-y-2">
                           <div className="text-sm font-medium">Time (GMT+3)</div>
                           <div className="flex gap-2 mt-1">
-                            <SearchableSelect options={hourOptions} value={hourSel} onValueChange={(v) => onTimeChange(v, minuteSel)} className="flex-1" placeholder="                            Hour" />
-                            <SearchableSelect options={minuteOptions} value={minuteSel} onValueChange={(v) => onTimeChange(hourSel, v)} className="flex-1" placeholder="Minute" />
+                            <SearchableSelect
+                              options={hourOptions}
+                              value={hourSel}
+                              onValueChange={(v) => onTimeChange(v, minuteSel)}
+                              className="flex-1"
+                              placeholder="Hour"
+                            />
+                            <SearchableSelect
+                              options={minuteOptions}
+                              value={minuteSel}
+                              onValueChange={(v) => onTimeChange(hourSel, v)}
+                              className="flex-1"
+                              placeholder="Minute"
+                            />
                           </div>
                         </div>
                       </div>
@@ -286,6 +316,8 @@ export default function SendFromTemplate() {
                   </Popover>
                 )}
               </div>
+
+              {uploading && <UploadProgress progress={uploadProgress} message="Uploading file..." />}
 
               <Button
                 onClick={handleSend}
@@ -318,7 +350,9 @@ export default function SendFromTemplate() {
               {selectedSender && (
                 <div className="flex items-center space-x-2 p-2 bg-muted rounded-lg">
                   <Users className="h-4 w-4 text-muted-foreground" />
-                  <span className="text-sm font-medium">{senders.find(s => s.value === selectedSender)?.label}</span>
+                  <span className="text-sm font-medium">
+                    {senders.find((s) => s.value === selectedSender)?.label}
+                  </span>
                 </div>
               )}
               <div className="border rounded-lg p-4 bg-card mt-2">
@@ -326,11 +360,15 @@ export default function SendFromTemplate() {
                   <MessageSquare className="h-4 w-4 text-muted-foreground" />
                   <span className="text-sm font-medium">Message</span>
                 </div>
-                <p className="text-sm text-muted-foreground min-h-[60px]">{message || 'Your message will appear here...'}</p>
+                <p className="text-sm text-muted-foreground min-h-[60px]">
+                  {message || 'Your message will appear here...'}
+                </p>
                 {scheduleFlag && scheduledFor && (
                   <div className="flex items-center space-x-2 mt-2">
                     <Clock className="h-4 w-4 text-muted-foreground" />
-                    <span className="text-xs text-muted-foreground">{format(scheduledFor, 'yyyy-MM-dd HH:mm:ss')}</span>
+                    <span className="text-xs text-muted-foreground">
+                      {format(scheduledFor, 'yyyy-MM-dd HH:mm:ss')}
+                    </span>
                   </div>
                 )}
               </div>
@@ -341,4 +379,3 @@ export default function SendFromTemplate() {
     </div>
   );
 }
-
