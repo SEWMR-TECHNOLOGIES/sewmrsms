@@ -6,7 +6,7 @@ import { cn } from '@/lib/utils';
 interface FileUploadProps {
   accept?: string;
   multiple?: boolean;
-  maxSize?: number; // in MB
+  maxSize?: number; // in MB, e.g., 0.5, 1, 10, 20
   onFileSelect: (files: File[]) => void;
   className?: string;
   disabled?: boolean;
@@ -40,53 +40,42 @@ export const FileUpload: React.FC<FileUploadProps> = ({
 
   const validateFiles = (files: FileList): File[] => {
     const validFiles: File[] = [];
-    
+    const maxBytes = maxSize * 1024 * 1024;
+
     Array.from(files).forEach(file => {
-      if (file.size > maxSize * 1024 * 1024) {
+      if (file.size > maxBytes) {
         console.warn(`File ${file.name} is too large (${formatFileSize(file.size)}). Max size is ${maxSize}MB.`);
         return;
       }
       validFiles.push(file);
     });
-    
+
     return validFiles;
   };
 
   const handleFiles = (files: FileList) => {
     if (disabled) return;
-    
     const validFiles = validateFiles(files);
-    if (validFiles.length > 0) {
-      setSelectedFiles(validFiles);
-      onFileSelect(validFiles);
-    }
+    setSelectedFiles(validFiles);
+    onFileSelect(validFiles);
   };
 
   const handleDrag = (e: React.DragEvent) => {
     e.preventDefault();
     e.stopPropagation();
-    if (e.type === "dragenter" || e.type === "dragover") {
-      setDragActive(true);
-    } else if (e.type === "dragleave") {
-      setDragActive(false);
-    }
+    if (e.type === "dragenter" || e.type === "dragover") setDragActive(true);
+    else if (e.type === "dragleave") setDragActive(false);
   };
 
   const handleDrop = (e: React.DragEvent) => {
     e.preventDefault();
     e.stopPropagation();
     setDragActive(false);
-    
-    if (e.dataTransfer.files && e.dataTransfer.files[0]) {
-      handleFiles(e.dataTransfer.files);
-    }
+    if (e.dataTransfer.files && e.dataTransfer.files[0]) handleFiles(e.dataTransfer.files);
   };
 
   const handleInputChange = (e: React.ChangeEvent<HTMLInputElement>) => {
-    e.preventDefault();
-    if (e.target.files && e.target.files[0]) {
-      handleFiles(e.target.files);
-    }
+    if (e.target.files && e.target.files[0]) handleFiles(e.target.files);
   };
 
   const removeFile = (index: number) => {
@@ -96,9 +85,7 @@ export const FileUpload: React.FC<FileUploadProps> = ({
   };
 
   const openFileDialog = () => {
-    if (!disabled && fileInputRef.current) {
-      fileInputRef.current.click();
-    }
+    if (!disabled && fileInputRef.current) fileInputRef.current.click();
   };
 
   return (
@@ -125,12 +112,12 @@ export const FileUpload: React.FC<FileUploadProps> = ({
           className="hidden"
           disabled={disabled}
         />
-        
+
         <div className="flex flex-col items-center justify-center space-y-4">
           <div className="p-4 bg-primary/10 rounded-full">
             <Upload className="h-8 w-8 text-primary" />
           </div>
-          
+
           <div className="text-center space-y-2">
             <p className="text-lg font-medium">
               Drop files here or click to browse
@@ -140,7 +127,7 @@ export const FileUpload: React.FC<FileUploadProps> = ({
               {multiple && " • Multiple files allowed"}
             </p>
           </div>
-          
+
           <Button variant="outline" size="sm" disabled={disabled}>
             Choose Files
           </Button>
@@ -163,12 +150,10 @@ export const FileUpload: React.FC<FileUploadProps> = ({
                     <FileIcon className="h-5 w-5 text-muted-foreground" />
                     <div>
                       <p className="text-sm font-medium">{file.name}</p>
-                      <p className="text-xs text-muted-foreground">
-                        {formatFileSize(file.size)}
-                      </p>
+                      <p className="text-xs text-muted-foreground">{formatFileSize(file.size)}</p>
                     </div>
                   </div>
-                  
+
                   <Button
                     variant="ghost"
                     size="sm"

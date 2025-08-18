@@ -11,6 +11,7 @@ import { FileUpload } from '@/components/ui/file-upload';
 import { UserPlus, Upload, FileText, CheckCircle, AlertCircle, Download } from 'lucide-react';
 import { useToast } from '@/hooks/use-toast';
 import { SearchableSelect, SearchableSelectOption } from '@/components/ui/searchable-select';
+import { UploadProgress } from '@/components/ui/upload-progress';
 
 interface ContactGroup {
   uuid: string;
@@ -414,22 +415,8 @@ Bob Johnson, +1122334455, bob@example.com`}
                 </AlertDescription>
               </Alert>
 
-              {uploading && (
-                <div className="space-y-2">
-                  <div className="flex items-center justify-between">
-                    <span className="text-sm font-medium">Processing contacts...</span>
-                    <span className="text-sm text-muted-foreground">{uploadProgress}%</span>
-                  </div>
-                  <Progress value={uploadProgress} className="w-full" />
-                </div>
-              )}
-
-              <Button 
-                onClick={handleTextSubmit} 
-                disabled={uploading || !contactsText.trim()}
-                className="w-full"
-              >
-                {uploading ? 'Processing...' : 'Add Contacts'}
+              <Button onClick={handleTextSubmit} disabled={uploading || !contactsText.trim()} className="w-full">
+                {uploading ? <div className="animate-spin rounded-full h-4 w-4 border-b-2 border-white mr-2"></div> : <UserPlus className="h-4 w-4 mr-2" />} {uploading ? 'Processing...' : 'Add Contacts'}
               </Button>
             </CardContent>
           </Card>
@@ -466,7 +453,7 @@ Bob Johnson, +1122334455, bob@example.com`}
                 <Label>Upload File</Label>
                 <FileUpload
                   accept=".csv,.xls,.xlsx"
-                  maxSize={10 * 1024 * 1024} // 10MB
+                  maxSize={10} // 10MB
                   onFileSelect={(files) => setSelectedFile(files[0] || null)}
                 />
                 <p className="text-sm text-muted-foreground">
@@ -482,23 +469,12 @@ Bob Johnson, +1122334455, bob@example.com`}
                 </AlertDescription>
               </Alert>
 
-              {uploading && (
-                <div className="space-y-2">
-                  <div className="flex items-center justify-between">
-                    <span className="text-sm font-medium">Uploading file...</span>
-                    <span className="text-sm text-muted-foreground">{uploadProgress}%</span>
-                  </div>
-                  <Progress value={uploadProgress} className="w-full" />
-                </div>
-              )}
+              {uploading && <UploadProgress progress={uploadProgress} message="Uploading file..." />}
 
-              <Button 
-                onClick={handleFileSubmit} 
-                disabled={uploading || !selectedFile}
-                className="w-full"
-              >
-                {uploading ? 'Uploading...' : 'Upload File'}
+              <Button onClick={handleFileSubmit} disabled={uploading || !selectedFile} className="w-full">
+                {uploading ? <div className="animate-spin rounded-full h-4 w-4 border-b-2 border-white mr-2"></div> : <Upload className="h-4 w-4 mr-2" />} {uploading ? 'Uploading...' : 'Upload File'}
               </Button>
+
             </CardContent>
           </Card>
         </TabsContent>
