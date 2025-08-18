@@ -375,41 +375,40 @@ export default function QuickSend() {
               </div>
 
               <div className="space-y-2">
-                <ToggleSwitch
-                  checked={scheduleFlag}
-                  onChange={setScheduleFlag}
-                  label="Schedule Message"
-                />
-
+                <ToggleSwitch checked={scheduleFlag} onChange={setScheduleFlag} label="Schedule Message" />
                 {scheduleFlag && (
                   <Popover>
                     <PopoverTrigger>
                       <Input
-                        placeholder={scheduledFor ? format(scheduledFor, 'yyyy-MM-dd HH:mm:ss') : 'Select date & time (GMT+3)'}
+                        placeholder={
+                          scheduledFor
+                            ? format(scheduledFor, 'yyyy-MM-dd HH:mm:ss')
+                            : 'Select date & time (GMT+3)'
+                        }
                         readOnly
                         className="cursor-pointer"
                       />
                     </PopoverTrigger>
-
                     <PopoverContent className="w-auto p-3">
                       <div className="grid gap-3 md:grid-cols-2">
-                        <div>
-                          <Calendar
-                            mode="single"
-                            selected={scheduledFor || undefined}
-                            onSelect={(date: Date) => onCalendarSelect(date)}
-                          />
-                        </div>
-
+                        <Calendar mode="single" selected={scheduledFor || undefined} onSelect={onCalendarSelect} />
                         <div className="space-y-2">
                           <div className="text-sm font-medium">Time (GMT+3)</div>
-                          <div className="text-xs text-muted-foreground">Hours and minutes only (seconds always 00)</div>
                           <div className="flex gap-2 mt-1">
-                            <SearchableSelect options={hourOptions} value={hourSel} onValueChange={(v) => onTimeChange(v, minuteSel)} className="flex-1" placeholder="Hour" />
-                            <SearchableSelect options={minuteOptions} value={minuteSel} onValueChange={(v) => onTimeChange(hourSel, v)} className="flex-1" placeholder="Minute" />
-                          </div>
-                          <div className="text-sm text-muted-foreground mt-2">
-                            Tip: Times are displayed and submitted in GMT+3. Server expects format YYYY-MM-DD HH:MM:SS
+                            <SearchableSelect
+                              options={hourOptions}
+                              value={hourSel}
+                              onValueChange={(v) => onTimeChange(v, minuteSel)}
+                              className="flex-1"
+                              placeholder="Hour"
+                            />
+                            <SearchableSelect
+                              options={minuteOptions}
+                              value={minuteSel}
+                              onValueChange={(v) => onTimeChange(hourSel, v)}
+                              className="flex-1"
+                              placeholder="Minute"
+                            />
                           </div>
                         </div>
                       </div>
