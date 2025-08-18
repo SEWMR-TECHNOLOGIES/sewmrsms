@@ -121,7 +121,13 @@ export default function CreateTemplate() {
                     onChange={(e) => handleInputChange('column_count', e.target.value)}
                     placeholder="3"
                   />
-                  <p className="text-sm text-muted-foreground">Specify how many placeholders (dynamic fields) your template uses</p>
+                  <p className="text-sm text-muted-foreground">
+                    Specify how many placeholders (dynamic fields) your template uses
+                  </p>
+                  <p className="text-sm text-yellow-700 bg-yellow-50 border border-yellow-200 rounded-md p-2">
+                    Important: Always include a column for the phone number.  
+                    Even if it does not appear in your sample message, it is required to send SMS to the right recipient.
+                  </p>
                 </div>
 
                 <Button type="submit" className="w-full" disabled={loading}>
@@ -181,18 +187,6 @@ export default function CreateTemplate() {
                 <li><strong>Column 2:</strong> order_id (unique order number)</li>
                 <li><strong>Column 3:</strong> phone (recipient’s phone number)</li>
               </ul>
-            </CardContent>
-          </Card>
-
-          <Card className="border-yellow-400 bg-yellow-50">
-            <CardHeader>
-              <CardTitle className="text-lg text-yellow-700">Important Reminder</CardTitle>
-            </CardHeader>
-            <CardContent>
-              <p className="text-sm text-yellow-800">
-                Always include a column for the phone number. Even if it doesn’t appear in your sample message,  
-                it is required to send the SMS to the right recipient.
-              </p>
             </CardContent>
           </Card>
         </div>
