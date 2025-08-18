@@ -5,7 +5,7 @@ import { Input } from "@/components/ui/input";
 import { Badge } from "@/components/ui/badge";
 import { DataTable } from "@/components/ui/data-table";
 import { Loader } from "@/components/ui/loader";
-import { Users, Plus, Trash2, Edit, Search } from "lucide-react";
+import { Users, Plus, Trash2, Edit } from "lucide-react";
 import { useToast } from "@/hooks/use-toast";
 import { format } from "date-fns";
 import { ColumnDef } from "@tanstack/react-table";
@@ -50,11 +50,6 @@ export default function ContactGroups() {
   // delete
   const [deletingGroup, setDeletingGroup] = useState<ContactGroup | null>(null);
   const [deletingUuid, setDeletingUuid] = useState<string | null>(null);
-
-  // search & pagination
-  const [searchQuery, setSearchQuery] = useState("");
-  const [page, setPage] = useState(1);
-  const [perPage] = useState(10);
 
   // fetch groups
   const fetchGroups = async () => {
@@ -142,11 +137,6 @@ export default function ContactGroups() {
     }
   };
 
-  // filtered + paginated
-  const filteredGroups = groups.filter(g => g.name.toLowerCase().includes(searchQuery.trim().toLowerCase()));
-  const totalPages = Math.ceil(filteredGroups.length / perPage);
-  const paginatedGroups = filteredGroups.slice((page - 1) * perPage, page * perPage);
-
   // columns
   const columns: ColumnDef<ContactGroup>[] = [
     { accessorKey: "name", header: "Name" },
@@ -210,37 +200,13 @@ export default function ContactGroups() {
         </CardContent>
       </Card>
 
-      {/* Search + pagination info */}
-      <div className="flex items-center justify-between gap-4">
-        <div className="relative max-w-md flex-1">
-          <Search className="absolute left-3 top-1/2 transform -translate-y-1/2 text-muted-foreground h-4 w-4" />
-          <Input
-            placeholder="Search by group name..."
-            value={searchQuery}
-            onChange={e => setSearchQuery(e.target.value)}
-            className="pl-10 bg-muted/50 border-0 focus-visible:ring-1 w-full"
-          />
-        </div>
-        <div className="text-sm text-muted-foreground whitespace-nowrap">
-          Page {page} of {totalPages || 1}
-        </div>
-      </div>
-
       {/* DataTable */}
       <Card>
         <CardContent className="relative">
           {loading && <Loader overlay />}
-          <DataTable columns={columns} data={paginatedGroups} />
+          <DataTable columns={columns} data={groups} searchKey="name" searchPlaceholder="Search groups..." />
         </CardContent>
       </Card>
-
-      {/* Pagination controls */}
-      {totalPages > 1 && (
-        <div className="flex justify-end gap-2">
-          <Button disabled={page === 1} onClick={() => setPage(page - 1)}>Previous</Button>
-          <Button disabled={page === totalPages} onClick={() => setPage(page + 1)}>Next</Button>
-        </div>
-      )}
 
       {/* Edit Modal */}
       {editingGroup && (
@@ -287,42 +253,42 @@ export default function ContactGroups() {
         </AlertDialog>
       )}
 
-        {/* Stats Cards */}
-        <div className="grid gap-4 md:grid-cols-3">
+      {/* Stats Cards */}
+      <div className="grid gap-4 md:grid-cols-3">
         <Card>
-            <CardHeader className="flex flex-row items-center justify-between space-y-0 pb-2">
+          <CardHeader className="flex flex-row items-center justify-between space-y-0 pb-2">
             <CardTitle className="text-sm font-medium">Total Groups</CardTitle>
             <Users className="h-4 w-4 text-muted-foreground" />
-            </CardHeader>
-            <CardContent>
+          </CardHeader>
+          <CardContent>
             <div className="text-2xl font-bold">{groups.length}</div>
-            </CardContent>
+          </CardContent>
         </Card>
 
         <Card>
-            <CardHeader className="flex flex-row items-center justify-between space-y-0 pb-2">
+          <CardHeader className="flex flex-row items-center justify-between space-y-0 pb-2">
             <CardTitle className="text-sm font-medium">Total Contacts</CardTitle>
             <Users className="h-4 w-4 text-muted-foreground" />
-            </CardHeader>
-            <CardContent>
+          </CardHeader>
+          <CardContent>
             <div className="text-2xl font-bold">
-                {groups.reduce((sum, group) => sum + group.contact_count, 0).toLocaleString()}
+              {groups.reduce((sum, group) => sum + group.contact_count, 0).toLocaleString()}
             </div>
-            </CardContent>
+          </CardContent>
         </Card>
 
         <Card>
-            <CardHeader className="flex flex-row items-center justify-between space-y-0 pb-2">
+          <CardHeader className="flex flex-row items-center justify-between space-y-0 pb-2">
             <CardTitle className="text-sm font-medium">Largest Group</CardTitle>
             <Users className="h-4 w-4 text-muted-foreground" />
-            </CardHeader>
-            <CardContent>
+          </CardHeader>
+          <CardContent>
             <div className="text-2xl font-bold">
-                {groups.length > 0 ? Math.max(...groups.map(g => g.contact_count)).toLocaleString() : "0"}
+              {groups.length > 0 ? Math.max(...groups.map(g => g.contact_count)).toLocaleString() : "0"}
             </div>
-            </CardContent>
+          </CardContent>
         </Card>
-        </div>
+      </div>
     </div>
   );
 }
