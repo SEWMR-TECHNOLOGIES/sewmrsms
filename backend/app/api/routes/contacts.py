@@ -271,116 +271,135 @@ async def create_contacts(
     current_user: User = Depends(get_current_user),
     db: Session = Depends(get_db)
 ):
-    content_type = request.headers.get("content-type", "")
-    if file:
-        if "multipart/form-data" not in content_type.lower():
-            raise HTTPException(status_code=415, detail="Invalid content type. Expected multipart/form-data")
-    else:
-        if "application/json" not in content_type.lower():
-            return {
-                "success": False,
-                "message": "Invalid content type. Expected application/json",
-                "data": None
-            }
-
-    # Extract group UUID from JSON or form data (required)
-    group_uuid = None
-    if not file:
-        try:
-            data = await request.json()
-        except Exception:
-            return {"success": False, "message": "Invalid JSON", "data": None}
-        group_uuid = data.get("contact_group_uuid", "").strip()
-        contacts_text = data.get("contacts_text", "").strip()
-        if not group_uuid:
-            return {"success": False, "message": "contact_group_uuid is required", "data": None}
-        if not contacts_text:
-            return {"success": False, "message": "No contacts_text provided", "data": None}
-    else:
-        form = await request.form()
-        group_uuid = form.get("contact_group_uuid")
-        if not group_uuid:
-            return {"success": False, "message": "contact_group_uuid is required", "data": None}
-
-    # Verify contact group exists and belongs to user
-    if group_uuid.lower() == "none":
-        contact_group = None  
-    else:
-        contact_group = db.query(ContactGroup).filter(
-            ContactGroup.uuid == group_uuid,
-            ContactGroup.user_id == current_user.id
-        ).first()
-        if not contact_group:
-            return {"success": False, "message": "Contact group not found or no permission", "data": None}
-
-
-    contacts = []
-    if file:
-        contents = await file.read()
-        try:
-            contacts = parse_contacts_csv(contents)
-        except HTTPException as e:
-            return {"success": False, "message": e.detail, "data": None}
-    else:
-        contacts = parse_contacts_textarea(contacts_text)
-
-    valid_contacts = []
-    errors = []
-    now = datetime.now(pytz.timezone("Africa/Nairobi")).replace(tzinfo=None)
-
-    for idx, c in enumerate(contacts, 1):
-        name = normalize_str(c.get("name"))
-        phone = normalize_str(c.get("phone"))
-        email = normalize_str(c.get("email"))
-
-        # Validate phone required
-        if not phone or not validate_phone(phone):
-            errors.append(f"Row {idx}: Invalid phone '{phone}'")
-            continue
-        # Validate email if provided
-        if email and not validate_email(email):
-            errors.append(f"Row {idx}: Invalid email '{email}'")
-            continue
-
-        # Check duplicates by phone or email within the same group
-        duplicate = db.query(Contact).filter(
-            Contact.group_id == contact_group.id,
-            Contact.user_id == current_user.id,
-            or_(
-                Contact.phone == phone,
-                and_(email != "", Contact.email == email)
-            )
-        ).first()
-        
-        if duplicate:
-            errors.append(f"Row {idx}: Duplicate contact with phone '{phone}' or email '{email}' in the group")
-            continue
-
-        valid_contacts.append(Contact(
-            user_id=current_user.id,
-            name=name,
-            phone=phone,
-            email=email,
-            group_id=contact_group.id if contact_group else None, 
-            created_at=now,
-            updated_at=now
-        ))
-
     try:
-        db.bulk_save_objects(valid_contacts)
-        db.commit()
-    except Exception as e:
-        return {"success": False, "message": f"DB error: {str(e)}", "data": None}
+        content_type = request.headers.get("content-type", "")
+        print("Content-Type:", content_type)
 
-    return {
-        "success": True,
-        "message": f"Contacts processed. Successfully added {len(valid_contacts)} contacts. Skipped {len(errors)} invalid or duplicate contacts.",
-        "errors": errors,
-        "data": {
-            "added_count": len(valid_contacts),
-            "skipped_count": len(errors)
+        if file:
+            if "multipart/form-data" not in content_type.lower():
+                raise HTTPException(status_code=415, detail="Invalid content type. Expected multipart/form-data")
+        else:
+            if "application/json" not in content_type.lower():
+                return {
+                    "success": False,
+                    "message": "Invalid content type. Expected application/json",
+                    "data": None
+                }
+
+        group_uuid = None
+        contacts_text = ""
+        if not file:
+            try:
+                data = await request.json()
+            except Exception as e:
+                return {"success": False, "message": "Invalid JSON", "data": None}
+
+            group_uuid = data.get("contact_group_uuid", "").strip()
+            contacts_text = data.get("contacts_text", "").strip()
+            if not group_uuid:
+                return {"success": False, "message": "contact_group_uuid is required", "data": None}
+            if not contacts_text:
+                return {"success": False, "message": "No contacts_text provided", "data": None}
+        else:
+            try:
+                form = await request.form()
+            except Exception as e:
+                return {"success": False, "message": "Invalid form data", "data": None}
+
+            group_uuid = form.get("contact_group_uuid")
+            if not group_uuid:
+                return {"success": False, "message": "contact_group_uuid is required", "data": None}
+
+        # Verify contact group
+        contact_group = None
+        if group_uuid.lower() != "none":
+            contact_group = db.query(ContactGroup).filter(
+                ContactGroup.uuid == group_uuid,
+                ContactGroup.user_id == current_user.id
+            ).first()
+            if not contact_group:
+                print("Contact group not found or no permission for group_uuid:", group_uuid)
+                return {"success": False, "message": "Contact group not found or no permission", "data": None}
+
+        contacts = []
+        if file:
+            try:
+                contents = await file.read()
+                contacts = parse_contacts_csv(contents)
+            except HTTPException as e:
+                return {"success": False, "message": e.detail, "data": None}
+            except Exception as e:
+                return {"success": False, "message": str(e), "data": None}
+        else:
+            try:
+                contacts = parse_contacts_textarea(contacts_text)
+            except Exception as e:
+                return {"success": False, "message": str(e), "data": None}
+
+        valid_contacts = []
+        errors = []
+        now = datetime.now(pytz.timezone("Africa/Nairobi")).replace(tzinfo=None)
+
+        for idx, c in enumerate(contacts, 1):
+            try:
+                name = normalize_str(c.get("name"))
+                phone = normalize_str(c.get("phone"))
+                email = normalize_str(c.get("email"))
+
+                if not phone or not validate_phone(phone):
+                    errors.append(f"Row {idx}: Invalid phone '{phone}'")
+                    continue
+                if email and not validate_email(email):
+                    errors.append(f"Row {idx}: Invalid email '{email}'")
+                    continue
+
+                group_id = contact_group.id if contact_group else None
+                duplicate = db.query(Contact).filter(
+                    Contact.group_id == group_id,
+                    Contact.user_id == current_user.id,
+                    or_(
+                        Contact.phone == phone,
+                        and_(email != "", Contact.email == email)
+                    )
+                ).first()
+
+                if duplicate:
+                    errors.append(f"Row {idx}: Duplicate contact with phone '{phone}' or email '{email}' in the group")
+                    continue
+
+                valid_contacts.append(Contact(
+                    user_id=current_user.id,
+                    name=name,
+                    phone=phone,
+                    email=email,
+                    group_id=group_id, 
+                    created_at=now,
+                    updated_at=now
+                ))
+            except Exception as e:
+                errors.append(f"Row {idx}: {str(e)}")
+
+        try:
+            db.bulk_save_objects(valid_contacts)
+            db.commit()
+        except Exception as e:
+            print("DB commit error:", e)
+            return {"success": False, "message": f"DB error: {str(e)}", "data": None}
+
+        return {
+            "success": True,
+            "message": f"Contacts processed. Successfully added {len(valid_contacts)} contacts. Skipped {len(errors)} invalid or duplicate contacts.",
+            "errors": errors,
+            "data": {
+                "added_count": len(valid_contacts),
+                "skipped_count": len(errors)
+            }
         }
-    }
+
+    except Exception as e:
+        print("Unhandled error:", e)
+        raise HTTPException(status_code=500, detail=str(e))
+
 
 @router.get("/{contact_uuid}")
 def get_contact(
