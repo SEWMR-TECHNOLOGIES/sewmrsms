@@ -2,10 +2,9 @@ import React, { useEffect, useState } from "react";
 import { Card, CardContent, CardHeader, CardTitle, CardDescription } from "@/components/ui/card";
 import { Button } from "@/components/ui/button";
 import { Input } from "@/components/ui/input";
-import { Badge } from "@/components/ui/badge";
 import { DataTable } from "@/components/ui/data-table";
 import { Loader } from "@/components/ui/loader";
-import { Plus, Trash2, Edit } from "lucide-react";
+import { Plus, Trash2, Edit, Eye } from "lucide-react";
 import { useToast } from "@/hooks/use-toast";
 import { format } from "date-fns";
 import { ColumnDef } from "@tanstack/react-table";
@@ -18,7 +17,7 @@ import {
   AlertDialogHeader,
   AlertDialogTitle,
 } from "@/components/ui/alert-dialog";
-import { SearchableSelect, SearchableSelectOption } from "@/components/ui/searchable-select";
+import { SearchableSelect } from "@/components/ui/searchable-select";
 import { ToggleSwitch } from "@/components/ui/toggle-switch";
 
 interface TemplateColumn {
@@ -43,6 +42,42 @@ interface SmsTemplate {
 }
 
 const BASE_URL = "https://api.sewmrsms.co.tz/api/v1/templates";
+
+// ✅ New reusable preview component
+const TemplatePreview: React.FC<{ template: SmsTemplate }> = ({ template }) => {
+  const sortedColumns = [...template.columns].sort((a, b) => a.position - b.position);
+
+  return (
+    <div className="overflow-x-auto border rounded-lg">
+      <table className="min-w-full border-collapse">
+        <thead>
+          <tr>
+            {sortedColumns.map((col) => (
+              <th
+                key={col.uuid}
+                className="border px-4 py-2 bg-gray-100 text-left text-sm font-semibold"
+              >
+                {col.name} {col.is_phone_column ? "(Phone)" : ""}
+              </th>
+            ))}
+          </tr>
+        </thead>
+        <tbody>
+          <tr>
+            {sortedColumns.map((col) => (
+              <td
+                key={col.uuid}
+                className="border px-4 py-6 text-center text-gray-400"
+              >
+                Sample Data
+              </td>
+            ))}
+          </tr>
+        </tbody>
+      </table>
+    </div>
+  );
+};
 
 export default function TemplatesPage() {
   const { toast } = useToast();
@@ -70,12 +105,15 @@ export default function TemplatesPage() {
   const [deletingTemplate, setDeletingTemplate] = useState<SmsTemplate | null>(null);
   const [deletingUuid, setDeletingUuid] = useState<string | null>(null);
 
-    // add column modal
+  // add column modal
   const [addingColumnTemplate, setAddingColumnTemplate] = useState<SmsTemplate | null>(null);
   const [newColumnName, setNewColumnName] = useState("");
   const [newColumnPosition, setNewColumnPosition] = useState<string>("");
   const [newColumnPhone, setNewColumnPhone] = useState(false);
   const [addingColumn, setAddingColumn] = useState(false);
+
+  // ✅ preview modal state
+  const [previewTemplate, setPreviewTemplate] = useState<SmsTemplate | null>(null);
 
   // fetch templates
   const fetchTemplates = async () => {
@@ -116,13 +154,8 @@ export default function TemplatesPage() {
       const json = await res.json();
       if (!res.ok || !json.success) throw new Error(json.message || "Failed to create template");
 
-      // Log the newly created template
-      console.log("Newly created template:", json.data);
+      setTemplates((prev) => [json.data, ...prev]);
 
-      // Update state
-      setTemplates(prev => [json.data, ...prev]);
-
-      // Clear inputs
       setNewName("");
       setNewMessage("");
       setNewColumnCount("");
@@ -134,7 +167,6 @@ export default function TemplatesPage() {
       setCreating(false);
     }
   };
-
 
   // edit template
   const editTemplate = async () => {
@@ -151,13 +183,13 @@ export default function TemplatesPage() {
         body: JSON.stringify({
           name: editingTemplate.name,
           sample_message: editingTemplate.sample_message,
-          column_count: colCount
+          column_count: colCount,
         }),
       });
       const json = await res.json();
       if (!res.ok || !json.success) throw new Error(json.message || "Failed to update template");
 
-      setTemplates(prev => prev.map(t => (t.uuid === editingTemplate.uuid ? json.data : t)));
+      setTemplates((prev) => prev.map((t) => (t.uuid === editingTemplate.uuid ? json.data : t)));
       setEditingTemplate(null);
       toast({ title: "Success", description: json.message || "Template updated", variant: "success" });
     } catch (err: any) {
@@ -175,7 +207,7 @@ export default function TemplatesPage() {
       const res = await fetch(`${BASE_URL}/${uuid}`, { method: "DELETE", credentials: "include" });
       const json = await res.json();
       if (!res.ok || !json.success) throw new Error(json.message || "Failed to delete template");
-      setTemplates(prev => prev.filter(t => t.uuid !== uuid));
+      setTemplates((prev) => prev.filter((t) => t.uuid !== uuid));
       setDeletingTemplate(null);
       toast({ title: "Success", description: json.message || "Template deleted", variant: "success" });
     } catch (err: any) {
@@ -197,25 +229,28 @@ export default function TemplatesPage() {
         body: JSON.stringify({
           name: newColumnName.trim(),
           position: parseInt(newColumnPosition, 10),
-          is_phone_column: newColumnPhone
-        })
+          is_phone_column: newColumnPhone,
+        }),
       });
       const json = await res.json();
       if (!res.ok || !json.success) throw new Error(json.message || "Failed to add column");
 
-      // Update template columns in state
-      setTemplates(prev => prev.map(t =>
-        t.uuid === addingColumnTemplate.uuid
-          ? { ...t, columns: [...t.columns, json.data] }
-          : t
-      ));
+      setTemplates((prev) =>
+        prev.map((t) =>
+          t.uuid === addingColumnTemplate.uuid ? { ...t, columns: [...t.columns, json.data] } : t
+        )
+      );
 
       toast({ title: "Success", description: json.message || "Column added", variant: "success" });
       setAddingColumnTemplate(null);
-      setNewColumnName(""); setNewColumnPosition(""); setNewColumnPhone(false);
+      setNewColumnName("");
+      setNewColumnPosition("");
+      setNewColumnPhone(false);
     } catch (err: any) {
       toast({ title: "Error", description: err?.message || "Failed to add column", variant: "destructive" });
-    } finally { setAddingColumn(false); }
+    } finally {
+      setAddingColumn(false);
+    }
   };
 
   // columns
@@ -230,10 +265,6 @@ export default function TemplatesPage() {
       header: "Actions",
       cell: ({ row }) => {
         const template = row.original;
-        const positionOptions: SearchableSelectOption[] = Array.from({ length: template.column_count }, (_, i) => ({
-          value: (i + 1).toString(),
-          label: `Column ${i + 1}`
-        }));
         return (
           <div className="flex gap-2">
             <Button
@@ -244,7 +275,7 @@ export default function TemplatesPage() {
                   uuid: template.uuid,
                   name: template.name,
                   sample_message: template.sample_message,
-                  column_count: template.column_count.toString()
+                  column_count: template.column_count.toString(),
                 })
               }
               disabled={updating}
@@ -257,6 +288,12 @@ export default function TemplatesPage() {
             <Button variant="outline" size="sm" onClick={() => setAddingColumnTemplate(template)}>
               <Plus className="mr-1 h-3 w-3" /> Add Column
             </Button>
+            {/* ✅ New Preview Button */}
+            {template.columns.length === template.column_count && (
+              <Button variant="outline" size="sm" onClick={() => setPreviewTemplate(template)}>
+                <Eye className="mr-1 h-3 w-3" /> Preview
+              </Button>
+            )}
           </div>
         );
       },
@@ -280,9 +317,9 @@ export default function TemplatesPage() {
           <CardDescription>Define a new SMS template with columns</CardDescription>
         </CardHeader>
         <CardContent className="flex gap-2">
-          <Input placeholder="Template Name" value={newName} onChange={e => setNewName(e.target.value)} className="flex-1" />
-          <Input placeholder="Sample Message" value={newMessage} onChange={e => setNewMessage(e.target.value)} className="flex-1" />
-          <Input placeholder="Number of Columns" value={newColumnCount} onChange={e => setNewColumnCount(e.target.value)} className="flex-1" />
+          <Input placeholder="Template Name" value={newName} onChange={(e) => setNewName(e.target.value)} className="flex-1" />
+          <Input placeholder="Sample Message" value={newMessage} onChange={(e) => setNewMessage(e.target.value)} className="flex-1" />
+          <Input placeholder="Number of Columns" value={newColumnCount} onChange={(e) => setNewColumnCount(e.target.value)} className="flex-1" />
           <Button
             onClick={createTemplate}
             disabled={creating || !newName.trim() || !newMessage.trim() || !newColumnCount.trim()}
@@ -304,15 +341,33 @@ export default function TemplatesPage() {
           <DataTable columns={columns} data={templates} searchPlaceholder="Search templates..." />
         </CardContent>
       </Card>
- {/* Add Column Modal */}
+
+      {/* ✅ Preview Modal */}
+      {previewTemplate && (
+        <AlertDialog open={!!previewTemplate} onOpenChange={(open) => !open && setPreviewTemplate(null)}>
+          <AlertDialogContent className="max-w-4xl">
+            <AlertDialogHeader>
+              <AlertDialogTitle>Template Preview - {previewTemplate.name}</AlertDialogTitle>
+            </AlertDialogHeader>
+            <div className="p-4">
+              <TemplatePreview template={previewTemplate} />
+            </div>
+            <AlertDialogFooter>
+              <AlertDialogCancel onClick={() => setPreviewTemplate(null)}>Close</AlertDialogCancel>
+            </AlertDialogFooter>
+          </AlertDialogContent>
+        </AlertDialog>
+      )}
+
+      {/* Add Column Modal */}
       {addingColumnTemplate && (
-        <AlertDialog open={!!addingColumnTemplate} onOpenChange={open => { if (!open && !addingColumn) setAddingColumnTemplate(null); }}>
+        <AlertDialog open={!!addingColumnTemplate} onOpenChange={(open) => { if (!open && !addingColumn) setAddingColumnTemplate(null); }}>
           <AlertDialogContent>
             <AlertDialogHeader>
               <AlertDialogTitle>Add Column to {addingColumnTemplate.name}</AlertDialogTitle>
             </AlertDialogHeader>
             <div className="p-4 flex flex-col gap-3">
-              <Input placeholder="Column Name" value={newColumnName} onChange={e => setNewColumnName(e.target.value)} />
+              <Input placeholder="Column Name" value={newColumnName} onChange={(e) => setNewColumnName(e.target.value)} />
 
               <SearchableSelect
                 options={Array.from({ length: addingColumnTemplate.column_count }, (_, i) => ({ value: (i+1).toString(), label: `Column ${i+1}` }))}

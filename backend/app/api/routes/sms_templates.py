@@ -153,7 +153,6 @@ async def edit_sms_template(
             "updated_at": template.updated_at.strftime("%Y-%m-%d %H:%M:%S")
         }
     }
-
 @router.get("/")
 def list_sms_templates(
     current_user: User = Depends(get_current_user),
@@ -170,15 +169,11 @@ def list_sms_templates(
             TemplateColumn.template_id == t.id
         ).order_by(TemplateColumn.position.asc()).all()
 
-        result.append({
-            "id": t.id,
-            "uuid": str(t.uuid),
-            "name": t.name,
-            "sample_message": t.sample_message,
-            "column_count": t.column_count,
-            "created_at": t.created_at.strftime("%Y-%m-%d %H:%M:%S"),
-            "updated_at": t.updated_at.strftime("%Y-%m-%d %H:%M:%S"),
-            "columns": [
+        # check completeness
+        is_complete = len(columns) == t.column_count
+
+        if is_complete:
+            column_data = [
                 {
                     "id": c.id,
                     "uuid": str(c.uuid),
@@ -190,6 +185,19 @@ def list_sms_templates(
                 }
                 for c in columns
             ]
+        else:
+            column_data = []
+
+        result.append({
+            "id": t.id,
+            "uuid": str(t.uuid),
+            "name": t.name,
+            "sample_message": t.sample_message,
+            "column_count": t.column_count,
+            "created_at": t.created_at.strftime("%Y-%m-%d %H:%M:%S"),
+            "updated_at": t.updated_at.strftime("%Y-%m-%d %H:%M:%S"),
+            "is_complete": is_complete,
+            "columns": column_data
         })
 
     return {
