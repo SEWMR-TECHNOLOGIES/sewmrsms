@@ -77,7 +77,7 @@ export default function TemplatesPage() {
   const [newColumnPhone, setNewColumnPhone] = useState(false);
   const [addingColumn, setAddingColumn] = useState(false);
 
-  // ✅ preview modal state
+  //  preview modal state
   const [previewTemplate, setPreviewTemplate] = useState<SmsTemplate | null>(null);
 
   // fetch templates
@@ -253,7 +253,7 @@ export default function TemplatesPage() {
             <Button variant="outline" size="sm" onClick={() => setAddingColumnTemplate(template)}>
               <Plus className="mr-1 h-3 w-3" /> Add Column
             </Button>
-            {/* ✅ New Preview Button */}
+            {/*  New Preview Button */}
             {template.columns.length === template.column_count && (
               <Button variant="outline" size="sm" onClick={() => setPreviewTemplate(template)}>
                 <Eye className="mr-1 h-3 w-3" /> Preview
@@ -307,7 +307,7 @@ export default function TemplatesPage() {
         </CardContent>
       </Card>
 
-      {/* ✅ Preview Modal */}
+      {/*  Preview Modal */}
       {previewTemplate && (
         <AlertDialog open={!!previewTemplate} onOpenChange={(open) => !open && setPreviewTemplate(null)}>
           <AlertDialogContent className="max-w-4xl">
