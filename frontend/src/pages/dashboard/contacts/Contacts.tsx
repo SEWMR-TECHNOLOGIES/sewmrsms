@@ -377,17 +377,32 @@ export default function Contacts() {
               <AlertDialogTitle>Edit Contact</AlertDialogTitle>
             </AlertDialogHeader>
             <div className="p-4 flex flex-col gap-3">
-              <Input value={editName} onChange={(e) => setEditName(e.target.value)} placeholder="Name" />
-              <Input value={editPhone} onChange={(e) => setEditPhone(e.target.value)} placeholder="Phone" />
-              <Input value={editEmail} onChange={(e) => setEditEmail(e.target.value)} placeholder="Email (optional)" />
-              <SearchableSelect
-                options={groupOptions}
-                value={editGroup}
-                onValueChange={(val: string) => setEditGroup(val)}
-                placeholder="Select a group or leave blank"
-                searchPlaceholder="Search groups..."
-                className="w-full"
-              />
+              <div className="flex flex-col">
+                <label className="text-sm font-medium mb-1">Name</label>
+                <Input value={editName} onChange={(e) => setEditName(e.target.value)} placeholder="Name" />
+              </div>
+
+              <div className="flex flex-col">
+                <label className="text-sm font-medium mb-1">Phone</label>
+                <Input value={editPhone} onChange={(e) => setEditPhone(e.target.value)} placeholder="Phone" />
+              </div>
+
+              <div className="flex flex-col">
+                <label className="text-sm font-medium mb-1">Email (optional)</label>
+                <Input value={editEmail} onChange={(e) => setEditEmail(e.target.value)} placeholder="Email (optional)" />
+              </div>
+
+              <div className="flex flex-col">
+                <label className="text-sm font-medium mb-1">Group</label>
+                <SearchableSelect
+                  options={groupOptions}
+                  value={editGroup} // This will automatically select the assigned group
+                  onValueChange={(val: string) => setEditGroup(val)}
+                  placeholder="Select a group or leave blank"
+                  searchPlaceholder="Search groups..."
+                  className="w-full"
+                />
+              </div>
             </div>
             <AlertDialogFooter>
               <AlertDialogCancel onClick={() => !updatingContact && setEditingContact(null)} disabled={updatingContact}>Cancel</AlertDialogCancel>

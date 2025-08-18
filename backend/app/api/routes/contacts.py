@@ -585,6 +585,7 @@ def get_contacts_overview(
                 "phone": c.phone,
                 "email": c.email,
                 "group_id": c.group_id,
+                "group_uuid": str(c.group.uuid) if c.group else None,
                 "group_name": c.group.name if c.group else "Ungrouped",
                 "blacklisted": c.is_blacklisted,
                 "created_at": c.created_at.strftime("%Y-%m-%d %H:%M:%S"),
