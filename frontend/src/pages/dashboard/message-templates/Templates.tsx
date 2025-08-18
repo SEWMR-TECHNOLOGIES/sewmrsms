@@ -19,6 +19,7 @@ import {
 } from "@/components/ui/alert-dialog";
 import { SearchableSelect } from "@/components/ui/searchable-select";
 import { ToggleSwitch } from "@/components/ui/toggle-switch";
+import TemplatePreview from "@/components/ui/template-preview";
 
 interface TemplateColumn {
   id: string;
@@ -42,42 +43,6 @@ interface SmsTemplate {
 }
 
 const BASE_URL = "https://api.sewmrsms.co.tz/api/v1/templates";
-
-// ✅ New reusable preview component
-const TemplatePreview: React.FC<{ template: SmsTemplate }> = ({ template }) => {
-  const sortedColumns = [...template.columns].sort((a, b) => a.position - b.position);
-
-  return (
-    <div className="overflow-x-auto border rounded-lg">
-      <table className="min-w-full border-collapse">
-        <thead>
-          <tr>
-            {sortedColumns.map((col) => (
-              <th
-                key={col.uuid}
-                className="border px-4 py-2 bg-gray-100 text-left text-sm font-semibold"
-              >
-                {col.name} {col.is_phone_column ? "(Phone)" : ""}
-              </th>
-            ))}
-          </tr>
-        </thead>
-        <tbody>
-          <tr>
-            {sortedColumns.map((col) => (
-              <td
-                key={col.uuid}
-                className="border px-4 py-6 text-center text-gray-400"
-              >
-                Sample Data
-              </td>
-            ))}
-          </tr>
-        </tbody>
-      </table>
-    </div>
-  );
-};
 
 export default function TemplatesPage() {
   const { toast } = useToast();
