@@ -85,6 +85,74 @@ async def create_sms_template(
         }
     }
 
+@router.put("/edit/{template_uuid}")
+async def edit_sms_template(
+    template_uuid: uuid.UUID,
+    request: Request,
+    current_user: User = Depends(get_current_user),
+    db: Session = Depends(get_db)
+):
+    content_type = request.headers.get("content-type", "")
+    if "application/json" not in content_type.lower():
+        return {"success": False, "message": "Invalid content type. Expected application/json", "data": None}
+
+    try:
+        data = await request.json()
+    except Exception:
+        return {"success": False, "message": "Invalid JSON", "data": None}
+
+    name = data.get("name", "").strip()
+    sample_message = data.get("sample_message", "").strip()
+    column_count = data.get("column_count")
+
+    if not name or not sample_message:
+        return {"success": False, "message": "Both name and sample_message are required", "data": None}
+
+    if column_count is None or not isinstance(column_count, int) or column_count < 1:
+        return {"success": False, "message": "column_count is required and must be a positive integer", "data": None}
+
+    template = db.query(SmsTemplate).filter(
+        SmsTemplate.uuid == template_uuid,
+        SmsTemplate.user_id == current_user.id
+    ).first()
+
+    if not template:
+        return {"success": False, "message": "Template not found or no permission", "data": None}
+
+    # Check for duplicate name per user
+    duplicate = db.query(SmsTemplate).filter(
+        SmsTemplate.user_id == current_user.id,
+        func.lower(SmsTemplate.name) == func.lower(name),
+        SmsTemplate.uuid != template_uuid
+    ).first()
+    if duplicate:
+        return {"success": False, "message": "Another template with this name exists", "data": None}
+
+    template.name = name
+    template.sample_message = sample_message
+    template.column_count = column_count
+    template.updated_at = datetime.now(pytz.timezone("Africa/Nairobi")).replace(tzinfo=None)
+
+    try:
+        db.commit()
+        db.refresh(template)
+    except Exception as e:
+        return {"success": False, "message": f"Database error: {str(e)}", "data": None}
+
+    return {
+        "success": True,
+        "message": "Template updated successfully",
+        "data": {
+            "id": template.id,
+            "uuid": str(template.uuid),
+            "name": template.name,
+            "sample_message": template.sample_message,
+            "column_count": template.column_count,
+            "created_at": template.created_at.strftime("%Y-%m-%d %H:%M:%S"),
+            "updated_at": template.updated_at.strftime("%Y-%m-%d %H:%M:%S")
+        }
+    }
+
 @router.get("/")
 def list_sms_templates(
     current_user: User = Depends(get_current_user),

@@ -114,9 +114,9 @@ export default function TemplatesPage() {
     }
   };
 
-  // edit
+  // edit template
   const editTemplate = async () => {
-    if (!editingTemplate || !editingTemplate.name.trim()) return;
+    if (!editingTemplate || !editingTemplate.name.trim() || !editingTemplate.sample_message.trim()) return;
     setUpdating(true);
     try {
       const res = await fetch(`${BASE_URL}/edit/${editingTemplate.uuid}`, {
@@ -126,6 +126,7 @@ export default function TemplatesPage() {
         body: JSON.stringify({
           name: editingTemplate.name,
           sample_message: editingTemplate.sample_message,
+          column_count: editingTemplate.columns.length
         }),
       });
       const json = await res.json();
@@ -141,12 +142,12 @@ export default function TemplatesPage() {
     }
   };
 
-  // delete
+  // delete template
   const deleteTemplate = async (uuid: string) => {
     if (!uuid) return;
     setDeletingUuid(uuid);
     try {
-      const res = await fetch(`${BASE_URL}/${uuid}/remove`, { method: "DELETE", credentials: "include" });
+      const res = await fetch(`${BASE_URL}/${uuid}`, { method: "DELETE", credentials: "include" });
       const json = await res.json();
       if (!res.ok || !json.success) throw new Error(json.message || "Failed to delete template");
       setTemplates(prev => prev.filter(t => t.uuid !== uuid));
@@ -163,19 +164,7 @@ export default function TemplatesPage() {
   const columns: ColumnDef<SmsTemplate>[] = [
     { accessorKey: "name", header: "Name" },
     { accessorKey: "sample_message", header: "Message" },
-    {
-      accessorKey: "column_count",
-      header: "Columns",
-      cell: ({ row }) => (
-        <div className="flex flex-wrap gap-1">
-          {row.original.columns.map(col => (
-            <Badge key={col.uuid} variant={col.is_phone_column ? "default" : "secondary"}>
-              {col.name} {col.is_phone_column && "(Phone)"}
-            </Badge>
-          ))}
-        </div>
-      ),
-    },
+    { accessorKey: "column_count", header: "Columns" },
     { accessorKey: "created_at", header: "Created", cell: ({ row }) => format(new Date(row.getValue("created_at")), "MMM dd, yyyy") },
     { accessorKey: "updated_at", header: "Updated", cell: ({ row }) => format(new Date(row.getValue("updated_at")), "MMM dd, yyyy") },
     {
@@ -220,7 +209,11 @@ export default function TemplatesPage() {
           <Input placeholder="Template Name" value={newName} onChange={e => setNewName(e.target.value)} className="flex-1" />
           <Input placeholder="Sample Message" value={newMessage} onChange={e => setNewMessage(e.target.value)} className="flex-1" />
           <Input placeholder="Phone Column Name" value={newPhoneColumn} onChange={e => setNewPhoneColumn(e.target.value)} className="flex-1" />
-          <Button onClick={createTemplate} disabled={creating} className="flex items-center gap-2">
+          <Button
+            onClick={createTemplate}
+            disabled={creating || !newName.trim() || !newMessage.trim() || !newPhoneColumn.trim()}
+            className="flex items-center gap-2"
+          >
             {creating ? "Creating..." : "Create Template"}
           </Button>
         </CardContent>
@@ -230,9 +223,7 @@ export default function TemplatesPage() {
       <Card>
         <CardHeader>
           <CardTitle>All Templates</CardTitle>
-          <CardDescription>
-            A list of all your SMS templates and their columns.
-          </CardDescription>
+          <CardDescription>A list of all your SMS templates and their columns.</CardDescription>
         </CardHeader>
         <CardContent className="relative">
           {loading && <Loader overlay />}
@@ -247,13 +238,31 @@ export default function TemplatesPage() {
             <AlertDialogHeader>
               <AlertDialogTitle>Edit Template</AlertDialogTitle>
             </AlertDialogHeader>
-            <div className="p-4 flex gap-2">
-              <Input value={editingTemplate.name} onChange={e => setEditingTemplate({ ...editingTemplate, name: e.target.value })} className="flex-1" />
-              <Input value={editingTemplate.sample_message} onChange={e => setEditingTemplate({ ...editingTemplate, sample_message: e.target.value })} className="flex-1" />
+            <div className="p-4 flex flex-col gap-2">
+              <Input
+                value={editingTemplate.name}
+                onChange={e => setEditingTemplate({ ...editingTemplate, name: e.target.value })}
+                placeholder="Template Name"
+              />
+              <Input
+                value={editingTemplate.sample_message}
+                onChange={e => setEditingTemplate({ ...editingTemplate, sample_message: e.target.value })}
+                placeholder="Sample Message"
+              />
+              <Input
+                value={editingTemplate.columns.length.toString()}
+                readOnly
+                placeholder="Number of Columns"
+              />
             </div>
             <AlertDialogFooter>
               <AlertDialogCancel onClick={() => !updating && setEditingTemplate(null)} disabled={updating}>Cancel</AlertDialogCancel>
-              <AlertDialogAction onClick={editTemplate} disabled={updating}>Save Changes</AlertDialogAction>
+              <AlertDialogAction
+                onClick={editTemplate}
+                disabled={updating || !editingTemplate.name.trim() || !editingTemplate.sample_message.trim()}
+              >
+                {updating ? "Saving..." : "Save Changes"}
+              </AlertDialogAction>
             </AlertDialogFooter>
           </AlertDialogContent>
         </AlertDialog>
@@ -273,7 +282,13 @@ export default function TemplatesPage() {
             </div>
             <AlertDialogFooter>
               <AlertDialogCancel onClick={() => !deletingUuid && setDeletingTemplate(null)} disabled={!!deletingUuid}>Cancel</AlertDialogCancel>
-              <AlertDialogAction onClick={() => deletingTemplate && deleteTemplate(deletingTemplate.uuid)} className="bg-destructive text-destructive-foreground" disabled={!!deletingUuid}>Delete Template</AlertDialogAction>
+              <AlertDialogAction
+                onClick={() => deletingTemplate && deleteTemplate(deletingTemplate.uuid)}
+                className="bg-destructive text-destructive-foreground"
+                disabled={!!deletingUuid}
+              >
+                Delete Template
+              </AlertDialogAction>
             </AlertDialogFooter>
           </AlertDialogContent>
         </AlertDialog>
