@@ -29,6 +29,7 @@ import UploadAgreement from "./pages/dashboard/sender-ids/UploadSignedAgreement"
 import SenderIdPropagationStatus from "./pages/dashboard/sender-ids/PropagationStatus";
 import ContactGroups from "./pages/dashboard/contacts/ContactGroups";
 import AddContacts from "./pages/dashboard/contacts/AddContact";
+import CreateTemplate from "./pages/dashboard/templates/CreateTemplate";
 
 const queryClient = new QueryClient();
 
@@ -63,7 +64,7 @@ const App = () => (
             <Route path="messages/quick-send" element={<QuickSend />} />
             <Route path="messages/template" element={<div>Template Send</div>} />
             <Route path="messages/history" element={<div>Message History</div>} />
-            <Route path="messages/templates" element={<div>Templates</div>} />
+            <Route path="templates/new" element={<CreateTemplate />} />
             <Route path="reports/delivery" element={<div>Delivery Reports</div>} />
             <Route path="reports/analytics" element={<div>Analytics</div>} />
             <Route path="billing/purchase" element={<BillingPurchase />} />

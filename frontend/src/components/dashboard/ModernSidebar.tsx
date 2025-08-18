@@ -31,7 +31,6 @@ const menuItems: MenuItem[] = [
     title: 'Contacts', icon: Users, items: [
       { title: 'My Contacts', url: '/console/contacts', icon: Users },
       { title: 'Add Contact', url: '/console/contacts/new', icon: UserPlus },
-      { title: 'Import Contacts', url: '/console/contacts/import', icon: Import },
       { title: 'Contact Groups', url: '/console/contacts/groups', icon: Users },
     ]
   },
@@ -41,7 +40,12 @@ const menuItems: MenuItem[] = [
       { title: 'From Template', url: '/console/messages/template', icon: FileText },
       { title: 'Bulk Send', url: '/console/messages/bulk', icon: MessageSquare },
       { title: 'Message History', url: '/console/messages/history', icon: History },
-      { title: 'Templates', url: '/console/messages/templates', icon: FileText },
+    ]
+  },
+  { 
+    title: 'Templates', icon: FileText, items: [
+      { title: 'My Templates', url: '/console/templates', icon: FileText },
+      { title: 'Create Template', url: '/console/templates/new', icon: FileText },
     ]
   },
   { title: 'Sender IDs', icon: Shield, items: [

@@ -188,6 +188,9 @@ export default function RequestSenderID() {
                     className="font-mono"
                     disabled={isStudent}
                   />
+                  <p className="text-sm text-muted-foreground">
+                    Maximum 11 characters, alphanumeric only. This will appear as the sender of your SMS messages.
+                  </p>
                   {formData.sender_id && <p className="text-sm text-primary">Characters used: {formData.sender_id.length}/11</p>}
                 </div>
 
@@ -200,6 +203,9 @@ export default function RequestSenderID() {
                     placeholder="Your Organization Name"
                     disabled={isStudent}
                   />
+                  <p className="text-sm text-muted-foreground">
+                    The organization or company requesting the sender ID
+                  </p>
                 </div>
 
                 <div className="space-y-2">
@@ -208,9 +214,13 @@ export default function RequestSenderID() {
                     id="sample_message"
                     value={formData.sample_message}
                     onChange={(e) => handleInputChange('sample_message', e.target.value)}
+                    placeholder="Hello, this is a sample message from our company. We will use this sender ID for customer notifications and alerts."
                     rows={4}
                     disabled={isStudent}
                   />
+                  <p className="text-sm text-muted-foreground">
+                    Provide a sample of the type of messages you'll be sending. This helps with approval.
+                  </p>
                 </div>
 
                 {isStudent && (

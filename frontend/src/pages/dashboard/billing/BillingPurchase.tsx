@@ -2,7 +2,6 @@ import React, { useState, useEffect } from 'react';
 import { CreditCard, Check, Star, Zap, Shield, Headphones } from 'lucide-react';
 import { Button } from '@/components/ui/button';
 import { Card, CardContent, CardDescription, CardHeader, CardTitle } from '@/components/ui/card';
-import { Badge } from '@/components/ui/badge';
 import { Link } from 'react-router-dom';
 import { cn } from '@/lib/utils';
 
@@ -29,17 +28,6 @@ export default function BillingPurchase() {
     fetchPlans();
   }, []);
 
-  const getIcon = (planName) => {
-    switch (planName?.toLowerCase()) {
-      case 'nyati': return Zap;
-      case 'kifaru': return Star;
-      case 'simba': return Shield;
-      case 'twiga': return Headphones;
-      case 'tembo': return CreditCard;
-      default: return CreditCard;
-    }
-  };
-
   return (
     <div className="space-y-8">
       {/* Header */}
@@ -64,56 +52,47 @@ export default function BillingPurchase() {
 
         {/* Plans */}
         {!loading &&
-          plans.map((plan) => {
-            const Icon = getIcon(plan.name);
-            return (
-              <Card 
-                key={plan.uuid} 
-                className={cn(
-                  "relative transition-all duration-200 hover:shadow-lg hover:scale-105"
-                )}
-              >
-                <CardHeader className="text-center pb-2">
-                  <div className="w-12 h-12 mx-auto mb-4 bg-primary/10 rounded-full flex items-center justify-center">
-                    <Icon className="h-6 w-6 text-primary" />
-                  </div>
-                  <CardTitle className="text-xl">{plan.name}</CardTitle>
-                  <CardDescription>{plan.best_for}</CardDescription>
-                </CardHeader>
+          plans.map((plan) => (
+            <Card 
+              key={plan.uuid} 
+              className={cn("relative transition-all duration-200 hover:shadow-lg hover:scale-105")}
+            >
+              <CardHeader className="text-center pb-2">
+                <CardTitle className="text-xl">{plan.name}</CardTitle>
+                <CardDescription>{plan.best_for}</CardDescription>
+              </CardHeader>
 
-                <CardContent className="space-y-6">
-                  {/* Price */}
-                  <div className="text-center">
-                    <div className="text-3xl font-bold">{plan.price_per_sms} TZS</div>
-                    <div className="text-sm text-muted-foreground">
-                      {plan.start_sms_count.toLocaleString()}+ SMS
+              <CardContent className="space-y-6">
+                {/* Price */}
+                <div className="text-center">
+                  <div className="text-3xl font-bold text-primary">{plan.price_per_sms} TZS</div>
+                  <div className="text-sm text-muted-foreground">
+                    {plan.start_sms_count.toLocaleString()}+ SMS
+                  </div>
+                  <div className="text-xs text-muted-foreground mt-1">
+                    {plan.price_per_sms} TZS per SMS
+                  </div>
+                </div>
+
+                {/* Features */}
+                <div className="space-y-2">
+                  {plan.benefits?.map((benefit, index) => (
+                    <div key={index} className="flex items-center gap-2 text-sm">
+                      <Check className="h-4 w-4 text-primary shrink-0" />
+                      <span>{benefit}</span>
                     </div>
-                    <div className="text-xs text-muted-foreground mt-1">
-                      {plan.price_per_sms} TZS per SMS
-                    </div>
-                  </div>
+                  ))}
+                </div>
 
-                  {/* Features */}
-                  <div className="space-y-2">
-                    {plan.benefits?.map((benefit, index) => (
-                      <div key={index} className="flex items-center gap-2 text-sm">
-                        <Check className="h-4 w-4 text-primary shrink-0" />
-                        <span>{benefit}</span>
-                      </div>
-                    ))}
-                  </div>
-
-                  {/* Purchase Button */}
-                  <Button asChild className="w-full">
-                    <Link to={`/console/top-up/${plan.uuid}`}>
-                      <CreditCard className="h-4 w-4 mr-2" />
-                      Purchase Now
-                    </Link>
-                  </Button>
-                </CardContent>
-              </Card>
-            );
-          })}
+                {/* Purchase Button */}
+                <Button asChild className="w-full">
+                  <Link to={`/console/billing/${plan.uuid}`}>
+                    Purchase Now
+                  </Link>
+                </Button>
+              </CardContent>
+            </Card>
+          ))}
       </div>
 
       {/* Additional Info */}
