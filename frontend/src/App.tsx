@@ -31,6 +31,8 @@ import ContactGroups from "./pages/dashboard/contacts/ContactGroups";
 import AddContacts from "./pages/dashboard/contacts/AddContact";
 import CreateTemplate from "./pages/dashboard/message-templates/CreateTemplate";
 import TemplatesPage from "./pages/dashboard/message-templates/Templates";
+import QuickSendFile from "./pages/dashboard/messages/SendFromFile";
+import SendFromTemplate from "./pages/dashboard/messages/SendFromFile";
 
 const queryClient = new QueryClient();
 
@@ -63,7 +65,7 @@ const App = () => (
             <Route path="contacts/new" element={<AddContacts />} />
             <Route path="contacts/import" element={<div>Import Contacts</div>} />
             <Route path="messages/quick-send" element={<QuickSend />} />
-            <Route path="messages/template" element={<div>Template Send</div>} />
+            <Route path="messages/from-template" element={<SendFromTemplate />} />
             <Route path="messages/history" element={<div>Message History</div>} />
             <Route path="templates" element={<TemplatesPage />} />
             <Route path="templates/new" element={<CreateTemplate />} />
