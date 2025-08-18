@@ -198,7 +198,7 @@ export default function Dashboard() {
                 </Link>
               </Button>
               <Button asChild variant="outline" className="justify-start">
-                <Link to="/dashboard/billing/purchase">
+                <Link to="/purchase/billing/purchase">
                   <DollarSign className="mr-2 h-4 w-4" />
                   Purchase Credits
                 </Link>

@@ -276,7 +276,7 @@ export default function PaymentHistory() {
             <p className="text-muted-foreground mb-4">
               Your payment history will appear here once you make your first purchase
             </p>
-            <Button onClick={() => window.location.href = '/dashboard/billing/purchase'}>
+            <Button onClick={() => window.location.href = '/purchase/billing/purchase'}>
               <CreditCard className="h-4 w-4 mr-2" />
               Purchase Credits
             </Button>

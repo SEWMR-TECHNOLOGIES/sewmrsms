@@ -72,9 +72,9 @@ const menuItems = [
     title: 'Billing',
     icon: CreditCard,
     items: [
-      { title: 'Purchase Credits', url: '/dashboard/billing/purchase', icon: CreditCard },
-      { title: 'Payment History', url: '/dashboard/billing/history', icon: FileText },
-      { title: 'Invoices', url: '/dashboard/billing/invoices', icon: FileText },
+      { title: 'Purchase Credits', url: '/purchase/billing/purchase', icon: CreditCard },
+      { title: 'Payment History', url: '/purchase/billing/history', icon: FileText },
+      { title: 'Invoices', url: '/purchase/billing/invoices', icon: FileText },
     ],
   },
   {
