@@ -1,4 +1,4 @@
-import React from 'react';
+import React, { useState, useEffect } from 'react';
 import { ColumnDef } from '@tanstack/react-table';
 import { Badge } from '@/components/ui/badge';
 import { Button } from '@/components/ui/button';
@@ -12,114 +12,95 @@ import {
   DropdownMenuTrigger,
 } from '@/components/ui/dropdown-menu';
 import { Link } from 'react-router-dom';
+import { useToast } from '@/hooks/use-toast';
+import { Loader } from '@/components/ui/loader';
 
 export type Contact = {
   id: string;
+  uuid: string;
   name: string;
   phone: string;
   email?: string;
-  group: string;
-  status: 'active' | 'inactive' | 'blocked';
-  createdAt: string;
+  group_name: string;
+  blacklisted: boolean;
+  created_at: string;
+  updated_at: string;
 };
 
-const data: Contact[] = [
-  {
-    id: "1",
-    name: "John Doe",
-    phone: "+255 712 345 678",
-    email: "john@example.com",
-    group: "Customers",
-    status: "active",
-    createdAt: "2024-01-15",
-  },
-  {
-    id: "2",
-    name: "Jane Smith",
-    phone: "+255 713 456 789",
-    email: "jane@example.com",
-    group: "Leads",
-    status: "active",
-    createdAt: "2024-01-14",
-  },
-  {
-    id: "3",
-    name: "Bob Johnson",
-    phone: "+255 714 567 890",
-    group: "Partners",
-    status: "inactive",
-    createdAt: "2024-01-13",
-  },
-  {
-    id: "4",
-    name: "Alice Brown",
-    phone: "+255 715 678 901",
-    email: "alice@example.com",
-    group: "Customers",
-    status: "blocked",
-    createdAt: "2024-01-12",
-  },
-];
+export default function Contacts() {
+  const [contacts, setContacts] = useState<Contact[]>([]);
+  const [stats, setStats] = useState({
+    total: 0,
+    totalFromLastMonth: 0,
+    active: 0,
+    activePercentage: 0,
+    groups: 0,
+    thisMonth: 0,
+  });
+  const [loading, setLoading] = useState(true);
+  const { toast } = useToast();
 
-const columns: ColumnDef<Contact>[] = [
-  {
-    accessorKey: "name",
-    header: "Name",
-  },
-  {
-    accessorKey: "phone",
-    header: "Phone",
-  },
-  {
-    accessorKey: "email",
-    header: "Email",
-    cell: ({ row }) => {
-      const email = row.getValue("email") as string;
-      return email || <span className="text-muted-foreground">-</span>;
-    },
-  },
-  {
-    accessorKey: "group",
-    header: "Group",
-    cell: ({ row }) => {
-      const group = row.getValue("group") as string;
-      return <Badge variant="secondary">{group}</Badge>;
-    },
-  },
-  {
-    accessorKey: "status",
-    header: "Status",
-    cell: ({ row }) => {
-      const status = row.getValue("status") as string;
-      return (
-        <Badge
-          variant={
-            status === "active"
-              ? "default"
-              : status === "inactive"
-              ? "secondary"
-              : "destructive"
-          }
-        >
-          {status}
-        </Badge>
-      );
-    },
-  },
-  {
-    accessorKey: "createdAt",
-    header: "Created",
-    cell: ({ row }) => {
-      const date = new Date(row.getValue("createdAt"));
-      return date.toLocaleDateString();
-    },
-  },
-  {
-    id: "actions",
-    cell: ({ row }) => {
-      const contact = row.original;
+  const fetchContacts = async () => {
+    setLoading(true);
+    try {
+      const res = await fetch('https://api.sewmrsms.co.tz/api/v1/contacts', { credentials: 'include' });
+      const data = await res.json();
+      if (!data.success) throw new Error(data.message || 'Failed to fetch contacts');
+      setContacts(data.data.contacts);
+      setStats(data.data.stats);
+    } catch (err: any) {
+      toast({ title: 'Error', description: err.message || 'Failed to load contacts', variant: 'destructive' });
+    } finally {
+      setLoading(false);
+    }
+  };
 
-      return (
+  useEffect(() => {
+    fetchContacts();
+  }, []);
+
+  const columns: ColumnDef<Contact>[] = [
+    { accessorKey: 'name', header: 'Name' },
+    { accessorKey: 'phone', header: 'Phone' },
+    {
+      accessorKey: 'email',
+      header: 'Email',
+      cell: ({ row }) => {
+        const email = row.getValue('email') as string;
+        return email || <span className="text-muted-foreground">-</span>;
+      },
+    },
+    {
+      accessorKey: 'group_name',
+      header: 'Group',
+      cell: ({ row }) => {
+        const group = row.getValue('group_name') as string;
+        return <Badge variant="secondary">{group}</Badge>;
+      },
+    },
+    {
+      accessorKey: 'blacklisted',
+      header: 'Status',
+      cell: ({ row }) => {
+        const blocked = row.getValue('blacklisted') as boolean;
+        return (
+          <Badge variant={blocked ? 'destructive' : 'default'}>
+            {blocked ? 'Blocked' : 'Active'}
+          </Badge>
+        );
+      },
+    },
+    {
+      accessorKey: 'created_at',
+      header: 'Created',
+      cell: ({ row }) => {
+        const date = new Date(row.getValue('created_at'));
+        return date.toLocaleDateString();
+      },
+    },
+    {
+      id: 'actions',
+      cell: ({ row }) => (
         <DropdownMenu>
           <DropdownMenuTrigger asChild>
             <Button variant="ghost" className="h-8 w-8 p-0">
@@ -128,21 +109,17 @@ const columns: ColumnDef<Contact>[] = [
           </DropdownMenuTrigger>
           <DropdownMenuContent align="end">
             <DropdownMenuItem>
-              <Edit className="mr-2 h-4 w-4" />
-              Edit
+              <Edit className="mr-2 h-4 w-4" /> Edit
             </DropdownMenuItem>
             <DropdownMenuItem className="text-destructive">
-              <Trash2 className="mr-2 h-4 w-4" />
-              Delete
+              <Trash2 className="mr-2 h-4 w-4" /> Delete
             </DropdownMenuItem>
           </DropdownMenuContent>
         </DropdownMenu>
-      );
+      ),
     },
-  },
-];
+  ];
 
-export default function Contacts() {
   return (
     <div className="space-y-6">
       {/* Header */}
@@ -156,18 +133,15 @@ export default function Contacts() {
         <div className="flex items-center space-x-2">
           <Button variant="outline" asChild>
             <Link to="/dashboard/contacts/import">
-              <Upload className="mr-2 h-4 w-4" />
-              Import
+              <Upload className="mr-2 h-4 w-4" /> Import
             </Link>
           </Button>
           <Button variant="outline">
-            <Download className="mr-2 h-4 w-4" />
-            Export
+            <Download className="mr-2 h-4 w-4" /> Export
           </Button>
           <Button asChild>
             <Link to="/dashboard/contacts/new">
-              <UserPlus className="mr-2 h-4 w-4" />
-              Add Contact
+              <UserPlus className="mr-2 h-4 w-4" /> Add Contact
             </Link>
           </Button>
         </div>
@@ -180,8 +154,8 @@ export default function Contacts() {
             <CardTitle className="text-sm font-medium">Total Contacts</CardTitle>
           </CardHeader>
           <CardContent>
-            <div className="text-2xl font-bold">15,847</div>
-            <p className="text-xs text-muted-foreground">+234 from last month</p>
+            <div className="text-2xl font-bold">{stats.total}</div>
+            <p className="text-xs text-muted-foreground">+{stats.totalFromLastMonth} from last month</p>
           </CardContent>
         </Card>
         <Card>
@@ -189,8 +163,8 @@ export default function Contacts() {
             <CardTitle className="text-sm font-medium">Active</CardTitle>
           </CardHeader>
           <CardContent>
-            <div className="text-2xl font-bold">14,521</div>
-            <p className="text-xs text-muted-foreground">91.6% of total</p>
+            <div className="text-2xl font-bold">{stats.active}</div>
+            <p className="text-xs text-muted-foreground">{stats.activePercentage}% of total</p>
           </CardContent>
         </Card>
         <Card>
@@ -198,7 +172,7 @@ export default function Contacts() {
             <CardTitle className="text-sm font-medium">Groups</CardTitle>
           </CardHeader>
           <CardContent>
-            <div className="text-2xl font-bold">12</div>
+            <div className="text-2xl font-bold">{stats.groups}</div>
             <p className="text-xs text-muted-foreground">Contact groups</p>
           </CardContent>
         </Card>
@@ -207,7 +181,7 @@ export default function Contacts() {
             <CardTitle className="text-sm font-medium">This Month</CardTitle>
           </CardHeader>
           <CardContent>
-            <div className="text-2xl font-bold">234</div>
+            <div className="text-2xl font-bold">{stats.thisMonth}</div>
             <p className="text-xs text-muted-foreground">New contacts added</p>
           </CardContent>
         </Card>
@@ -221,12 +195,9 @@ export default function Contacts() {
             A list of all your contacts with their details and status.
           </CardDescription>
         </CardHeader>
-        <CardContent>
-          <DataTable 
-            columns={columns} 
-            data={data} 
-            searchPlaceholder="Search contacts..."
-          />
+        <CardContent className="relative">
+          {loading && <Loader overlay />}
+          <DataTable columns={columns} data={contacts} searchPlaceholder="Search contacts..." />
         </CardContent>
       </Card>
     </div>

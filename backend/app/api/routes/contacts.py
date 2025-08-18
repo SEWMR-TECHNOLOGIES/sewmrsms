@@ -5,7 +5,7 @@ from fastapi.responses import JSONResponse
 from sqlalchemy.orm import Session
 from sqlalchemy import and_, func, or_
 from typing import Dict, List, Optional
-from datetime import datetime
+from datetime import date, datetime, timedelta
 import pytz
 from utils.helpers import normalize_str, parse_contacts_csv, parse_contacts_textarea
 from utils.validation import validate_email, validate_phone
@@ -537,3 +537,207 @@ def delete_contact(
         "message": "Contact deleted successfully",
         "data": {"uuid": contact_uuid}
     }
+
+@router.get("/")
+def get_contacts_overview(current_user: User = Depends(get_current_user),
+                          db: Session = Depends(get_db)):
+    """
+    Returns contacts list, grouped info, and stats for the UI.
+    """
+
+    # Fetch all contacts for the user
+    contacts = db.query(Contact).filter(Contact.user_id == current_user.id).all()
+    
+    # Fetch all groups for the user
+    groups = db.query(ContactGroup).filter(ContactGroup.user_id == current_user.id).all()
+    
+    total_contacts = len(contacts)
+    active_contacts = len([c for c in contacts if not c.blacklisted])
+    
+    # Contacts added last month
+    today = date.today()
+    last_month = (today.replace(day=1) - timedelta(days=1))
+    contacts_last_month = len([
+        c for c in contacts
+        if c.created_at.year == last_month.year and c.created_at.month == last_month.month
+    ])
+    
+    # Contacts added this month
+    contacts_this_month = len([
+        c for c in contacts
+        if c.created_at.year == today.year and c.created_at.month == today.month
+    ])
+    
+    # Percentage active
+    active_percentage = round((active_contacts / total_contacts) * 100, 1) if total_contacts else 0
+
+    # Prepare contacts data for table
+    contact_list = []
+    for c in contacts:
+        contact_list.append({
+            "id": c.id,
+            "uuid": str(c.uuid),
+            "name": c.name,
+            "phone": c.phone,
+            "email": c.email,
+            "group_id": c.group_id,
+            "group_name": c.group.name if c.group else "Ungrouped",
+            "blacklisted": c.blacklisted,
+            "created_at": c.created_at.strftime("%Y-%m-%d %H:%M:%S"),
+            "updated_at": c.updated_at.strftime("%Y-%m-%d %H:%M:%S")
+        })
+    
+    # Return groups summary
+    group_summary = []
+    for g in groups:
+        group_contacts = [c for c in contacts if c.group_id == g.id]
+        group_summary.append({
+            "id": g.id,
+            "uuid": str(g.uuid),
+            "name": g.name,
+            "contact_count": len(group_contacts)
+        })
+
+    return {
+        "success": True,
+        "message": f"Fetched {total_contacts} contacts",
+        "data": {
+            "stats": {
+                "total": total_contacts,
+                "totalFromLastMonth": contacts_last_month,
+                "active": active_contacts,
+                "activePercentage": active_percentage,
+                "groups": len(groups),
+                "thisMonth": contacts_this_month
+            },
+            "contacts": contact_list,
+            "groups": group_summary
+        }
+    }
+
+@router.put("/{contact_uuid}/edit")
+async def edit_contact(
+    contact_uuid: str,
+    request: Request,
+    current_user: User = Depends(get_current_user),
+    db: Session = Depends(get_db)
+):
+    # Ensure JSON content type
+    content_type = request.headers.get("content-type", "")
+    if "application/json" not in content_type.lower():
+        return {"success": False, "message": "Invalid content type. Expected application/json", "data": None}
+
+    data = await request.json()
+    name = data.get("name", "").strip()
+    phone = data.get("phone", "").strip()
+    email = data.get("email", "").strip() if data.get("email") else None
+    group_uuid = data.get("group_uuid", "").strip() if data.get("group_uuid") else None
+
+    if not name or not phone:
+        return {"success": False, "message": "Name and phone are required", "data": None}
+
+    # Validate phone/email
+    from utils.validation import validate_email, validate_phone
+    if not validate_phone(phone):
+        return {"success": False, "message": f"Invalid phone: {phone}", "data": None}
+    if email and not validate_email(email):
+        return {"success": False, "message": f"Invalid email: {email}", "data": None}
+
+    contact = db.query(Contact).filter(
+        Contact.uuid == contact_uuid,
+        Contact.user_id == current_user.id
+    ).first()
+    if not contact:
+        return {"success": False, "message": "Contact not found or no permission", "data": None}
+
+    # Handle group
+    group = None
+    if group_uuid and group_uuid.lower() != "none":
+        group = db.query(ContactGroup).filter(
+            ContactGroup.uuid == group_uuid,
+            ContactGroup.user_id == current_user.id
+        ).first()
+        if not group:
+            return {"success": False, "message": "Contact group not found or no permission", "data": None}
+
+    # Check duplicate phone/email in same group
+    duplicate = db.query(Contact).filter(
+        Contact.user_id == current_user.id,
+        Contact.id != contact.id,
+        or_(
+            Contact.phone == phone,
+            and_(email != "", Contact.email == email)
+        ),
+        Contact.group_id == (group.id if group else None)
+    ).first()
+    if duplicate:
+        return {"success": False, "message": "Another contact with same phone/email exists in the group", "data": None}
+
+    # Update contact
+    contact.name = name
+    contact.phone = phone
+    contact.email = email
+    contact.group_id = group.id if group else None
+    contact.updated_at = datetime.now(pytz.timezone("Africa/Nairobi")).replace(tzinfo=None)
+
+    try:
+        db.commit()
+        db.refresh(contact)
+    except Exception as e:
+        return {"success": False, "message": f"Database error: {str(e)}", "data": None}
+
+    return {
+        "success": True,
+        "message": "Contact updated successfully",
+        "data": {
+            "id": contact.id,
+            "uuid": str(contact.uuid),
+            "name": contact.name,
+            "phone": contact.phone,
+            "email": contact.email,
+            "group_id": contact.group_id,
+            "updated_at": contact.updated_at.strftime("%Y-%m-%d %H:%M:%S")
+        }
+    }
+
+@router.post("/{contact_uuid}/blacklist")
+def blacklist_contact(
+    contact_uuid: str,
+    current_user: User = Depends(get_current_user),
+    db: Session = Depends(get_db)
+):
+    contact = db.query(Contact).filter(
+        Contact.uuid == contact_uuid,
+        Contact.user_id == current_user.id
+    ).first()
+    if not contact:
+        return {"success": False, "message": "Contact not found or no permission", "data": None}
+
+    contact.blacklisted = True
+    contact.updated_at = datetime.now(pytz.timezone("Africa/Nairobi")).replace(tzinfo=None)
+    db.add(contact)
+    db.commit()
+    db.refresh(contact)
+
+    return {"success": True, "message": f"Contact '{contact.name}' blacklisted successfully", "data": {"uuid": contact_uuid}}
+
+@router.post("/{contact_uuid}/unblacklist")
+def unblacklist_contact(
+    contact_uuid: str,
+    current_user: User = Depends(get_current_user),
+    db: Session = Depends(get_db)
+):
+    contact = db.query(Contact).filter(
+        Contact.uuid == contact_uuid,
+        Contact.user_id == current_user.id
+    ).first()
+    if not contact:
+        return {"success": False, "message": "Contact not found or no permission", "data": None}
+
+    contact.blacklisted = False
+    contact.updated_at = datetime.now(pytz.timezone("Africa/Nairobi")).replace(tzinfo=None)
+    db.add(contact)
+    db.commit()
+    db.refresh(contact)
+
+    return {"success": True, "message": f"Contact '{contact.name}' removed from blacklist", "data": {"uuid": contact_uuid}}
