@@ -94,21 +94,39 @@ def list_sms_templates(
         SmsTemplate.user_id == current_user.id
     ).order_by(SmsTemplate.created_at.desc()).all()
 
+    result = []
+    for t in templates:
+        # fetch columns for each template
+        columns = db.query(TemplateColumn).filter(
+            TemplateColumn.template_id == t.id
+        ).order_by(TemplateColumn.position.asc()).all()
+
+        result.append({
+            "id": t.id,
+            "uuid": str(t.uuid),
+            "name": t.name,
+            "sample_message": t.sample_message,
+            "column_count": t.column_count,
+            "created_at": t.created_at.strftime("%Y-%m-%d %H:%M:%S"),
+            "updated_at": t.updated_at.strftime("%Y-%m-%d %H:%M:%S"),
+            "columns": [
+                {
+                    "id": c.id,
+                    "uuid": str(c.uuid),
+                    "name": c.name,
+                    "position": c.position,
+                    "is_phone_column": c.is_phone_column,
+                    "created_at": c.created_at.strftime("%Y-%m-%d %H:%M:%S"),
+                    "updated_at": c.updated_at.strftime("%Y-%m-%d %H:%M:%S")
+                }
+                for c in columns
+            ]
+        })
+
     return {
         "success": True,
         "message": f"Found {len(templates)} SMS template(s)",
-        "data": [
-            {
-                "id": t.id,
-                "uuid": str(t.uuid),
-                "name": t.name,
-                "sample_message": t.sample_message,
-                "column_count": t.column_count,
-                "created_at": t.created_at.strftime("%Y-%m-%d %H:%M:%S"),
-                "updated_at": t.updated_at.strftime("%Y-%m-%d %H:%M:%S")
-            }
-            for t in templates
-        ]
+        "data": result
     }
 
 @router.post("/{template_uuid}/columns/add")
