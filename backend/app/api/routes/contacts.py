@@ -710,6 +710,8 @@ async def edit_contact(
             "phone": contact.phone,
             "email": contact.email,
             "group_id": contact.group_id,
+            "group_uuid": str(group.uuid) if group else None,
+            "group_name": group.name if group else "Ungrouped",
             "updated_at": contact.updated_at.strftime("%Y-%m-%d %H:%M:%S")
         }
     }
