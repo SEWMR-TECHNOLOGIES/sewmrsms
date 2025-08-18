@@ -225,7 +225,7 @@ export default function SendFromTemplate() {
                     className="flex-1"
                   />
                   <Button asChild variant="outline" size="icon">
-                    <Link to="/console/templates/create" target="_blank">
+                    <Link to="/console/templates/new">
                       <PlusCircle className="w-4 h-4" />
                     </Link>
                   </Button>
@@ -255,14 +255,14 @@ export default function SendFromTemplate() {
                 <Label>Upload File</Label>
                 <FileUpload
                   accept=".csv,.xls,.xlsx"
-                  maxSize={10}
+                  maxSize={0.5}
                   onFileSelect={(files) => setSelectedFile(files[0] || null)}
                   onError={(message) =>
                     toast({ variant: 'destructive', title: 'File Error', description: message })
                   }
                 />
                 <p className="text-sm text-muted-foreground">
-                  Supported formats: CSV, XLS, XLSX (max 10MB)
+                  Supported formats: CSV, XLS, XLSX (max 0.5MB)
                 </p>
               </div>
 

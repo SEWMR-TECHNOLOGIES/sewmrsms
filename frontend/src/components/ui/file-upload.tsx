@@ -45,6 +45,12 @@ export const FileUpload: React.FC<FileUploadProps> = ({
     const validFiles: File[] = [];
     const maxBytes = maxSize * 1024 * 1024;
 
+    // turn ".csv,.xls,.xlsx" into ["csv","xls","xlsx"]
+    const allowedExtensions = accept
+      .split(",")
+      .map(ext => ext.trim().toLowerCase().replace(/^\./, "")) 
+      .filter(Boolean);
+
     Array.from(files).forEach(file => {
       if (file.size > maxBytes) {
         onError?.(
@@ -53,9 +59,15 @@ export const FileUpload: React.FC<FileUploadProps> = ({
         return;
       }
 
-      if (accept && accept !== "*/*" && !file.name.toLowerCase().endsWith(accept.replace(".", ""))) {
-        onError?.(`Invalid file type: ${file.name}. Only ${accept} allowed.`);
-        return;
+      // only check extensions if accept is not *.*
+      if (accept !== "*/*" && allowedExtensions.length > 0) {
+        const fileExt = file.name.split(".").pop()?.toLowerCase() || "";
+        if (!allowedExtensions.includes(fileExt)) {
+          onError?.(
+            `Invalid file type: ${file.name}. Only ${allowedExtensions.join(", ")} allowed.`
+          );
+          return;
+        }
       }
 
       validFiles.push(file);
@@ -63,7 +75,6 @@ export const FileUpload: React.FC<FileUploadProps> = ({
 
     return validFiles;
   };
-
 
   const handleFiles = (files: FileList) => {
     if (disabled) return;
