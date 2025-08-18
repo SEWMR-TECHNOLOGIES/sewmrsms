@@ -139,6 +139,29 @@ async def edit_sms_template(
         db.refresh(template)
     except Exception as e:
         return {"success": False, "message": f"Database error: {str(e)}", "data": None}
+    
+    # After db.commit() and db.refresh(template)
+    columns = db.query(TemplateColumn).filter(
+        TemplateColumn.template_id == template.id
+    ).order_by(TemplateColumn.position.asc()).all()
+
+    is_complete = len(columns) == template.column_count
+
+    if is_complete:
+        column_data = [
+            {
+                "id": c.id,
+                "uuid": str(c.uuid),
+                "name": c.name,
+                "position": c.position,
+                "is_phone_column": c.is_phone_column,
+                "created_at": c.created_at.strftime("%Y-%m-%d %H:%M:%S"),
+                "updated_at": c.updated_at.strftime("%Y-%m-%d %H:%M:%S")
+            }
+            for c in columns
+        ]
+    else:
+        column_data = []
 
     return {
         "success": True,
@@ -150,9 +173,12 @@ async def edit_sms_template(
             "sample_message": template.sample_message,
             "column_count": template.column_count,
             "created_at": template.created_at.strftime("%Y-%m-%d %H:%M:%S"),
-            "updated_at": template.updated_at.strftime("%Y-%m-%d %H:%M:%S")
+            "updated_at": template.updated_at.strftime("%Y-%m-%d %H:%M:%S"),
+            "is_complete": is_complete,
+            "columns": column_data
         }
     }
+
 @router.get("/")
 def list_sms_templates(
     current_user: User = Depends(get_current_user),
