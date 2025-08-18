@@ -539,82 +539,93 @@ def delete_contact(
     }
 
 @router.get("/")
-def get_contacts_overview(current_user: User = Depends(get_current_user),
-                          db: Session = Depends(get_db)):
+def get_contacts_overview(
+    current_user: User = Depends(get_current_user),
+    db: Session = Depends(get_db)
+):
     """
     Returns contacts list, grouped info, and stats for the UI.
     """
+    try:
+        # Fetch all contacts for the user
+        contacts = db.query(Contact).filter(Contact.user_id == current_user.id).all()
 
-    # Fetch all contacts for the user
-    contacts = db.query(Contact).filter(Contact.user_id == current_user.id).all()
-    
-    # Fetch all groups for the user
-    groups = db.query(ContactGroup).filter(ContactGroup.user_id == current_user.id).all()
-    
-    total_contacts = len(contacts)
-    active_contacts = len([c for c in contacts if not c.blacklisted])
-    
-    # Contacts added last month
-    today = date.today()
-    last_month = (today.replace(day=1) - timedelta(days=1))
-    contacts_last_month = len([
-        c for c in contacts
-        if c.created_at.year == last_month.year and c.created_at.month == last_month.month
-    ])
-    
-    # Contacts added this month
-    contacts_this_month = len([
-        c for c in contacts
-        if c.created_at.year == today.year and c.created_at.month == today.month
-    ])
-    
-    # Percentage active
-    active_percentage = round((active_contacts / total_contacts) * 100, 1) if total_contacts else 0
+        # Fetch all groups for the user
+        groups = db.query(ContactGroup).filter(ContactGroup.user_id == current_user.id).all()
 
-    # Prepare contacts data for table
-    contact_list = []
-    for c in contacts:
-        contact_list.append({
-            "id": c.id,
-            "uuid": str(c.uuid),
-            "name": c.name,
-            "phone": c.phone,
-            "email": c.email,
-            "group_id": c.group_id,
-            "group_name": c.group.name if c.group else "Ungrouped",
-            "blacklisted": c.blacklisted,
-            "created_at": c.created_at.strftime("%Y-%m-%d %H:%M:%S"),
-            "updated_at": c.updated_at.strftime("%Y-%m-%d %H:%M:%S")
-        })
-    
-    # Return groups summary
-    group_summary = []
-    for g in groups:
-        group_contacts = [c for c in contacts if c.group_id == g.id]
-        group_summary.append({
-            "id": g.id,
-            "uuid": str(g.uuid),
-            "name": g.name,
-            "contact_count": len(group_contacts)
-        })
+        total_contacts = len(contacts)
+        active_contacts = len([c for c in contacts if not c.is_blacklisted])
 
-    return {
-        "success": True,
-        "message": f"Fetched {total_contacts} contacts",
-        "data": {
-            "stats": {
-                "total": total_contacts,
-                "totalFromLastMonth": contacts_last_month,
-                "active": active_contacts,
-                "activePercentage": active_percentage,
-                "groups": len(groups),
-                "thisMonth": contacts_this_month
-            },
-            "contacts": contact_list,
-            "groups": group_summary
+        # Contacts added last month
+        today = date.today()
+        last_month = (today.replace(day=1) - timedelta(days=1))
+        contacts_last_month = len([
+            c for c in contacts
+            if c.created_at.year == last_month.year and c.created_at.month == last_month.month
+        ])
+
+        # Contacts added this month
+        contacts_this_month = len([
+            c for c in contacts
+            if c.created_at.year == today.year and c.created_at.month == today.month
+        ])
+
+        # Percentage active
+        active_percentage = round((active_contacts / total_contacts) * 100, 1) if total_contacts else 0
+
+        # Prepare contacts data for table
+        contact_list = []
+        for c in contacts:
+            contact_list.append({
+                "id": c.id,
+                "uuid": str(c.uuid),
+                "name": c.name,
+                "phone": c.phone,
+                "email": c.email,
+                "group_id": c.group_id,
+                "group_name": c.group.name if c.group else "Ungrouped",
+                "blacklisted": c.is_blacklisted,
+                "created_at": c.created_at.strftime("%Y-%m-%d %H:%M:%S"),
+                "updated_at": c.updated_at.strftime("%Y-%m-%d %H:%M:%S")
+            })
+
+        # Return groups summary
+        group_summary = []
+        for g in groups:
+            group_contacts = [c for c in contacts if c.group_id == g.id]
+            group_summary.append({
+                "id": g.id,
+                "uuid": str(g.uuid),
+                "name": g.name,
+                "contact_count": len(group_contacts)
+            })
+
+        return {
+            "success": True,
+            "message": f"Fetched {total_contacts} contacts",
+            "data": {
+                "stats": {
+                    "total": total_contacts,
+                    "totalFromLastMonth": contacts_last_month,
+                    "active": active_contacts,
+                    "activePercentage": active_percentage,
+                    "groups": len(groups),
+                    "thisMonth": contacts_this_month
+                },
+                "contacts": contact_list,
+                "groups": group_summary
+            }
         }
-    }
 
+    except Exception as e:
+        # Print the exception message in the server log and return it in the response
+        print("Error fetching contacts:", str(e))
+        return {
+            "success": False,
+            "message": f"Internal Server Error: {str(e)}",
+            "data": None
+        }
+    
 @router.put("/{contact_uuid}/edit")
 async def edit_contact(
     contact_uuid: str,
@@ -713,13 +724,14 @@ def blacklist_contact(
     if not contact:
         return {"success": False, "message": "Contact not found or no permission", "data": None}
 
-    contact.blacklisted = True
+    contact.is_blacklisted = True
     contact.updated_at = datetime.now(pytz.timezone("Africa/Nairobi")).replace(tzinfo=None)
     db.add(contact)
     db.commit()
     db.refresh(contact)
 
     return {"success": True, "message": f"Contact '{contact.name}' blacklisted successfully", "data": {"uuid": contact_uuid}}
+
 
 @router.post("/{contact_uuid}/unblacklist")
 def unblacklist_contact(
@@ -734,7 +746,7 @@ def unblacklist_contact(
     if not contact:
         return {"success": False, "message": "Contact not found or no permission", "data": None}
 
-    contact.blacklisted = False
+    contact.is_blacklisted = False
     contact.updated_at = datetime.now(pytz.timezone("Africa/Nairobi")).replace(tzinfo=None)
     db.add(contact)
     db.commit()
