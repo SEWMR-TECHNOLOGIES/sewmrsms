@@ -61,9 +61,11 @@ async def create_contact_group(
             "id": new_group.id,
             "uuid": str(new_group.uuid),
             "name": new_group.name,
-            "created_at": now.strftime("%Y-%m-%d %H:%M:%S")
+            "created_at": now.strftime("%Y-%m-%d %H:%M:%S"),
+            "updated_at": now.strftime("%Y-%m-%d %H:%M:%S")  # Add this line
         }
     }
+
 
 @router.put("/groups/edit/{group_uuid}")
 async def edit_contact_group(
