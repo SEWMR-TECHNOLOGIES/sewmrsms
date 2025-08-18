@@ -126,7 +126,7 @@ export default function Contacts() {
       header: 'Created',
       cell: ({ row }) => {
         const date = new Date(row.getValue('created_at'));
-        return date.toLocaleDateString();
+        return date.toLocaleDateString('en-GB');
       },
     },
     {
