@@ -6,17 +6,20 @@ import { cn } from '@/lib/utils';
 interface FileUploadProps {
   accept?: string;
   multiple?: boolean;
-  maxSize?: number; // in MB, e.g., 0.5, 1, 10, 20
+  maxSize?: number; // MB
   onFileSelect: (files: File[]) => void;
+  onError?: (message: string) => void; 
   className?: string;
   disabled?: boolean;
 }
+
 
 export const FileUpload: React.FC<FileUploadProps> = ({
   accept = "*/*",
   multiple = false,
   maxSize = 10,
   onFileSelect,
+   onError,
   className,
   disabled = false,
 }) => {
@@ -44,14 +47,23 @@ export const FileUpload: React.FC<FileUploadProps> = ({
 
     Array.from(files).forEach(file => {
       if (file.size > maxBytes) {
-        console.warn(`File ${file.name} is too large (${formatFileSize(file.size)}). Max size is ${maxSize}MB.`);
+        onError?.(
+          `File ${file.name} is too large (${formatFileSize(file.size)}). Max size is ${maxSize}MB.`
+        );
         return;
       }
+
+      if (accept && accept !== "*/*" && !file.name.toLowerCase().endsWith(accept.replace(".", ""))) {
+        onError?.(`Invalid file type: ${file.name}. Only ${accept} allowed.`);
+        return;
+      }
+
       validFiles.push(file);
     });
 
     return validFiles;
   };
+
 
   const handleFiles = (files: FileList) => {
     if (disabled) return;

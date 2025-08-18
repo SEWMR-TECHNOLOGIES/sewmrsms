@@ -451,11 +451,7 @@ Bob Johnson, +1122334455, bob@example.com`}
 
               <div className="space-y-2">
                 <Label>Upload File</Label>
-                <FileUpload
-                  accept=".csv,.xls,.xlsx"
-                  maxSize={10} // 10MB
-                  onFileSelect={(files) => setSelectedFile(files[0] || null)}
-                />
+                <FileUpload accept=".csv,.xls,.xlsx" maxSize={10} onFileSelect={(files) => setSelectedFile(files[0] || null)} onError={(message) => toast({ variant: "destructive", title: "File Error", description: message })} />
                 <p className="text-sm text-muted-foreground">
                   Supported formats: CSV, XLS, XLSX (max 10MB)
                 </p>

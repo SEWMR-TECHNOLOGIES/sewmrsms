@@ -96,11 +96,7 @@ export default function UploadAgreement() {
         <CardContent>
           <form onSubmit={handleSubmit} className="space-y-6">
             <div className="space-y-2">
-              <FileUpload
-                accept=".pdf"
-                maxSize={0.5} // in MB
-                onFileSelect={(files) => setSelectedFile(files[0] || null)}
-              />
+              <FileUpload accept=".pdf" maxSize={0.5} onFileSelect={(files) => setSelectedFile(files[0] || null)} onError={(message) => toast({ variant: "destructive", title: "File Error", description: message })} />
               <div className="text-sm text-muted-foreground">
                 {selectedFile ? selectedFile.name : "No file chosen"}
               </div>

@@ -216,7 +216,7 @@ export default function RequestSenderID() {
                 {isStudent && (
                   <div className="space-y-2">
                     <Label htmlFor="student_id_file">Upload Student ID (PDF)</Label>
-                    <FileUpload accept=".pdf" maxSize={0.5} onFileSelect={(files) => setSelectedFile(files[0] || null)} />
+                    <FileUpload accept=".pdf" maxSize={0.5} onFileSelect={(files) => setSelectedFile(files[0] || null)} onError={(message) => toast({ variant: "destructive", title: "File Error", description: message })} />
                     <div className="text-sm text-muted-foreground">{selectedFile ? selectedFile.name : 'No file chosen'}</div>
                     {loading && <UploadProgress progress={progress} message="Uploading student ID..." />}
                   </div>
