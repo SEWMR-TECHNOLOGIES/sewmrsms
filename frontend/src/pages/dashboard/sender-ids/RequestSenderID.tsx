@@ -21,14 +21,12 @@ export default function RequestSenderID() {
   });
   const [loading, setLoading] = useState(false);
   const [isStudent, setIsStudent] = useState(false);
-  const [fileName, setFileName] = useState<string | null>(null);
   const [selectedFile, setSelectedFile] = useState<File | null>(null);
 
   const { toast } = useToast();
   const navigate = useNavigate();
   const { progress, uploadFile, resetProgress } = useUpload();
 
-  // Prefill values for student mode
   const STUDENT_SENDER_ID = 'EasyTextAPI';
   const STUDENT_ORGANIZATION = 'SEWMR Technologies';
   const STUDENT_SAMPLE_MESSAGE =
@@ -52,7 +50,6 @@ export default function RequestSenderID() {
       });
     } else {
       setFormData({ sender_id: '', organization: '', sample_message: '' });
-      setFileName(null);
       setSelectedFile(null);
     }
     setIsStudent(prev => !prev);
@@ -219,7 +216,7 @@ export default function RequestSenderID() {
                   <div className="space-y-2">
                     <Label htmlFor="student_id_file">Upload Student ID (PDF)</Label>
                     <FileUpload accept=".pdf" maxSize={0.5} onFileSelect={(files) => setSelectedFile(files[0] || null)} />
-                    <div className="text-sm text-muted-foreground">{fileName ?? 'No file chosen'}</div>
+                    <div className="text-sm text-muted-foreground">{selectedFile ? selectedFile.name : 'No file chosen'}</div>
                     {loading && <UploadProgress progress={progress} message="Uploading student ID..." />}
                   </div>
                 )}
