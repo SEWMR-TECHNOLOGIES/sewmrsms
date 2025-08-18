@@ -107,10 +107,17 @@ export default function TemplatesPage() {
       const json = await res.json();
       if (!res.ok || !json.success) throw new Error(json.message || "Failed to create template");
 
+      // Log the newly created template
+      console.log("Newly created template:", json.data);
+
+      // Update state
       setTemplates(prev => [json.data, ...prev]);
+
+      // Clear inputs
       setNewName("");
       setNewMessage("");
       setNewColumnCount("");
+
       toast({ title: "Success", description: json.message || "Template created", variant: "success" });
     } catch (err: any) {
       toast({ title: "Error", description: err?.message || "Failed to create template", variant: "destructive" });
@@ -118,6 +125,7 @@ export default function TemplatesPage() {
       setCreating(false);
     }
   };
+
 
   // edit template
   const editTemplate = async () => {

@@ -62,7 +62,7 @@ async def create_contact_group(
             "uuid": str(new_group.uuid),
             "name": new_group.name,
             "created_at": now.strftime("%Y-%m-%d %H:%M:%S"),
-            "updated_at": now.strftime("%Y-%m-%d %H:%M:%S")  # Add this line
+            "updated_at": now.strftime("%Y-%m-%d %H:%M:%S")
         }
     }
 
