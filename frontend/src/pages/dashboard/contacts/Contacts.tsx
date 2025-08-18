@@ -14,6 +14,7 @@ import {
 import { Link } from 'react-router-dom';
 import { useToast } from '@/hooks/use-toast';
 import { Loader } from '@/components/ui/loader';
+import { ToggleSwitch } from '@/components/ui/toggle-switch';
 
 export type Contact = {
   id: string;
@@ -59,6 +60,29 @@ export default function Contacts() {
     fetchContacts();
   }, []);
 
+  const handleToggleBlacklist = async (contact: Contact) => {
+    const action = contact.blacklisted ? 'unblacklist' : 'blacklist';
+    try {
+      const res = await fetch(`https://api.sewmrsms.co.tz/api/v1/contacts/${contact.uuid}/${action}`, {
+        method: 'POST',
+        credentials: 'include',
+      });
+      const data = await res.json();
+      if (data.success) {
+        setContacts(prev =>
+          prev.map(c =>
+            c.uuid === contact.uuid ? { ...c, blacklisted: !contact.blacklisted } : c
+          )
+        );
+        toast({ title: 'Success', description: data.message, variant: 'success' });
+      } else {
+        toast({ title: 'Error', description: data.message, variant: 'destructive' });
+      }
+    } catch {
+      toast({ title: 'Error', description: `Failed to ${action} contact.`, variant: 'destructive' });
+    }
+  };
+
   const columns: ColumnDef<Contact>[] = [
     { accessorKey: 'name', header: 'Name' },
     { accessorKey: 'phone', header: 'Phone' },
@@ -82,11 +106,18 @@ export default function Contacts() {
       accessorKey: 'blacklisted',
       header: 'Status',
       cell: ({ row }) => {
-        const blocked = row.getValue('blacklisted') as boolean;
+        const contact = row.original;
         return (
-          <Badge variant={blocked ? 'destructive' : 'default'}>
-            {blocked ? 'Blocked' : 'Active'}
-          </Badge>
+          <div className="flex items-center justify-between">
+            <Badge variant={contact.blacklisted ? 'destructive' : 'default'}>
+              {contact.blacklisted ? 'Blocked' : 'Active'}
+            </Badge>
+            <ToggleSwitch
+              checked={contact.blacklisted}
+              onChange={() => handleToggleBlacklist(contact)}
+              label=""
+            />
+          </div>
         );
       },
     },
