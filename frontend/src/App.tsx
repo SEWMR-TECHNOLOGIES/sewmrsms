@@ -28,6 +28,7 @@ import ResetPasswordPage from "./pages/ResetPassword";
 import UploadAgreement from "./pages/dashboard/sender-ids/UploadSignedAgreement";
 import SenderIdPropagationStatus from "./pages/dashboard/sender-ids/PropagationStatus";
 import ContactGroups from "./pages/dashboard/contacts/ContactGroups";
+import AddContacts from "./pages/dashboard/contacts/AddContact";
 
 const queryClient = new QueryClient();
 
@@ -57,7 +58,7 @@ const App = () => (
             <Route index element={<Dashboard />} />
             <Route path="contacts" element={<Contacts />} />
             <Route path="contacts/groups" element={<ContactGroups />} />
-            <Route path="contacts/new" element={<div>New Contact Form</div>} />
+            <Route path="contacts/new" element={<AddContacts />} />
             <Route path="contacts/import" element={<div>Import Contacts</div>} />
             <Route path="messages/quick-send" element={<QuickSend />} />
             <Route path="messages/template" element={<div>Template Send</div>} />

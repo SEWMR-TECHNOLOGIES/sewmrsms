@@ -163,6 +163,7 @@ export default function PropagationStatus() {
           toast({
             title: 'Status Updated',
             description: 'Propagation status has been refreshed',
+            variant: 'success',
           });
         }
       } catch (error: any) {

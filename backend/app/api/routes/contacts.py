@@ -303,12 +303,16 @@ async def create_contacts(
             return {"success": False, "message": "contact_group_uuid is required", "data": None}
 
     # Verify contact group exists and belongs to user
-    contact_group = db.query(ContactGroup).filter(
-        ContactGroup.uuid == group_uuid,
-        ContactGroup.user_id == current_user.id
-    ).first()
-    if not contact_group:
-        return {"success": False, "message": "Contact group not found or no permission", "data": None}
+    if group_uuid.lower() == "none":
+        contact_group = None  
+    else:
+        contact_group = db.query(ContactGroup).filter(
+            ContactGroup.uuid == group_uuid,
+            ContactGroup.user_id == current_user.id
+        ).first()
+        if not contact_group:
+            return {"success": False, "message": "Contact group not found or no permission", "data": None}
+
 
     contacts = []
     if file:
@@ -357,7 +361,7 @@ async def create_contacts(
             name=name,
             phone=phone,
             email=email,
-            group_id=contact_group.id,
+            group_id=contact_group.id if contact_group else None, 
             created_at=now,
             updated_at=now
         ))
