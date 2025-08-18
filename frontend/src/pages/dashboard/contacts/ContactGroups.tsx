@@ -154,8 +154,38 @@ export default function ContactGroups() {
         </Badge>
       ),
     },
-    { accessorKey: "created_at", header: "Created", cell: ({ row }) => format(new Date(row.getValue("created_at")), "MMM dd, yyyy") },
-    { accessorKey: "updated_at", header: "Updated", cell: ({ row }) => format(new Date(row.getValue("updated_at")), "MMM dd, yyyy") },
+    {
+  accessorKey: "created_at",
+  header: "Created",
+  cell: ({ row }) => {
+    const value = row.getValue("created_at");
+    console.log("created_at raw value:", value);
+
+    if (!value) return "—";
+
+    // Narrow the type to something format() can accept
+    const date = typeof value === "string" || typeof value === "number" ? new Date(value) : value instanceof Date ? value : null;
+    if (!date || isNaN(date.getTime())) return "—";
+
+    return format(date, "MMM dd, yyyy");
+  },
+},
+{
+  accessorKey: "updated_at",
+  header: "Updated",
+  cell: ({ row }) => {
+    const value = row.getValue("updated_at");
+    console.log("updated_at raw value:", value);
+
+    if (!value) return "—";
+
+    const date = typeof value === "string" || typeof value === "number" ? new Date(value) : value instanceof Date ? value : null;
+    if (!date || isNaN(date.getTime())) return "—";
+
+    return format(date, "MMM dd, yyyy");
+  },
+},
+
     {
       accessorKey: "actions",
       header: "Actions",
