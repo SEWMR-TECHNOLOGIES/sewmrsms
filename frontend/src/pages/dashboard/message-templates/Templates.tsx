@@ -52,11 +52,16 @@ export default function TemplatesPage() {
   // create
   const [newName, setNewName] = useState("");
   const [newMessage, setNewMessage] = useState("");
-  const [newPhoneColumn, setNewPhoneColumn] = useState("");
+  const [newColumnCount, setNewColumnCount] = useState("");
   const [creating, setCreating] = useState(false);
 
   // edit
-  const [editingTemplate, setEditingTemplate] = useState<SmsTemplate | null>(null);
+  const [editingTemplate, setEditingTemplate] = useState<{
+    uuid: string;
+    name: string;
+    sample_message: string;
+    column_count: string;
+  } | null>(null);
   const [updating, setUpdating] = useState(false);
 
   // delete
@@ -84,7 +89,7 @@ export default function TemplatesPage() {
 
   // create template
   const createTemplate = async () => {
-    if (!newName.trim() || !newMessage.trim() || !newPhoneColumn.trim()) {
+    if (!newName.trim() || !newMessage.trim() || !newColumnCount.trim()) {
       return toast({ title: "Error", description: "All fields required", variant: "destructive" });
     }
     setCreating(true);
@@ -96,7 +101,7 @@ export default function TemplatesPage() {
         body: JSON.stringify({
           name: newName,
           sample_message: newMessage,
-          phone_column: newPhoneColumn,
+          column_count: parseInt(newColumnCount, 10),
         }),
       });
       const json = await res.json();
@@ -105,7 +110,7 @@ export default function TemplatesPage() {
       setTemplates(prev => [json.data, ...prev]);
       setNewName("");
       setNewMessage("");
-      setNewPhoneColumn("");
+      setNewColumnCount("");
       toast({ title: "Success", description: json.message || "Template created", variant: "success" });
     } catch (err: any) {
       toast({ title: "Error", description: err?.message || "Failed to create template", variant: "destructive" });
@@ -116,7 +121,10 @@ export default function TemplatesPage() {
 
   // edit template
   const editTemplate = async () => {
-    if (!editingTemplate || !editingTemplate.name.trim() || !editingTemplate.sample_message.trim()) return;
+    if (!editingTemplate || !editingTemplate.name.trim() || !editingTemplate.sample_message.trim() || !editingTemplate.column_count.trim()) return;
+    const colCount = parseInt(editingTemplate.column_count, 10);
+    if (isNaN(colCount) || colCount < 1) return toast({ title: "Error", description: "Column count must be a positive number", variant: "destructive" });
+
     setUpdating(true);
     try {
       const res = await fetch(`${BASE_URL}/edit/${editingTemplate.uuid}`, {
@@ -126,7 +134,7 @@ export default function TemplatesPage() {
         body: JSON.stringify({
           name: editingTemplate.name,
           sample_message: editingTemplate.sample_message,
-          column_count: editingTemplate.columns.length
+          column_count: colCount
         }),
       });
       const json = await res.json();
@@ -174,7 +182,19 @@ export default function TemplatesPage() {
         const template = row.original;
         return (
           <div className="flex gap-2">
-            <Button variant="outline" size="sm" onClick={() => setEditingTemplate(template)} disabled={updating}>
+            <Button
+              variant="outline"
+              size="sm"
+              onClick={() =>
+                setEditingTemplate({
+                  uuid: template.uuid,
+                  name: template.name,
+                  sample_message: template.sample_message,
+                  column_count: template.column_count.toString()
+                })
+              }
+              disabled={updating}
+            >
               <Edit className="mr-1 h-3 w-3" /> Edit
             </Button>
             <Button variant="outline" size="sm" onClick={() => setDeletingTemplate(template)} disabled={!!deletingUuid}>
@@ -208,10 +228,10 @@ export default function TemplatesPage() {
         <CardContent className="flex gap-2">
           <Input placeholder="Template Name" value={newName} onChange={e => setNewName(e.target.value)} className="flex-1" />
           <Input placeholder="Sample Message" value={newMessage} onChange={e => setNewMessage(e.target.value)} className="flex-1" />
-          <Input placeholder="Phone Column Name" value={newPhoneColumn} onChange={e => setNewPhoneColumn(e.target.value)} className="flex-1" />
+          <Input placeholder="Number of Columns" value={newColumnCount} onChange={e => setNewColumnCount(e.target.value)} className="flex-1" />
           <Button
             onClick={createTemplate}
-            disabled={creating || !newName.trim() || !newMessage.trim() || !newPhoneColumn.trim()}
+            disabled={creating || !newName.trim() || !newMessage.trim() || !newColumnCount.trim()}
             className="flex items-center gap-2"
           >
             {creating ? "Creating..." : "Create Template"}
@@ -250,8 +270,8 @@ export default function TemplatesPage() {
                 placeholder="Sample Message"
               />
               <Input
-                value={editingTemplate.columns.length.toString()}
-                readOnly
+                value={editingTemplate.column_count}
+                onChange={e => setEditingTemplate({ ...editingTemplate, column_count: e.target.value })}
                 placeholder="Number of Columns"
               />
             </div>
@@ -259,7 +279,7 @@ export default function TemplatesPage() {
               <AlertDialogCancel onClick={() => !updating && setEditingTemplate(null)} disabled={updating}>Cancel</AlertDialogCancel>
               <AlertDialogAction
                 onClick={editTemplate}
-                disabled={updating || !editingTemplate.name.trim() || !editingTemplate.sample_message.trim()}
+                disabled={updating || !editingTemplate.name.trim() || !editingTemplate.sample_message.trim() || !editingTemplate.column_count.trim()}
               >
                 {updating ? "Saving..." : "Save Changes"}
               </AlertDialogAction>
