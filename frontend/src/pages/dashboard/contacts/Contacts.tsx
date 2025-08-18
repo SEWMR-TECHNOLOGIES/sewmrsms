@@ -225,7 +225,6 @@ export default function Contacts() {
           <DataTable 
             columns={columns} 
             data={data} 
-            searchKey="name"
             searchPlaceholder="Search contacts..."
           />
         </CardContent>

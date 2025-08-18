@@ -1,5 +1,5 @@
 import React, { useState, useEffect } from 'react';
-import { Plus, Shield, CheckCircle, XCircle, Clock, AlertCircle, Search } from 'lucide-react';
+import { Plus, Shield, CheckCircle, XCircle, Clock, AlertCircle } from 'lucide-react';
 import { Button } from '@/components/ui/button';
 import { Card, CardContent, CardDescription, CardHeader, CardTitle } from '@/components/ui/card';
 import { Badge } from '@/components/ui/badge';
@@ -34,7 +34,6 @@ const getStatusIcon = (status: string) => {
     case 'in_review':
       return <AlertCircle className="h-4 w-4 text-amber-500" />;
     case 'pending':
-      return <Clock className="h-4 w-4 text-muted-foreground" />;
     default:
       return <Clock className="h-4 w-4 text-muted-foreground" />;
   }
@@ -47,58 +46,36 @@ const getStatusBadge = (status: string) => {
     case 'rejected':
       return <Badge variant="destructive">Rejected</Badge>;
     case 'in_review':
-      return <Badge variant="secondary" className="bg-amber-100 text-amber-700 border border-amber-300">
-        Under Review
-      </Badge>;
+      return <Badge variant="secondary" className="bg-amber-100 text-amber-700 border border-amber-300">Under Review</Badge>;
     case 'pending':
-      return <Badge variant="outline" className="text-muted-foreground border-muted-foreground/30">
-        Pending
-      </Badge>;
     default:
-      return <Badge variant="outline">Pending</Badge>;
+      return <Badge variant="outline" className="text-muted-foreground border-muted-foreground/30">Pending</Badge>;
   }
 };
 
 export default function UserSenderRequests() {
   const [senderIds, setSenderIds] = useState<SenderID[]>([]);
   const [loading, setLoading] = useState(true);
-  const [searchQuery, setSearchQuery] = useState('');
-  const [page, setPage] = useState(1);
-  const [perPage] = useState(10);
   const { toast } = useToast();
   const navigate = useNavigate();
 
-  useEffect(() => {
-    fetchSenderIds();
-  }, []);
-
   const fetchSenderIds = async () => {
+    setLoading(true);
     try {
-      const res = await fetch('https://api.sewmrsms.co.tz/api/v1/sender-ids/requests', {
-        credentials: 'include',
-      });
+      const res = await fetch('https://api.sewmrsms.co.tz/api/v1/sender-ids/requests', { credentials: 'include' });
       const data = await res.json();
       if (!data.success) throw new Error(data.message || 'Failed to fetch sender IDs');
       setSenderIds(data.data);
     } catch (err) {
-      console.error(err);
-      toast({
-        title: 'Error',
-        description: 'Unable to load sender ID requests',
-        variant: 'destructive',
-      });
+      toast({ title: 'Error', description: 'Unable to load sender ID requests', variant: 'destructive' });
     } finally {
       setLoading(false);
     }
   };
 
-  const filteredSenderIds = senderIds.filter(s =>
-    s.sender_alias.toLowerCase().includes(searchQuery.toLowerCase()) ||
-    s.company_name.toLowerCase().includes(searchQuery.toLowerCase())
-  );
-
-  const paginatedSenderIds = filteredSenderIds.slice((page - 1) * perPage, page * perPage);
-  const totalPages = Math.ceil(filteredSenderIds.length / perPage);
+  useEffect(() => {
+    fetchSenderIds();
+  }, []);
 
   const columns: ColumnDef<SenderID>[] = [
     {
@@ -108,16 +85,11 @@ export default function UserSenderRequests() {
         <div className="flex items-center gap-2">
           <Shield className="h-4 w-4 text-primary" />
           <span className="font-medium">{row.getValue('sender_alias')}</span>
-          {row.original.is_student_request && (
-            <Badge variant="secondary" className="text-xs ml-1">Student</Badge>
-          )}
+          {row.original.is_student_request && <Badge variant="secondary" className="text-xs ml-1">Student</Badge>}
         </div>
       ),
     },
-    {
-      accessorKey: 'company_name',
-      header: 'Organization',
-    },
+    { accessorKey: 'company_name', header: 'Organization' },
     {
       accessorKey: 'status',
       header: 'Status',
@@ -134,82 +106,29 @@ export default function UserSenderRequests() {
     {
       accessorKey: 'created_at',
       header: 'Created',
-      cell: ({ row }) => {
-        const date = new Date(row.getValue('created_at'));
-        return <span className="text-sm">{format(date, 'MMM dd, yyyy')}</span>;
-      },
+      cell: ({ row }) => <span className="text-sm">{format(new Date(row.getValue('created_at')), 'MMM dd, yyyy')}</span>,
     },
     {
       accessorKey: 'actions',
       header: 'Actions',
       cell: ({ row }) => {
         const request = row.original;
-        const isUnderReview = request.status === 'in_review';
         const isApproved = request.status === 'approved';
-
+        const isUnderReview = request.status === 'in_review';
         return (
           <div className="flex flex-col gap-1">
-            {/* Only show propagation for approved sender IDs */}
-            {isApproved && (
-              <Link
-                to={`/console/sender-ids/${request.uuid}/propagation`}
-                className="text-primary underline text-sm"
-              >
-                Check Propagation
-              </Link>
-            )}
-
-            {/* Existing uploaded document */}
-            {request.document_path && (
-              <a
-                href={request.document_path}
-                target="_blank"
-                rel="noreferrer"
-                className="text-primary underline text-sm"
-              >
-                Uploaded Agreement
-              </a>
-            )}
-
-            {/* Download agreement to sign: disabled if in_review */}
-            {!isApproved && (
-              <a
-                href={`https://api.sewmrsms.co.tz/api/v1/sender-ids/requests/${request.uuid}/download-agreement`}
-                target="_blank"
-                rel="noreferrer"
-                className={`text-primary underline text-sm ${isUnderReview ? 'pointer-events-none opacity-50' : ''}`}
-              >
-                Download Agreement to Sign
-              </a>
-            )}
-
-            {/* Upload agreement: hide if approved, disable if in_review */}
-            {!isApproved && (
-              <Link
-                to={`/console/sender-ids/${request.uuid}/upload-agreement`}
-                className={`text-primary underline text-sm ${isUnderReview ? 'pointer-events-none opacity-50' : ''}`}
-              >
-                Upload Agreement
-              </Link>
-            )}
-
-            {/* Remarks if present */}
-            {request.remarks && (
-              <span className="text-xs text-muted-foreground">
-                Remarks: {request.remarks}
-              </span>
-            )}
-
-            {/* Student indicator */}
-            {request.is_student_request && (
-              <span className="text-xs text-muted-foreground">Student ID uploaded</span>
-            )}
+            {isApproved && <Link to={`/console/sender-ids/${request.uuid}/propagation`} className="text-primary underline text-sm">Check Propagation</Link>}
+            {request.document_path && <a href={request.document_path} target="_blank" rel="noreferrer" className="text-primary underline text-sm">Uploaded Agreement</a>}
+            {!isApproved && <a href={`https://api.sewmrsms.co.tz/api/v1/sender-ids/requests/${request.uuid}/download-agreement`} target="_blank" rel="noreferrer" className={`text-primary underline text-sm ${isUnderReview ? 'pointer-events-none opacity-50' : ''}`}>Download Agreement to Sign</a>}
+            {!isApproved && <Link to={`/console/sender-ids/${request.uuid}/upload-agreement`} className={`text-primary underline text-sm ${isUnderReview ? 'pointer-events-none opacity-50' : ''}`}>Upload Agreement</Link>}
+            {request.remarks && <span className="text-xs text-muted-foreground">Remarks: {request.remarks}</span>}
+            {request.is_student_request && <span className="text-xs text-muted-foreground">Student ID uploaded</span>}
           </div>
         );
       },
     },
   ];
-  
+
   return (
     <div className="space-y-6">
       {/* Header */}
@@ -226,109 +145,36 @@ export default function UserSenderRequests() {
 
       {/* Stats Cards */}
       <div className="grid grid-cols-1 md:grid-cols-4 gap-4">
-        <Card>
-          <CardContent className="p-6">
-            <div className="flex items-center justify-between">
-              <div>
-                <p className="text-sm font-medium text-muted-foreground">Total Requests</p>
-                <p className="text-2xl font-bold">{senderIds.length}</p>
-              </div>
-              <Shield className="h-8 w-8 text-primary" />
-            </div>
-          </CardContent>
-        </Card>
-
-        <Card>
-          <CardContent className="p-6">
-            <div className="flex items-center justify-between">
-              <div>
-                <p className="text-sm font-medium text-muted-foreground">Approved</p>
-                <p className="text-2xl font-bold text-success">
-                  {senderIds.filter(s => s.status === 'approved').length}
-                </p>
-              </div>
-              <CheckCircle className="h-8 w-8 text-success" />
-            </div>
-          </CardContent>
-        </Card>
-
-        <Card>
-          <CardContent className="p-6">
-            <div className="flex items-center justify-between">
-              <div>
-                <p className="text-sm font-medium text-muted-foreground">Pending / Review</p>
-                <p className="text-2xl font-bold text-warning">
-                  {senderIds.filter(s => s.status === 'pending' || s.status === 'in_review').length}
-                </p>
-              </div>
-              <Clock className="h-8 w-8 text-warning" />
-            </div>
-          </CardContent>
-        </Card>
-
-        <Card>
-          <CardContent className="p-6">
-            <div className="flex items-center justify-between">
-              <div>
-                <p className="text-sm font-medium text-muted-foreground">Rejected</p>
-                <p className="text-2xl font-bold text-destructive">
-                  {senderIds.filter(s => s.status === 'rejected').length}
-                </p>
-              </div>
-              <XCircle className="h-8 w-8 text-destructive" />
-            </div>
-          </CardContent>
-        </Card>
+        <Card><CardContent className="p-6"><div className="flex items-center justify-between"><div><p className="text-sm font-medium text-muted-foreground">Total Requests</p><p className="text-2xl font-bold">{senderIds.length}</p></div><Shield className="h-8 w-8 text-primary" /></div></CardContent></Card>
+        <Card><CardContent className="p-6"><div className="flex items-center justify-between"><div><p className="text-sm font-medium text-muted-foreground">Approved</p><p className="text-2xl font-bold text-success">{senderIds.filter(s => s.status === 'approved').length}</p></div><CheckCircle className="h-8 w-8 text-success" /></div></CardContent></Card>
+        <Card><CardContent className="p-6"><div className="flex items-center justify-between"><div><p className="text-sm font-medium text-muted-foreground">Pending / Review</p><p className="text-2xl font-bold text-warning">{senderIds.filter(s => s.status === 'pending' || s.status === 'in_review').length}</p></div><Clock className="h-8 w-8 text-warning" /></div></CardContent></Card>
+        <Card><CardContent className="p-6"><div className="flex items-center justify-between"><div><p className="text-sm font-medium text-muted-foreground">Rejected</p><p className="text-2xl font-bold text-destructive">{senderIds.filter(s => s.status === 'rejected').length}</p></div><XCircle className="h-8 w-8 text-destructive" /></div></CardContent></Card>
       </div>
 
-      {/* Search + Pagination info */}
-      <div className="flex items-center justify-between gap-4">
-        {/* Search */}
-        <div className="relative max-w-md flex-1">
-          <Search className="absolute left-3 top-1/2 transform -translate-y-1/2 text-muted-foreground h-4 w-4" />
-          <Input
-            placeholder="Search sender IDs..."
-            value={searchQuery}
-            onChange={(e) => setSearchQuery(e.target.value)}
-            className="pl-10 bg-muted/50 border-0 focus-visible:ring-1 w-full"
-          />
-        </div>
-
-        {/* Pagination Info */}
-        <div className="text-sm text-muted-foreground whitespace-nowrap">
-          Page {page} of {totalPages || 1}
-        </div>
-      </div>
-
-
-      {/* Table */}
-      <Card className="relative">
-        {loading && <Loader overlay />}
-        <CardContent>
-          <DataTable columns={columns} data={paginatedSenderIds} />
+      {/* DataTable */}
+      <Card>
+        <CardHeader>
+          <CardTitle>All Sender ID Requests</CardTitle>
+          <CardDescription>
+            A list of all your sender ID requests, their status, and actions you can take
+          </CardDescription>
+        </CardHeader>
+        <CardContent className="relative">
+          {loading && <Loader overlay />}
+          <DataTable columns={columns} data={senderIds} searchPlaceholder="Search sender IDs..." />
         </CardContent>
       </Card>
 
-      {/* Pagination Controls */}
-      {totalPages > 1 && (
-        <div className="flex justify-end gap-2">
-          <Button disabled={page === 1} onClick={() => setPage(page - 1)}>Previous</Button>
-          <Button disabled={page === totalPages} onClick={() => setPage(page + 1)}>Next</Button>
-        </div>
-      )}
 
       {/* Empty State */}
-      {senderIds.length === 0 && !loading && (
+      {!loading && senderIds.length === 0 && (
         <Card className="text-center py-12">
           <CardContent>
             <Shield className="h-12 w-12 text-muted-foreground mx-auto mb-4" />
             <h3 className="text-lg font-semibold mb-2">No Sender ID Requests Yet</h3>
-            <p className="text-muted-foreground mb-4">
-              Get started by requesting your first sender ID to send SMS messages
-            </p>
+            <p className="text-muted-foreground mb-4">Get started by requesting your first sender ID to send SMS messages</p>
             <Button onClick={() => navigate('/console/sender-ids/request')}>
-              <Plus className="h-4 w-4 mr-2" />
-              Request Your First Sender ID
+              <Plus className="h-4 w-4 mr-2" /> Request Your First Sender ID
             </Button>
           </CardContent>
         </Card>

@@ -202,9 +202,15 @@ export default function ContactGroups() {
 
       {/* DataTable */}
       <Card>
+        <CardHeader>
+          <CardTitle>All Contact Groups</CardTitle>
+          <CardDescription>
+            A list of all your contact groups, their details, and number of contacts in each.
+          </CardDescription>
+        </CardHeader>
         <CardContent className="relative">
           {loading && <Loader overlay />}
-          <DataTable columns={columns} data={groups} searchKey="name" searchPlaceholder="Search groups..." />
+          <DataTable columns={columns} data={groups} searchPlaceholder="Search groups..." />
         </CardContent>
       </Card>
 
