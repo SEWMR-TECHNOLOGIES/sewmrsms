@@ -347,7 +347,7 @@ async def create_contacts(
                 email = normalize_str(c.get("email"))
 
                 if not phone or not validate_phone(phone):
-                    errors.append(f"Row {idx}: Invalid phone '{phone}'")
+                    errors.append(f"Row {idx}: Invalid phone '{phone}'. Phone must be in format 255XXXXXXXXX (start with 255 then 6 or 7, then 8 digits)")
                     continue
                 if email and not validate_email(email):
                     errors.append(f"Row {idx}: Invalid email '{email}'")
@@ -650,7 +650,7 @@ async def edit_contact(
     # Validate phone/email
     from utils.validation import validate_email, validate_phone
     if not validate_phone(phone):
-        return {"success": False, "message": f"Invalid phone: {phone}", "data": None}
+        return {"success": False, "message": f"Invalid phone: {phone}. Phone must be in format 255XXXXXXXXX (start with 255 then 6 or 7, then 8 digits)", "data": None}
     if email and not validate_email(email):
         return {"success": False, "message": f"Invalid email: {email}", "data": None}
 

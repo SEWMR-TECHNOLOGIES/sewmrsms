@@ -15,6 +15,9 @@ import { Link } from 'react-router-dom';
 import { useToast } from '@/hooks/use-toast';
 import { Loader } from '@/components/ui/loader';
 import { ToggleSwitch } from '@/components/ui/toggle-switch';
+import { AlertDialog, AlertDialogAction, AlertDialogCancel, AlertDialogContent, AlertDialogFooter, AlertDialogHeader, AlertDialogTitle } from '@/components/ui/alert-dialog';
+import { Input } from '@/components/ui/input';
+import { SearchableSelect, SearchableSelectOption } from '@/components/ui/searchable-select';
 
 export type Contact = {
   id: string;
@@ -22,14 +25,24 @@ export type Contact = {
   name: string;
   phone: string;
   email?: string;
+  group_uuid?: string;
   group_name: string;
   blacklisted: boolean;
   created_at: string;
   updated_at: string;
 };
 
+export type ContactGroup = {
+  uuid: string;
+  name: string;
+  contact_count: number;
+};
+
+const API_BASE = 'https://api.sewmrsms.co.tz/api/v1/contacts';
+
 export default function Contacts() {
   const [contacts, setContacts] = useState<Contact[]>([]);
+  const [groups, setGroups] = useState<ContactGroup[]>([]);
   const [stats, setStats] = useState({
     total: 0,
     totalFromLastMonth: 0,
@@ -41,10 +54,23 @@ export default function Contacts() {
   const [loading, setLoading] = useState(true);
   const { toast } = useToast();
 
+  // Edit/Delete state
+  const [editingContact, setEditingContact] = useState<Contact | null>(null);
+  const [updatingContact, setUpdatingContact] = useState(false);
+  const [deletingContact, setDeletingContact] = useState<Contact | null>(null);
+  const [deletingUuid, setDeletingUuid] = useState<string | null>(null);
+
+  // Edit modal local state
+  const [editName, setEditName] = useState('');
+  const [editPhone, setEditPhone] = useState('');
+  const [editEmail, setEditEmail] = useState('');
+  const [editGroup, setEditGroup] = useState<string>('none');
+
+  // Fetch contacts
   const fetchContacts = async () => {
     setLoading(true);
     try {
-      const res = await fetch('https://api.sewmrsms.co.tz/api/v1/contacts', { credentials: 'include' });
+      const res = await fetch(API_BASE, { credentials: 'include' });
       const data = await res.json();
       if (!data.success) throw new Error(data.message || 'Failed to fetch contacts');
       setContacts(data.data.contacts);
@@ -56,23 +82,35 @@ export default function Contacts() {
     }
   };
 
+  // Fetch groups for searchable select
+  const fetchGroups = async () => {
+    try {
+      const res = await fetch(`${API_BASE}/groups`, { credentials: 'include' });
+      const data = await res.json();
+      const mapped = Array.isArray(data?.data) ? data.data.map((g: any) => ({
+        uuid: g.uuid,
+        name: g.name,
+        contact_count: Number(g.contact_count || 0),
+      })) : [];
+      setGroups(mapped);
+    } catch {
+      toast({ title: 'Error', description: 'Failed to fetch groups', variant: 'destructive' });
+    }
+  };
+
   useEffect(() => {
     fetchContacts();
+    fetchGroups();
   }, []);
 
   const handleToggleBlacklist = async (contact: Contact) => {
     const action = contact.blacklisted ? 'unblacklist' : 'blacklist';
     try {
-      const res = await fetch(`https://api.sewmrsms.co.tz/api/v1/contacts/${contact.uuid}/${action}`, {
-        method: 'POST',
-        credentials: 'include',
-      });
+      const res = await fetch(`${API_BASE}/${contact.uuid}/${action}`, { method: 'POST', credentials: 'include' });
       const data = await res.json();
       if (data.success) {
         setContacts(prev =>
-          prev.map(c =>
-            c.uuid === contact.uuid ? { ...c, blacklisted: !contact.blacklisted } : c
-          )
+          prev.map(c => (c.uuid === contact.uuid ? { ...c, blacklisted: !contact.blacklisted } : c))
         );
         toast({ title: 'Success', description: data.message, variant: 'success' });
       } else {
@@ -83,25 +121,79 @@ export default function Contacts() {
     }
   };
 
+  const openEditModal = (contact: Contact) => {
+    setEditingContact(contact);
+    setEditName(contact.name || '');
+    setEditPhone(contact.phone || '');
+    setEditEmail(contact.email || '');
+    setEditGroup(contact.group_uuid || 'none');
+  };
+
+  const editContact = async () => {
+    if (!editingContact) return;
+    if (!editName.trim() || !editPhone.trim()) {
+      toast({ title: 'Error', description: 'Name and phone are required', variant: 'destructive' });
+      return;
+    }
+
+    setUpdatingContact(true);
+    try {
+      const res = await fetch(`${API_BASE}/${editingContact.uuid}/edit`, {
+        method: 'PUT',
+        credentials: 'include',
+        headers: { 'Content-Type': 'application/json' },
+        body: JSON.stringify({ name: editName.trim(), phone: editPhone.trim(), email: editEmail.trim() || null, group_uuid: editGroup }),
+      });
+      const json = await res.json();
+      if (!res.ok || json.success === false) throw new Error(json.message || 'Failed to update contact');
+
+      setContacts(prev => prev.map(c =>
+        c.uuid === editingContact.uuid
+          ? { ...c, name: json.data.name, phone: json.data.phone, email: json.data.email, group_name: json.data.group_name, group_uuid: json.data.group_uuid }
+          : c
+      ));
+      setEditingContact(null);
+      toast({ title: 'Success', description: json.message || 'Contact updated', variant: 'success' });
+    } catch (err: any) {
+      toast({ title: 'Error', description: err?.message || 'Failed to update contact', variant: 'destructive' });
+    } finally {
+      setUpdatingContact(false);
+    }
+  };
+
+  const openDeleteModal = (contact: Contact) => setDeletingContact(contact);
+  const deleteContact = async (uuid: string) => {
+    if (!uuid) return;
+    setDeletingUuid(uuid);
+    try {
+      const res = await fetch(`${API_BASE}/${uuid}`, { method: 'DELETE', credentials: 'include' });
+      const json = await res.json();
+      if (!res.ok || json.success === false) throw new Error(json.message || 'Failed to delete contact');
+
+      setContacts(prev => prev.filter(c => c.uuid !== uuid));
+      setDeletingContact(null);
+      toast({ title: 'Success', description: json.message || 'Contact deleted', variant: 'success' });
+    } catch (err: any) {
+      toast({ title: 'Error', description: err?.message || 'Failed to delete contact', variant: 'destructive' });
+    } finally {
+      setDeletingUuid(null);
+    }
+  };
+
+  const groupOptions: SearchableSelectOption[] = [
+    { value: 'none', label: 'No Group', description: 'Unassigned' },
+    ...groups.map(g => ({
+      value: g.uuid,
+      label: g.name,
+      description: `${g.contact_count} contacts`,
+    })),
+  ];
+
   const columns: ColumnDef<Contact>[] = [
     { accessorKey: 'name', header: 'Name' },
     { accessorKey: 'phone', header: 'Phone' },
-    {
-      accessorKey: 'email',
-      header: 'Email',
-      cell: ({ row }) => {
-        const email = row.getValue('email') as string;
-        return email || <span className="text-muted-foreground">-</span>;
-      },
-    },
-    {
-      accessorKey: 'group_name',
-      header: 'Group',
-      cell: ({ row }) => {
-        const group = row.getValue('group_name') as string;
-        return <Badge variant="secondary">{group}</Badge>;
-      },
-    },
+    { accessorKey: 'email', header: 'Email', cell: ({ row }) => row.getValue('email') || <span className="text-muted-foreground">-</span> },
+    { accessorKey: 'group_name', header: 'Group', cell: ({ row }) => <Badge variant="secondary">{row.getValue('group_name')}</Badge> },
     {
       accessorKey: 'blacklisted',
       header: 'Status',
@@ -112,23 +204,12 @@ export default function Contacts() {
             <Badge variant={contact.blacklisted ? 'destructive' : 'default'}>
               {contact.blacklisted ? 'Blocked' : 'Active'}
             </Badge>
-            <ToggleSwitch
-              checked={contact.blacklisted}
-              onChange={() => handleToggleBlacklist(contact)}
-              label=""
-            />
+            <ToggleSwitch checked={contact.blacklisted} onChange={() => handleToggleBlacklist(contact)} label="" />
           </div>
         );
       },
     },
-    {
-      accessorKey: 'created_at',
-      header: 'Created',
-      cell: ({ row }) => {
-        const date = new Date(row.getValue('created_at'));
-        return date.toLocaleDateString('en-GB');
-      },
-    },
+    { accessorKey: 'created_at', header: 'Created', cell: ({ row }) => new Date(row.getValue('created_at')).toLocaleDateString('en-GB') },
     {
       id: 'actions',
       cell: ({ row }) => (
@@ -139,10 +220,10 @@ export default function Contacts() {
             </Button>
           </DropdownMenuTrigger>
           <DropdownMenuContent align="end">
-            <DropdownMenuItem>
+            <DropdownMenuItem onClick={() => openEditModal(row.original)}>
               <Edit className="mr-2 h-4 w-4" /> Edit
             </DropdownMenuItem>
-            <DropdownMenuItem className="text-destructive">
+            <DropdownMenuItem className="text-destructive" onClick={() => openDeleteModal(row.original)}>
               <Trash2 className="mr-2 h-4 w-4" /> Delete
             </DropdownMenuItem>
           </DropdownMenuContent>
@@ -157,9 +238,7 @@ export default function Contacts() {
       <div className="flex items-center justify-between">
         <div>
           <h1 className="text-3xl font-bold tracking-tight">Contacts</h1>
-          <p className="text-muted-foreground">
-            Manage your contact database and organize recipients.
-          </p>
+          <p className="text-muted-foreground">Manage your contact database and organize recipients.</p>
         </div>
         <div className="flex items-center space-x-2">
           <Button variant="outline" asChild>
@@ -222,15 +301,59 @@ export default function Contacts() {
       <Card>
         <CardHeader>
           <CardTitle>All Contacts</CardTitle>
-          <CardDescription>
-            A list of all your contacts with their details and status.
-          </CardDescription>
+          <CardDescription>A list of all your contacts with their details and status.</CardDescription>
         </CardHeader>
         <CardContent className="relative">
           {loading && <Loader overlay />}
           <DataTable columns={columns} data={contacts} searchPlaceholder="Search contacts..." />
         </CardContent>
       </Card>
+
+      {/* Edit Modal */}
+      {editingContact && (
+        <AlertDialog open={!!editingContact} onOpenChange={(open) => { if (!open && !updatingContact) setEditingContact(null); }}>
+          <AlertDialogContent>
+            <AlertDialogHeader>
+              <AlertDialogTitle>Edit Contact</AlertDialogTitle>
+            </AlertDialogHeader>
+            <div className="p-4 flex flex-col gap-3">
+              <Input value={editName} onChange={(e) => setEditName(e.target.value)} placeholder="Name" />
+              <Input value={editPhone} onChange={(e) => setEditPhone(e.target.value)} placeholder="Phone" />
+              <Input value={editEmail} onChange={(e) => setEditEmail(e.target.value)} placeholder="Email (optional)" />
+              <SearchableSelect
+                options={groupOptions}
+                value={editGroup}
+                onValueChange={(val: string) => setEditGroup(val)}
+                placeholder="Select a group or leave blank"
+                searchPlaceholder="Search groups..."
+                className="w-full"
+              />
+            </div>
+            <AlertDialogFooter>
+              <AlertDialogCancel onClick={() => !updatingContact && setEditingContact(null)} disabled={updatingContact}>Cancel</AlertDialogCancel>
+              <AlertDialogAction onClick={editContact} disabled={updatingContact}>Save Changes</AlertDialogAction>
+            </AlertDialogFooter>
+          </AlertDialogContent>
+        </AlertDialog>
+      )}
+
+      {/* Delete Modal */}
+      {deletingContact && (
+        <AlertDialog open={!!deletingContact} onOpenChange={(open) => { if (!open && !deletingUuid) setDeletingContact(null); }}>
+          <AlertDialogContent>
+            <AlertDialogHeader>
+              <AlertDialogTitle>Delete Contact</AlertDialogTitle>
+            </AlertDialogHeader>
+            <div className="p-4">
+              <p className="text-sm text-muted-foreground">Are you sure you want to delete "{deletingContact.name}"?</p>
+            </div>
+            <AlertDialogFooter>
+              <AlertDialogCancel onClick={() => !deletingUuid && setDeletingContact(null)} disabled={!!deletingUuid}>Cancel</AlertDialogCancel>
+              <AlertDialogAction onClick={() => deletingContact && deleteContact(deletingContact.uuid)} className="bg-destructive text-destructive-foreground" disabled={!!deletingUuid}>Delete Contact</AlertDialogAction>
+            </AlertDialogFooter>
+          </AlertDialogContent>
+        </AlertDialog>
+      )}
     </div>
   );
 }
