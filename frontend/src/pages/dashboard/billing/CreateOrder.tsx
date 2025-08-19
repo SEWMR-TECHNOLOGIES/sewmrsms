@@ -35,6 +35,10 @@ export default function CreateOrder(): JSX.Element {
     return `TZS ${Math.round(n).toLocaleString('en-US', { maximumFractionDigits: 0 })}`;
   };
 
+  const resetForm = () => {
+    setNumberOfMessages('');
+  };
+
   const handleSubmit = async (e: React.FormEvent) => {
     e.preventDefault();
 
@@ -76,6 +80,7 @@ export default function CreateOrder(): JSX.Element {
       }
 
       setOrder(payload.data);
+      resetForm(); // Reset form after success
       toast({ variant: 'success', title: 'Order created', description: 'Complete payment to activate your SMS credits' });
     } catch (err) {
       toast({ variant: 'destructive', title: 'Network error', description: 'Unable to reach the server. Try again shortly.' });
@@ -113,7 +118,6 @@ export default function CreateOrder(): JSX.Element {
 
             <CardContent>
               <form onSubmit={handleSubmit} className="space-y-6">
-
                 <div className="space-y-2">
                   <Label htmlFor="number_of_messages">Number of messages to purchase <span className="text-destructive">*</span></Label>
                   <Input
@@ -132,7 +136,7 @@ export default function CreateOrder(): JSX.Element {
                     {loading ? 'Creating order...' : 'Create Order'}
                   </Button>
 
-                  <Button variant="outline" onClick={() => setNumberOfMessages('')}>
+                  <Button variant="outline" onClick={resetForm}>
                     Reset
                   </Button>
                 </div>
@@ -169,8 +173,6 @@ export default function CreateOrder(): JSX.Element {
                   </div>
 
                   <div className="flex gap-3">
-                    {/* Link to payment page. This follows your requested route:
-                        /console/billing/<order-uuid>/pay */}
                     <Link to={`/console/billing/${order.uuid}/pay`} className="inline-block">
                       <Button>
                         Proceed to payment
@@ -178,7 +180,6 @@ export default function CreateOrder(): JSX.Element {
                     </Link>
 
                     <Button variant="ghost" onClick={() => {
-                      // If user wants to stay on the page but copy link or re-open payment
                       navigator.clipboard?.writeText(`${window.location.origin}/console/billing/${order.uuid}/pay`);
                       toast({ title: 'Link copied', description: 'Payment link copied to clipboard' });
                     }}>
