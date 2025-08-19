@@ -133,10 +133,7 @@ export default function Dashboard() {
 
       {/* Stats Grid */}
       <div className="grid gap-4 md:grid-cols-2 lg:grid-cols-4">
-        {loading ? (
-          <p className="col-span-4 text-center text-muted-foreground">Loading stats...</p>
-        ) : (
-          stats.map((stat) => (
+          {stats.map((stat) => (
             <Card key={stat.title} className="hover:shadow-md transition-shadow">
               <CardHeader className="flex flex-row items-center justify-between space-y-0 pb-2">
                 <CardTitle className="text-sm font-medium">{stat.title}</CardTitle>
@@ -147,18 +144,19 @@ export default function Dashboard() {
                 <div className="flex items-center text-xs text-muted-foreground">
                   {stat.trend === 'up' ? (
                     <ArrowUpRight className="mr-1 h-3 w-3 text-green-600" />
-                  ) : (
+                  ) : stat.trend === 'down' ? (
                     <ArrowDownRight className="mr-1 h-3 w-3 text-red-600" />
+                  ) : (
+                    <span className="mr-1 h-3 w-3 text-muted-foreground">…</span> // subtle hint for placeholder
                   )}
-                  <span className={stat.trend === 'up' ? 'text-green-600' : 'text-red-600'}>
+                  <span className={stat.trend === 'up' ? 'text-green-600' : stat.trend === 'down' ? 'text-red-600' : 'text-muted-foreground'}>
                     {stat.change}
                   </span>
                   <span className="ml-1">from yesterday</span>
                 </div>
               </CardContent>
             </Card>
-          ))
-        )}
+          ))}
       </div>
 
       <div className="grid gap-6 md:grid-cols-2">
