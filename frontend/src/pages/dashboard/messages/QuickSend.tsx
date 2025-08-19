@@ -40,6 +40,7 @@ export default function QuickSend() {
   const [scheduledFor, setScheduledFor] = useState<Date | null>(null);
   const [loading, setLoading] = useState(false);
   const [recipientMode, setRecipientMode] = useState<'manual' | 'group'>('manual');
+  const [scheduleName, setScheduleName] = useState<string>('');
 
   const [manualCount, setManualCount] = useState<number>(0);
   const [lastInvalidToastCount, setLastInvalidToastCount] = useState<number>(0);
@@ -231,6 +232,7 @@ export default function QuickSend() {
           group_uuid: recipientMode === 'group' ? selectedGroup : undefined,
           schedule: scheduleFlag,
           scheduled_for: scheduledStr,
+          schedule_name: scheduleFlag ? scheduleName : undefined
         }),
       });
 
@@ -376,6 +378,18 @@ export default function QuickSend() {
 
               <div className="space-y-2">
                 <ToggleSwitch checked={scheduleFlag} onChange={setScheduleFlag} label="Schedule Message" />
+                {scheduleFlag && (
+                    <div className="space-y-2">
+                      <label className="block mb-1 font-medium">Schedule Name</label>
+                      <Input
+                        placeholder="Enter a name for this schedule"
+                        value={scheduleName}
+                        onChange={(e) => setScheduleName(e.target.value)}
+                        className="w-full"
+                      />
+                    </div>
+                  )}
+
                 {scheduleFlag && (
                   <Popover>
                     <PopoverTrigger>

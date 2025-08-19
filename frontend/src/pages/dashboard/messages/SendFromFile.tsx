@@ -49,6 +49,7 @@ export default function SendFromTemplate() {
   const [scheduledFor, setScheduledFor] = useState<Date | null>(null);
   const [hourSel, setHourSel] = useState<string>('00');
   const [minuteSel, setMinuteSel] = useState<string>('00');
+  const [scheduleName, setScheduleName] = useState('');
 
   const pad = (n: number) => n.toString().padStart(2, '0');
   const hourOptions = Array.from({ length: 24 }, (_, i) => ({ value: pad(i), label: pad(i) }));
@@ -147,6 +148,9 @@ export default function SendFromTemplate() {
     formData.append('file', selectedFile);
     formData.append('schedule', String(scheduleFlag));
     if (scheduledStr) formData.append('scheduled_for', scheduledStr);
+    if (scheduleFlag && scheduleName.trim()) {
+      formData.append('schedule_name', scheduleName);
+    }
 
     setUploading(true);
     setUploadProgress(0);
@@ -276,6 +280,18 @@ export default function SendFromTemplate() {
 
               <div className="space-y-2">
                 <ToggleSwitch checked={scheduleFlag} onChange={setScheduleFlag} label="Schedule Message" />
+                {scheduleFlag && (
+                  <div className="space-y-2">
+                    <Label className="mb-1">Schedule Name</Label>
+                    <Input
+                      placeholder="Enter a name for this schedule"
+                      value={scheduleName}
+                      onChange={(e) => setScheduleName(e.target.value)}
+                      className="w-full"
+                    />
+                  </div>
+                )}
+
                 {scheduleFlag && (
                   <Popover>
                     <PopoverTrigger>
