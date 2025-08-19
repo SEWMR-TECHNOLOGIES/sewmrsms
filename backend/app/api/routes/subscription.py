@@ -1,6 +1,7 @@
 # backend/app/api/subscription.py
 
 from datetime import datetime
+import math
 import os
 import uuid
 from fastapi import APIRouter, Depends, File, Form, HTTPException, Path, Request, UploadFile
@@ -70,7 +71,20 @@ async def purchase_subscription(
     if not package:
         return {"success": False, "message": "No suitable SMS package found for the requested number of messages", "data": None}
 
+    # Calculate total amount
     total_amount = float(package.price_per_sms) * number_of_messages
+
+    # Enforce minimum order amount of 1000 TZS
+    min_amount = 1000
+    min_sms_needed = int(math.ceil(min_amount / package.price_per_sms))
+
+    if total_amount < min_amount:
+        return {
+            "success": False,
+            "message": f"Minimum order amount is TZS {min_amount:,}. You need at least {min_sms_needed} messages.",
+            "data": None
+        }
+
     now = datetime.now(pytz.timezone("Africa/Nairobi")).replace(tzinfo=None)
 
     new_order = SubscriptionOrder(
