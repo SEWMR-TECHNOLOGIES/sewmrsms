@@ -6,7 +6,6 @@ import {
   MessageSquare,
   Send,
   Users,
-  TrendingUp,
   DollarSign,
   ArrowUpRight,
   ArrowDownRight,
@@ -29,10 +28,10 @@ function formatRelative(isoTs: string) {
 
 export default function Dashboard() {
   const placeholderStats = [
-    { title: 'Messages Sent Today', value: '...', change: '...', trend: null, icon: MessageSquare, color: 'text-blue-600' },
-    { title: 'Delivery Rate', value: '...', change: '...', trend: null, icon: Send, color: 'text-green-600' },
-    { title: 'Total Contacts', value: '...', change: '...', trend: null, icon: Users, color: 'text-purple-600' },
-    { title: 'Credits Remaining', value: '...', change: '...', trend: null, icon: DollarSign, color: 'text-orange-600' },
+    { title: 'Messages Sent Today', value: '', change: '', trend: null, icon: MessageSquare, color: 'text-blue-600' },
+    { title: 'Delivery Rate', value: '', change: '', trend: null, icon: Send, color: 'text-green-600' },
+    { title: 'Total Contacts', value: '', change: '', trend: null, icon: Users, color: 'text-purple-600' },
+    { title: 'Credits Remaining', value: '', change: '', trend: null, icon: DollarSign, color: 'text-orange-600' },
   ];
 
   const [stats, setStats] = useState<any[]>(placeholderStats);
@@ -41,7 +40,6 @@ export default function Dashboard() {
   const [recentMessages, setRecentMessages] = useState<any[] | null>(null); 
   const [loadingRecent, setLoadingRecent] = useState(true);
 
-  // Fetch stats
   const fetchStats = async () => {
     try {
       const res = await fetch('https://api.sewmrsms.co.tz/api/v1/auth/dashboard/stats', { credentials: 'include' });
@@ -90,13 +88,11 @@ export default function Dashboard() {
     }
   };
 
-  // Fetch recent messages (from schedules endpoint)
   const fetchRecentMessages = async () => {
     setLoadingRecent(true);
     try {
       const res = await fetch('https://api.sewmrsms.co.tz/api/v1/auth/dashboard/recent-messages?limit=6', { credentials: 'include' });
       const data = await res.json();
-      // API shape expected: { recent_messages: [ { id, recipient, message, status, timestamp, count } ] }
       if (Array.isArray(data?.recent_messages)) {
         setRecentMessages(
           data.recent_messages.map((m: any) => ({
@@ -109,11 +105,11 @@ export default function Dashboard() {
           }))
         );
       } else {
-        setRecentMessages([]); // empty
+        setRecentMessages([]);
       }
     } catch (err) {
       console.error('Failed to fetch recent messages', err);
-      setRecentMessages([]); // show empty state on failure to avoid spinner forever
+      setRecentMessages([]);
     } finally {
       setLoadingRecent(false);
     }
@@ -122,10 +118,8 @@ export default function Dashboard() {
   useEffect(() => {
     fetchStats();
     fetchRecentMessages();
-
-    const statsInterval = setInterval(fetchStats, 5 * 60 * 1000); // every 5 minutes
-    const recentInterval = setInterval(fetchRecentMessages, 2 * 60 * 1000); // every 2 minutes
-
+    const statsInterval = setInterval(fetchStats, 5 * 60 * 1000);
+    const recentInterval = setInterval(fetchRecentMessages, 2 * 60 * 1000);
     return () => {
       clearInterval(statsInterval);
       clearInterval(recentInterval);
@@ -170,20 +164,28 @@ export default function Dashboard() {
               <stat.icon className={`h-4 w-4 ${stat.color}`} />
             </CardHeader>
             <CardContent>
-              <div className="text-2xl font-bold">{stat.value}</div>
-              <div className="flex items-center text-xs text-muted-foreground">
-                {stat.trend === 'up' ? (
-                  <ArrowUpRight className="mr-1 h-3 w-3 text-green-600" />
-                ) : stat.trend === 'down' ? (
-                  <ArrowDownRight className="mr-1 h-3 w-3 text-red-600" />
-                ) : (
-                  <span className="mr-1 h-3 w-3 text-muted-foreground">…</span>
-                )}
-                <span className={stat.trend === 'up' ? 'text-green-600' : stat.trend === 'down' ? 'text-red-600' : 'text-muted-foreground'}>
-                  {stat.change}
-                </span>
-                <span className="ml-1">from yesterday</span>
-              </div>
+              {loadingStats ? (
+                <div className="space-y-2 animate-pulse">
+                  <div className="h-6 w-3/4 bg-slate-200 rounded" />
+                  <div className="h-4 w-1/2 bg-slate-200 rounded mt-1" />
+                  <div className="h-3 w-1/3 bg-slate-200 rounded mt-1" />
+                </div>
+              ) : (
+                <>
+                  <div className="text-2xl font-bold">{stat.value}</div>
+                  <div className="flex items-center text-xs text-muted-foreground">
+                    {stat.trend === 'up' ? (
+                      <ArrowUpRight className="mr-1 h-3 w-3 text-green-600" />
+                    ) : stat.trend === 'down' ? (
+                      <ArrowDownRight className="mr-1 h-3 w-3 text-red-600" />
+                    ) : null}
+                    <span className={stat.trend === 'up' ? 'text-green-600' : stat.trend === 'down' ? 'text-red-600' : 'text-muted-foreground'}>
+                      {stat.change}
+                    </span>
+                    <span className="ml-1">from yesterday</span>
+                  </div>
+                </>
+              )}
             </CardContent>
           </Card>
         ))}
@@ -201,7 +203,6 @@ export default function Dashboard() {
           <CardContent>
             <div className="space-y-4">
               {loadingRecent ? (
-                // simple skeleton rows while loading
                 [0, 1, 2].map((i) => (
                   <div key={i} className="flex items-center space-x-4 animate-pulse">
                     <div className="flex-1 space-y-1">

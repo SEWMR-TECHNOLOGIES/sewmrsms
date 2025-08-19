@@ -280,56 +280,59 @@ export default function SendFromTemplate() {
 
               <div className="space-y-2">
                 <ToggleSwitch checked={scheduleFlag} onChange={setScheduleFlag} label="Schedule Message" />
-                {scheduleFlag && (
-                  <div className="space-y-2">
-                    <Label className="mb-1">Schedule Name</Label>
-                    <Input
-                      placeholder="Enter a name for this schedule"
-                      value={scheduleName}
-                      onChange={(e) => setScheduleName(e.target.value)}
-                      className="w-full"
-                    />
-                  </div>
-                )}
 
                 {scheduleFlag && (
-                  <Popover>
-                    <PopoverTrigger>
+                  <div className="grid gap-3 md:grid-cols-2">
+                    {/* Schedule Name */}
+                    <div className="space-y-2">
+                      <Label className="mb-1">Schedule Name</Label>
                       <Input
-                        placeholder={
-                          scheduledFor
-                            ? format(scheduledFor, 'yyyy-MM-dd HH:mm:ss')
-                            : 'Select date & time (GMT+3)'
-                        }
-                        readOnly
-                        className="cursor-pointer"
+                        placeholder="Enter a name for this schedule"
+                        value={scheduleName}
+                        onChange={(e) => setScheduleName(e.target.value)}
+                        className="w-full"
                       />
-                    </PopoverTrigger>
-                    <PopoverContent className="w-auto p-3">
-                      <div className="grid gap-3 md:grid-cols-2">
-                        <Calendar mode="single" selected={scheduledFor || undefined} onSelect={onCalendarSelect} />
-                        <div className="space-y-2">
-                          <div className="text-sm font-medium">Time (GMT+3)</div>
-                          <div className="flex gap-2 mt-1">
-                            <SearchableSelect
-                              options={hourOptions}
-                              value={hourSel}
-                              onValueChange={(v) => onTimeChange(v, minuteSel)}
-                              className="flex-1"
-                              placeholder="Hour"
-                            />
-                            <SearchableSelect
-                              options={minuteOptions}
-                              value={minuteSel}
-                              onValueChange={(v) => onTimeChange(hourSel, v)}
-                              className="flex-1"
-                              placeholder="Minute"
-                            />
+                    </div>
+
+                    {/* Schedule Date & Time */}
+                    <Popover>
+                      <PopoverTrigger>
+                        <Input
+                          placeholder={
+                            scheduledFor
+                              ? format(scheduledFor, 'yyyy-MM-dd HH:mm:ss')
+                              : 'Select date & time (GMT+3)'
+                          }
+                          readOnly
+                          className="cursor-pointer w-full"
+                        />
+                      </PopoverTrigger>
+                      <PopoverContent className="w-auto p-3">
+                        <div className="grid gap-3 md:grid-cols-2">
+                          <Calendar mode="single" selected={scheduledFor || undefined} onSelect={onCalendarSelect} />
+                          <div className="space-y-2">
+                            <div className="text-sm font-medium">Time (GMT+3)</div>
+                            <div className="flex gap-2 mt-1">
+                              <SearchableSelect
+                                options={hourOptions}
+                                value={hourSel}
+                                onValueChange={(v) => onTimeChange(v, minuteSel)}
+                                className="flex-1"
+                                placeholder="Hour"
+                              />
+                              <SearchableSelect
+                                options={minuteOptions}
+                                value={minuteSel}
+                                onValueChange={(v) => onTimeChange(hourSel, v)}
+                                className="flex-1"
+                                placeholder="Minute"
+                              />
+                            </div>
                           </div>
                         </div>
-                      </div>
-                    </PopoverContent>
-                  </Popover>
+                      </PopoverContent>
+                    </Popover>
+                  </div>
                 )}
               </div>
 
