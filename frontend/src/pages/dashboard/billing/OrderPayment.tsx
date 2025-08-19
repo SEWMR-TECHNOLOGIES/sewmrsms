@@ -136,32 +136,56 @@ export default function OrderPayment() {
               </div>
 
               {paymentMethod === 'bank' && (
-                <div className="space-y-4">
-                  <div>
-                    <Label>Bank Name</Label>
-                    <Input value={bankName} onChange={e => setBankName(e.target.value)} placeholder="Enter bank name" />
-                  </div>
-                  <div>
-                    <Label>Transaction Reference</Label>
-                    <Input value={transactionRef} onChange={e => setTransactionRef(e.target.value)} placeholder="Enter reference number" />
-                  </div>
-                  <div>
-                    <Label>Upload Bank Slip</Label>
-                    <FileUpload
-                      accept=".pdf,.jpg,.jpeg,.png"
-                      maxSize={0.5}
-                      onFileSelect={(files) => setFile(files[0] || null)}
-                      onError={(message) => toast({ variant: 'destructive', title: 'File Error', description: message })}
-                    />
-                    <div className="text-sm text-muted-foreground mt-2">{file ? file.name : 'No file chosen'}</div>
-                  </div>
+                <>
+                  {/* Bank Payment Details Card */}
+                  <Card className="mb-4">
+                    <CardHeader>
+                      <CardTitle>Bank Payment Details</CardTitle>
+                    </CardHeader>
+                    <CardContent className="space-y-2">
+                      <div>
+                        <p className="text-sm text-muted-foreground">Bank Name:</p>
+                        <p className="font-medium">CRDB BANK</p>
+                      </div>
+                      <div>
+                        <p className="text-sm text-muted-foreground">Account Name:</p>
+                        <p className="font-medium">SEWMR TECHNOLOGIES</p>
+                      </div>
+                      <div>
+                        <p className="text-sm text-muted-foreground">Account Number:</p>
+                        <p className="font-medium">0150999894700</p>
+                      </div>
+                    </CardContent>
+                  </Card>
 
-                  {loading && paymentMethod === 'bank' && <UploadProgress progress={progress} message="Uploading bank slip..." />}
+                  {/* Bank Payment Form */}
+                  <div className="space-y-4">
+                    <div>
+                      <Label>Bank Name</Label>
+                      <Input value={bankName} onChange={e => setBankName(e.target.value)} placeholder="Enter bank name" />
+                    </div>
+                    <div>
+                      <Label>Transaction Reference</Label>
+                      <Input value={transactionRef} onChange={e => setTransactionRef(e.target.value)} placeholder="Enter reference number" />
+                    </div>
+                    <div>
+                      <Label>Upload Bank Slip</Label>
+                      <FileUpload
+                        accept=".pdf,.jpg,.jpeg,.png"
+                        maxSize={0.5}
+                        onFileSelect={(files) => setFile(files[0] || null)}
+                        onError={(message) => toast({ variant: 'destructive', title: 'File Error', description: message })}
+                      />
+                      <div className="text-sm text-muted-foreground mt-2">{file ? file.name : 'No file chosen'}</div>
+                    </div>
 
-                  <Button onClick={handleBankPayment} disabled={loading || !file} className="w-full">
-                    {loading ? <Loader className="animate-spin h-4 w-4 mr-2 inline" /> : null} Pay Now
-                  </Button>
-                </div>
+                    {loading && <UploadProgress progress={progress} message="Uploading bank slip..." />}
+
+                    <Button onClick={handleBankPayment} disabled={loading || !file} className="w-full">
+                      {loading ? <Loader className="animate-spin h-4 w-4 mr-2 inline" /> : null} Pay Now
+                    </Button>
+                  </div>
+                </>
               )}
 
               {paymentMethod === 'mobile' && (
