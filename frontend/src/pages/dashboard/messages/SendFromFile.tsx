@@ -278,23 +278,20 @@ export default function SendFromTemplate() {
                 </AlertDescription>
               </Alert>
 
-              <div className="space-y-2">
-                <ToggleSwitch checked={scheduleFlag} onChange={setScheduleFlag} label="Schedule Message" />
+              {scheduleFlag && (
+                <div className="flex flex-col md:flex-row md:items-center md:space-x-4 space-y-2 md:space-y-0">
+                  <div className="flex-1">
+                    <Label className="mb-1">Schedule Name</Label>
+                    <Input
+                      placeholder="Enter a name for this schedule"
+                      value={scheduleName}
+                      onChange={(e) => setScheduleName(e.target.value)}
+                      className="w-full"
+                    />
+                  </div>
 
-                {scheduleFlag && (
-                  <div className="grid gap-3 md:grid-cols-2">
-                    {/* Schedule Name */}
-                    <div className="space-y-2">
-                      <Label className="mb-1">Schedule Name</Label>
-                      <Input
-                        placeholder="Enter a name for this schedule"
-                        value={scheduleName}
-                        onChange={(e) => setScheduleName(e.target.value)}
-                        className="w-full"
-                      />
-                    </div>
-
-                    {/* Schedule Date & Time */}
+                  <div className="flex-1">
+                    <Label className="mb-1">Scheduled Date & Time</Label>
                     <Popover>
                       <PopoverTrigger>
                         <Input
@@ -333,8 +330,9 @@ export default function SendFromTemplate() {
                       </PopoverContent>
                     </Popover>
                   </div>
-                )}
-              </div>
+                </div>
+              )}
+
 
               {uploading && <UploadProgress progress={uploadProgress} message="Uploading file..." />}
 
