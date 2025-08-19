@@ -16,7 +16,7 @@ MERCHANT_CODE = os.getenv("MERCHANT_CODE")
 CALLBACK_URL = os.getenv("CALLBACK_URL")
 API_ID = os.getenv("API_ID")
 API_PASSWORD = os.getenv("API_PASSWORD")
-SMS_CALLBACK_URL = os.getenv("sMS_CALLBACK_URL")
+SMS_CALLBACK_URL = os.getenv("SMS_CALLBACK_URL")
 JWT_SECRET = os.getenv("JWT_SECRET")
 DATABASE_URL = f"postgresql+psycopg2://{DB_USER}:{DB_PASSWORD}@{DB_HOST}:{DB_PORT}/{DB_NAME}?sslmode=require"
 UPLOAD_SERVICE_URL = "https://data.sewmrtechnologies.com/handle-file-uploads"
