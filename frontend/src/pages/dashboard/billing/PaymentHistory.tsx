@@ -8,6 +8,7 @@ import { Loader } from "@/components/ui/loader";
 import { useToast } from "@/hooks/use-toast";
 import { format } from "date-fns";
 import type { ColumnDef } from "@tanstack/react-table";
+import { Link } from "react-router-dom";
 
 interface Transaction {
   id: string;
@@ -157,8 +158,11 @@ export default function PaymentHistory() {
             <History className="h-12 w-12 text-muted-foreground mx-auto mb-4" />
             <h3 className="text-lg font-semibold mb-2">No Transactions Yet</h3>
             <p className="text-muted-foreground mb-4">Your payment history will appear here once you make your first purchase</p>
-            <Button onClick={() => window.location.href = '/console/billing/purchase'}>
-              <CreditCard className="h-4 w-4 mr-2" />Purchase Credits
+            <Button asChild>
+              <Link to="/console/billing/purchase">
+                <CreditCard className="h-4 w-4 mr-2" />
+                Purchase Credits
+              </Link>
             </Button>
           </CardContent>
         </Card>

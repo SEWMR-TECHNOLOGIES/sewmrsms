@@ -6,6 +6,7 @@ import uuid
 
 from db.base import Base
 from models.enums import PaymentMethodEnum, PaymentStatusEnum
+from sqlalchemy.orm import relationship
 
 class OrderPayment(Base):
     __tablename__ = 'order_payments'
@@ -18,3 +19,6 @@ class OrderPayment(Base):
     status = Column(Enum(PaymentStatusEnum), default=PaymentStatusEnum.pending)
     remarks = Column(Text, nullable=True)
     paid_at = Column(DateTime, nullable=False, server_default=func.now())
+
+     # Add this:
+    subscription_order = relationship("SubscriptionOrder", backref="order_payments", lazy="joined")
