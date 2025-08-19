@@ -29,10 +29,11 @@ import ContactGroups from "./pages/dashboard/contacts/ContactGroups";
 import AddContacts from "./pages/dashboard/contacts/AddContact";
 import CreateTemplate from "./pages/dashboard/message-templates/CreateTemplate";
 import TemplatesPage from "./pages/dashboard/message-templates/Templates";
-import QuickSendFile from "./pages/dashboard/messages/SendFromFile";
 import SendFromTemplate from "./pages/dashboard/messages/SendFromFile";
 import BillingPurchase from "./pages/dashboard/billing/BillingPurchase";
 import PaymentHistory from "./pages/dashboard/billing/PaymentHistory";
+import CreateOrder from "./pages/dashboard/billing/CreateOrder";
+import OrderPayment from "./pages/dashboard/billing/OrderPayment";
 
 const queryClient = new QueryClient();
 
@@ -71,18 +72,27 @@ const App = () => (
             <Route path="templates/new" element={<CreateTemplate />} />
             <Route path="reports/delivery" element={<div>Delivery Reports</div>} />
             <Route path="reports/analytics" element={<div>Analytics</div>} />
+
+            {/* Billing routes */}
             <Route path="billing/purchase" element={<BillingPurchase />} />
             <Route path="billing/history" element={<PaymentHistory />} />
             <Route path="billing/invoices" element={<div>Invoices</div>} />
+            <Route path="billing/:packageUuid" element={<CreateOrder />} />
+            <Route path="billing/:orderUuid/pay" element={<OrderPayment />} />
+
+            {/* Sender ID routes */}
             <Route path="sender-ids" element={<SenderIds />} />
             <Route path="sender-ids/request" element={<RequestSenderID />} />
             <Route path="sender-ids/networks" element={<div>Network Status</div>} />
+            <Route path="sender-ids/:uuid/upload-agreement" element={<UploadAgreement />} />
+            <Route path="sender-ids/:uuid/propagation" element={<SenderIdPropagationStatus />} />
+
+            {/* Settings routes */}
             <Route path="settings/profile" element={<div>Profile Settings</div>} />
             <Route path="settings/api" element={<div>API Settings</div>} />
             <Route path="settings/notifications" element={<div>Notification Settings</div>} />
-            <Route path="sender-ids/:uuid/upload-agreement" element={<UploadAgreement />}/>
-            <Route path="sender-ids/:uuid/propagation" element={<SenderIdPropagationStatus />}/>
           </Route>
+
           
           {/* ADD ALL CUSTOM ROUTES ABOVE THE CATCH-ALL "*" ROUTE */}
           <Route path="*" element={<NotFound />} />

@@ -3,10 +3,22 @@ import { useState } from "react";
 export function useUpload() {
   const [progress, setProgress] = useState(0);
 
-  const uploadFile = (url: string, file: File, fieldName = "file") => {
+  /**
+   * Upload a file or a pre-built FormData to the given URL
+   * @param url API endpoint
+   * @param fileOrFormData File object OR FormData
+   * @param fieldName Only used if fileOrFormData is a File. Defaults to "file".
+   */
+  const uploadFile = (url: string, fileOrFormData: File | FormData, fieldName = "file") => {
     return new Promise<Response>((resolve, reject) => {
-      const fd = new FormData();
-      fd.append(fieldName, file);
+      let fd: FormData;
+
+      if (fileOrFormData instanceof File) {
+        fd = new FormData();
+        fd.append(fieldName, fileOrFormData);
+      } else {
+        fd = fileOrFormData; // already FormData
+      }
 
       const xhr = new XMLHttpRequest();
       xhr.open("POST", url, true);
