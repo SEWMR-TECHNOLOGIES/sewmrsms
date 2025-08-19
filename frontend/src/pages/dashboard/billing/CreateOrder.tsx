@@ -46,7 +46,7 @@ export default function CreateOrder(): JSX.Element {
     setLoading(true);
 
     try {
-      const res = await fetch('https://api.sewmrsms.co.tz/api/v1/purchase-sms', {
+      const res = await fetch('https://api.sewmrsms.co.tz/api/v1/subscriptions/purchase-sms', {
         method: 'POST',
         headers: {
           'Content-Type': 'application/json',
