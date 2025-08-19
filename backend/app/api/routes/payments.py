@@ -1,5 +1,5 @@
 from fastapi import APIRouter, Depends
-from sqlalchemy.orm import Session
+from sqlalchemy.orm import Session, joinedload
 from models.user import User
 from models.order_payment import OrderPayment
 from models.mobile_payment import MobilePayment
@@ -13,10 +13,26 @@ import pytz
 
 router = APIRouter()
 
-def get_transaction_type_from_method(method: str):
+def _enum_to_str(val):
+    """Return string representation for Enum or plain value, safe if None."""
+    if val is None:
+        return ""
+    # If it's an Enum instance use its .value
+    if hasattr(val, "value"):
+        try:
+            return str(val.value)
+        except Exception:
+            return str(val)
+    return str(val)
+
+def get_transaction_type_from_method(method):
+    """
+    Accept method as Enum instance or string.
+    Returns 'purchase' for mobile or bank else 'usage'.
+    """
     if not method:
         return "usage"
-    m = method.lower()
+    m = _enum_to_str(method).lower()
     if m in (PaymentMethodEnum.mobile.value, PaymentMethodEnum.bank.value, "mobile", "bank"):
         return "purchase"
     return "usage"
@@ -27,10 +43,11 @@ def get_user_transactions(
     db: Session = Depends(get_db),
 ):
     try:
-        # Fetch OrderPayments joined to SubscriptionOrder for current user
+        # eager load subscription_order to avoid extra queries
         orders = (
             db.query(OrderPayment)
             .join(SubscriptionOrder, OrderPayment.order_id == SubscriptionOrder.id)
+            .options(joinedload(OrderPayment.subscription_order))
             .filter(SubscriptionOrder.user_id == current_user.id)
             .order_by(OrderPayment.paid_at.desc())
             .all()
@@ -47,14 +64,14 @@ def get_user_transactions(
         try:
             mobiles = db.query(MobilePayment).filter(MobilePayment.order_payment_id.in_(order_ids)).all()
             for m in mobiles:
-                mobile_map.setdefault(m.order_payment_id, m)
+                mobile_map[m.order_payment_id] = m
         except Exception as e:
             print(f"[ERROR] Fetching mobile payments: {e}")
 
         try:
             banks = db.query(BankPayment).filter(BankPayment.order_payment_id.in_(order_ids)).all()
             for b in banks:
-                bank_map.setdefault(b.order_payment_id, b)
+                bank_map[b.order_payment_id] = b
         except Exception as e:
             print(f"[ERROR] Fetching bank payments: {e}")
 
@@ -62,6 +79,7 @@ def get_user_transactions(
     total_spent = 0.0
     total_credits = 0
 
+    local_tz = pytz.timezone("Africa/Nairobi")
     for order in orders:
         # numeric amount
         try:
@@ -70,11 +88,12 @@ def get_user_transactions(
             print(f"[ERROR] Parsing amount for order {order.id}: {e}")
             amount = 0.0
 
-        # credits from subscription_order
+        # credits from subscription_order (use the eager loaded relationship if present)
         credits = 0
         try:
-            if getattr(order, "subscription_order", None):
-                credits = int(order.subscription_order.total_sms or 0)
+            so = getattr(order, "subscription_order", None)
+            if so:
+                credits = int(so.total_sms or 0)
             else:
                 so = db.query(SubscriptionOrder).filter(SubscriptionOrder.id == order.order_id).first()
                 credits = int(so.total_sms or 0) if so else 0
@@ -89,7 +108,8 @@ def get_user_transactions(
             transaction_type = "usage"
 
         try:
-            status = (order.status or "").lower()
+            status_raw = _enum_to_str(order.status)
+            status = status_raw.lower() if status_raw else "pending"
         except Exception as e:
             print(f"[ERROR] Normalizing status for order {order.id}: {e}")
             status = "pending"
@@ -109,6 +129,7 @@ def get_user_transactions(
         except Exception as e:
             print(f"[ERROR] Fetching payment reference for order {order.id}: {e}")
 
+        # Handle created_at robustly
         try:
             created_at = None
             if getattr(order, "paid_at", None):
@@ -123,15 +144,17 @@ def get_user_transactions(
             created_at_iso = None
             if isinstance(created_at, datetime):
                 if created_at.tzinfo is None:
-                    try:
-                        tz = pytz.timezone("Africa/Nairobi")
-                        created_at = tz.localize(created_at)
-                    except Exception as e:
-                        print(f"[ERROR] Localizing datetime for order {order.id}: {e}")
-                created_at_iso = created_at.astimezone(pytz.utc).replace(tzinfo=None).isoformat()
+                    # assume local tz if naive
+                    created_at = local_tz.localize(created_at)
+                created_at_iso = created_at.astimezone(pytz.utc).isoformat()
+            else:
+                created_at_iso = None
         except Exception as e:
             print(f"[ERROR] Handling created_at for order {order.id}: {e}")
             created_at_iso = None
+
+        # normalize payment_method to string
+        payment_method_val = _enum_to_str(order.method) or None
 
         transactions.append({
             "id": str(order.uuid),
@@ -139,7 +162,7 @@ def get_user_transactions(
             "credits": credits,
             "transaction_type": transaction_type,
             "status": status,
-            "payment_method": order.method or None,
+            "payment_method": payment_method_val,
             "payment_reference": payment_ref or "",
             "created_at": created_at_iso
         })
