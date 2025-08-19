@@ -284,6 +284,9 @@ async def quick_send_sms(
 
         now = datetime.now(pytz.timezone("Africa/Nairobi")).replace(tzinfo=None)
         send_result = await sms_service.send_sms_with_parts_check(phone, message, callback_url=callback_url_with_user)
+        # Print full API response for debugging
+        print(f"SMS send_result for {phone}: {send_result}")
+
         if not send_result.get("success"):
             errors.append({"recipient": phone, "error": f"Failed to send SMS: {send_result.get('message', 'Unknown error')}"})
             continue
@@ -689,7 +692,8 @@ async def quick_send_sms(
     total_parts_used = 0
     remaining_sms = subscription.remaining_sms
     sent_messages = []
-
+        # Build callback URL with user UUID
+    callback_url_with_user = f"{SMS_CALLBACK_URL}?id={user.uuid}"
     for msg, phone in valid_messages:
         parts_needed, _, _ = sms_service.get_sms_parts_and_length(msg)
 
@@ -697,7 +701,7 @@ async def quick_send_sms(
             errors.append({"recipient": phone, "error": "Insufficient SMS balance for message parts"})
             continue
 
-        send_result = await sms_service.send_sms_with_parts_check(phone, msg)
+        send_result = await sms_service.send_sms_with_parts_check(phone, msg, callback_url=callback_url_with_user)
         if not send_result.get("success"):
             errors.append({"recipient": phone, "error": f"Failed to send SMS: {send_result.get('message', 'Unknown error')}"})
             continue
