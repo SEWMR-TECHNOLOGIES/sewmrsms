@@ -1,5 +1,5 @@
 import React, { useState } from 'react';
-import { ArrowLeft, CreditCard, Loader, Upload } from 'lucide-react';
+import { ArrowLeft, CreditCard, Loader } from 'lucide-react';
 import { useNavigate, useParams } from 'react-router-dom';
 import { Button } from '@/components/ui/button';
 import { Card, CardContent, CardDescription, CardHeader, CardTitle } from '@/components/ui/card';
@@ -25,6 +25,14 @@ export default function OrderPayment() {
   const [mobileNumber, setMobileNumber] = useState('');
 
   const { progress, uploadFile, resetProgress } = useUpload();
+
+  const resetForm = () => {
+    setBankName('');
+    setTransactionRef('');
+    setFile(null);
+    setMobileNumber('');
+    resetProgress();
+  };
 
   const handleBankPayment = async () => {
     if (!bankName || !transactionRef || !file) {
@@ -54,6 +62,7 @@ export default function OrderPayment() {
       } else {
         const data = await res.json();
         toast({ variant: 'success', title: 'Payment Submitted', description: data?.message || 'Your bank payment is pending review' });
+        resetForm(); // reset the form after successful submission
         navigate('/console/billing');
       }
     } catch (err) {
@@ -61,7 +70,6 @@ export default function OrderPayment() {
       toast({ variant: 'destructive', title: 'Network Error', description: 'Unable to reach the server' });
     } finally {
       setLoading(false);
-      resetProgress();
     }
   };
 
@@ -87,7 +95,10 @@ export default function OrderPayment() {
         return;
       }
 
-      // After initiating mobile payment successfully
+      // Reset mobile number field before navigation
+      resetForm();
+
+      // Navigate to waiting page
       navigate(`/console/billing/mobile-payment-waiting/${orderUuid}/${data.data.checkout_request_id}`);
     } catch (err) {
       toast({ variant: 'destructive', title: 'Network Error', description: 'Unable to reach the server' });

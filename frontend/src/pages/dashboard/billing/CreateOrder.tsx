@@ -30,6 +30,11 @@ export default function CreateOrder(): JSX.Element {
   const [loading, setLoading] = useState(false);
   const [order, setOrder] = useState<OrderResponse['data'] | null>(null);
 
+  const formatTZS = (value: number | string | undefined | null) => {
+    const n = Number(value) || 0;
+    return `TZS ${Math.round(n).toLocaleString('en-US', { maximumFractionDigits: 0 })}`;
+  };
+
   const handleSubmit = async (e: React.FormEvent) => {
     e.preventDefault();
 
@@ -155,7 +160,7 @@ export default function CreateOrder(): JSX.Element {
 
                   <div>
                     <p className="text-sm">Amount</p>
-                    <p className="font-medium">TZS {Number(order.amount).toFixed(2)}</p>
+                    <p className="font-medium">{formatTZS(order.amount)}</p>
                   </div>
 
                   <div>
