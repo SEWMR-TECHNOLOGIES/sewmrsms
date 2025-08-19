@@ -14,9 +14,18 @@ import {
 import { Link } from 'react-router-dom';
 
 export default function Dashboard() {
-  const [stats, setStats] = useState<any[]>([]);
+  // Inside your Dashboard component
+  const placeholderStats = [
+    { title: 'Messages Sent Today', value: '...', change: '...', trend: null, icon: MessageSquare, color: 'text-blue-600' },
+    { title: 'Delivery Rate', value: '...', change: '...', trend: null, icon: Send, color: 'text-green-600' },
+    { title: 'Total Contacts', value: '...', change: '...', trend: null, icon: Users, color: 'text-purple-600' },
+    { title: 'Credits Remaining', value: '...', change: '...', trend: null, icon: DollarSign, color: 'text-orange-600' },
+  ];
+
+  const [stats, setStats] = useState<any[]>(placeholderStats);
   const [loading, setLoading] = useState(true);
 
+  // Fetch logic stays the same
   const fetchStats = async () => {
     try {
       const res = await fetch('https://api.sewmrsms.co.tz/api/v1/auth/dashboard/stats', {
@@ -67,6 +76,7 @@ export default function Dashboard() {
       setLoading(false);
     }
   };
+
 
   useEffect(() => {
     fetchStats();
@@ -197,7 +207,7 @@ export default function Dashboard() {
             </div>
             <div className="mt-4">
               <Button variant="outline" className="w-full" asChild>
-                <Link to="/dashboard/messages/history">View All Messages</Link>
+                <Link to="/console/messages/history">View All Messages</Link>
               </Button>
             </div>
           </CardContent>
@@ -220,23 +230,23 @@ export default function Dashboard() {
                 </Link>
               </Button>
               <Button asChild variant="outline" className="justify-start">
-                <Link to="/dashboard/contacts/new">
+                <Link to="/console/contacts/new">
                   <Users className="mr-2 h-4 w-4" />
                   Add Contacts
                 </Link>
               </Button>
               <Button asChild variant="outline" className="justify-start">
-                <Link to="/purchase/billing/purchase">
+                <Link to="/console/billing/purchase">
                   <DollarSign className="mr-2 h-4 w-4" />
                   Purchase Credits
                 </Link>
               </Button>
-              <Button asChild variant="outline" className="justify-start">
+              {/* <Button asChild variant="outline" className="justify-start">
                 <Link to="/dashboard/reports/analytics">
                   <TrendingUp className="mr-2 h-4 w-4" />
                   View Reports
                 </Link>
-              </Button>
+              </Button> */}
             </div>
           </CardContent>
         </Card>
