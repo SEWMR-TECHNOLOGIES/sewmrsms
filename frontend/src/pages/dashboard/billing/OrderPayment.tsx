@@ -33,7 +33,7 @@ export default function OrderPayment() {
     setMobileNumber('');
     resetProgress();
   };
-
+  
   const handleBankPayment = async () => {
     if (!bankName || !transactionRef || !file) {
       toast({ variant: 'destructive', title: 'Missing Fields', description: 'All bank fields are required.' });
@@ -52,17 +52,20 @@ export default function OrderPayment() {
         formData
       );
 
-      if (!res.ok) {
-        let errMsg = 'Bank payment failed';
-        try {
-          const json = await res.json();
-          errMsg = json?.detail || json?.message || errMsg;
-        } catch {}
-        toast({ variant: 'destructive', title: 'Payment Failed', description: errMsg });
+      let data;
+      try {
+        data = await res.json();
+      } catch {
+        toast({ variant: 'destructive', title: 'Payment Failed', description: 'Invalid response from server' });
+        return;
+      }
+
+      // Check the JSON "success" field instead of HTTP status only
+      if (!data.success) {
+        toast({ variant: 'destructive', title: 'Payment Failed', description: data.message || 'Bank payment failed' });
       } else {
-        const data = await res.json();
-        toast({ variant: 'success', title: 'Payment Submitted', description: data?.message || 'Your bank payment is pending review' });
-        resetForm(); // reset the form after successful submission
+        toast({ variant: 'success', title: 'Payment Submitted', description: data.message || 'Your bank payment is pending review' });
+        resetForm();
         navigate('/console/billing');
       }
     } catch (err) {
@@ -72,6 +75,7 @@ export default function OrderPayment() {
       setLoading(false);
     }
   };
+
 
   const handleMobilePayment = async () => {
     if (!mobileNumber) {

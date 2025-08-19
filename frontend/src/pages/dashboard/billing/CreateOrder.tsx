@@ -80,7 +80,7 @@ export default function CreateOrder(): JSX.Element {
       }
 
       setOrder(payload.data);
-      resetForm(); // Reset form after success
+      resetForm();
       toast({ variant: 'success', title: 'Order created', description: 'Complete payment to activate your SMS credits' });
     } catch (err) {
       toast({ variant: 'destructive', title: 'Network error', description: 'Unable to reach the server. Try again shortly.' });
