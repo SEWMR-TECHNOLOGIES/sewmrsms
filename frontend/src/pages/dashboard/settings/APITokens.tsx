@@ -29,7 +29,9 @@ export default function ApiTokens() {
   const fetchTokens = async () => {
     setLoading(true);
     try {
-      const res = await fetch('https://api.sewmrsms.co.tz/api/v1/auth/api-tokens');
+      const res = await fetch('https://api.sewmrsms.co.tz/api/v1/auth/api-tokens', {
+        credentials: 'include', // <-- add this
+      });
       const data = await res.json();
       if (data.success) {
         setTokens(data.data);
@@ -43,13 +45,12 @@ export default function ApiTokens() {
     }
   };
 
-  useEffect(() => {
-    fetchTokens();
-  }, []);
-
   const revokeToken = async (tokenId: string) => {
     try {
-      const res = await fetch(`https://api.sewmrsms.co.tz/api/v1/auth/api-tokens/${tokenId}/revoke`, { method: 'POST' });
+      const res = await fetch(`https://api.sewmrsms.co.tz/api/v1/auth/api-tokens/${tokenId}/revoke`, {
+        method: 'POST',
+        credentials: 'include', // <-- add this
+      });
       const data = await res.json();
       if (data.success) {
         setTokens(prev => prev.map(t => t.id === tokenId ? { ...t, status: 'revoked' } : t));
@@ -64,7 +65,10 @@ export default function ApiTokens() {
 
   const deleteToken = async (tokenId: string) => {
     try {
-      const res = await fetch(`https://api.sewmrsms.co.tz/api/v1/auth/api-tokens/${tokenId}`, { method: 'DELETE' });
+      const res = await fetch(`https://api.sewmrsms.co.tz/api/v1/auth/api-tokens/${tokenId}`, {
+        method: 'DELETE',
+        credentials: 'include', // <-- add this
+      });
       const data = await res.json();
       if (data.success) {
         setTokens(prev => prev.filter(t => t.id !== tokenId));
@@ -76,6 +80,7 @@ export default function ApiTokens() {
       toast({ title: 'Error', description: 'Failed to delete token', variant: 'destructive' });
     }
   };
+
 
   const formatDate = (dateString: string) =>
     new Date(dateString).toLocaleDateString('en-US', { year: 'numeric', month: 'short', day: 'numeric', hour: '2-digit', minute: '2-digit' });
@@ -139,7 +144,7 @@ export default function ApiTokens() {
           <p className="text-muted-foreground">Manage your API tokens for programmatic access to your account.</p>
         </div>
         <Button asChild>
-          <Link to="/console/create-token">
+          <Link to="/console/settings/create-token">
             <Plus className="mr-2 h-4 w-4" /> Create Token
           </Link>
         </Button>

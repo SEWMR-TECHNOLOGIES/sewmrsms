@@ -28,6 +28,7 @@ export default function CreateToken() {
         method: 'POST',
         headers: { 'Content-Type': 'application/json' },
         body: JSON.stringify({ name: tokenName }),
+        credentials: 'include',
       });
 
       const data = await res.json();
@@ -179,7 +180,7 @@ export default function CreateToken() {
               <pre className="bg-muted p-3 rounded-md text-sm overflow-x-auto mt-2">
                 <code>{`curl -H "Authorization: Bearer YOUR_TOKEN_HERE" \\ 
 -H "Content-Type: application/json" \\ 
-https://api.sewmrsms.co.tz/v1/messages`}</code>
+https://api.sewmrsms.co.tz/v1/api/sms`}</code>
               </pre>
             </div>
           </CardContent>
