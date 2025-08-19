@@ -8,6 +8,7 @@ import { Badge } from '@/components/ui/badge';
 import { Separator } from '@/components/ui/separator';
 import { Key, Copy, AlertTriangle } from 'lucide-react';
 import { useToast } from '@/hooks/use-toast';
+import { Link } from 'react-router-dom';
 
 export default function CreateToken() {
   const [tokenName, setTokenName] = useState('');
@@ -153,8 +154,10 @@ export default function CreateToken() {
                     Generate Another Token
                   </Button>
                   <Button asChild className="flex-1">
-                    <a href="/console/settings/api-tokens">View All Tokens</a>
-                  </Button>
+                    <Link to="/console/settings/api-tokens">
+                        View All Tokens
+                    </Link>
+                   </Button>
                 </div>
               </>
             )}
