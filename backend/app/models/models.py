@@ -308,6 +308,7 @@ class SmsCallback(Base):
     payload = Column(JSON)
     received_at = Column(DateTime, nullable=False, server_default=func.now())
     sender_alias = Column(Text)
+    user_id = Column(Integer, ForeignKey("users.id"), nullable=True)
 
 
 class SmsSchedule(Base):

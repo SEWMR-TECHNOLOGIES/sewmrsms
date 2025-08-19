@@ -3,7 +3,8 @@ from sqlalchemy.orm import Session
 from datetime import datetime
 import pytz
 from api.deps import get_db
-from core.config import CRON_AUTH_TOKEN
+from models.user import User
+from core.config import CRON_AUTH_TOKEN, SMS_CALLBACK_URL
 from models.sent_messages import SentMessage
 from services.sms_gateway_service import SmsGatewayService
 from utils.validation import validate_phone
@@ -47,7 +48,8 @@ async def run_scheduled_sends(
 
     for sched in schedules:
         processed_schedules += 1
-        # Load pending or failed scheduled messages for this schedule
+
+        # Load pending or failed scheduled messages
         pending_msgs = db.query(SmsScheduledMessage).filter(
             SmsScheduledMessage.schedule_id == sched.id,
             SmsScheduledMessage.status.in_([
@@ -64,6 +66,13 @@ async def run_scheduled_sends(
         ).first()
 
         sms_service = SmsGatewayService(sender.alias) if sender else None
+
+        # Get user UUID from User table
+        user = db.query(User).filter(User.id == sched.user_id).first()
+        user_uuid = str(user.uuid) if user else None
+
+        # Build callback URL with user UUID
+        callback_url_with_user = f"{SMS_CALLBACK_URL}?id={user_uuid}"
 
         schedule_sent_count = 0
         schedule_failed_count = 0
@@ -104,7 +113,7 @@ async def run_scheduled_sends(
                     continue
 
                 # send
-                send_result = await sms_service.send_sms_with_parts_check(sm.phone_number, sm.message)
+                send_result = await sms_service.send_sms_with_parts_check(sm.phone_number, sm.message, callback_url=callback_url_with_user)
                 success = send_result.get("success", False)
                 gateway_data = send_result.get("data", {}) or {}
 

@@ -270,7 +270,9 @@ CREATE TABLE sms_callbacks (
   remarks TEXT,
   payload JSONB,
   received_at TIMESTAMP NOT NULL DEFAULT CURRENT_TIMESTAMP,
-  sender_alias TEXT
+  sender_alias TEXT,
+  user_uuid VARCHAR(36),
+  user_id INT REFERENCES users(id) ON DELETE SET NULL
 );
 
 -- SMS schedules metadata

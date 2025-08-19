@@ -9,6 +9,7 @@ from datetime import datetime
 import pytz
 from api.deps import get_db
 from api.user_auth import get_current_user_optional
+from core.config import SMS_CALLBACK_URL
 from models.contact import Contact
 from models.contact_group import ContactGroup
 from models.models import SmsCallback, SmsTemplate
@@ -270,6 +271,9 @@ async def quick_send_sms(
     remaining_sms = subscription.remaining_sms
 
     sent_messages = []
+    
+    # Build callback URL with user UUID
+    callback_url_with_user = f"{SMS_CALLBACK_URL}?id={user.uuid}"
 
     for phone in valid_recipients:
         parts_needed, _, _ = sms_service.get_sms_parts_and_length(message)
@@ -279,7 +283,7 @@ async def quick_send_sms(
             continue
 
         now = datetime.now(pytz.timezone("Africa/Nairobi")).replace(tzinfo=None)
-        send_result = await sms_service.send_sms_with_parts_check(phone, message)
+        send_result = await sms_service.send_sms_with_parts_check(phone, message, callback_url=callback_url_with_user)
         if not send_result.get("success"):
             errors.append({"recipient": phone, "error": f"Failed to send SMS: {send_result.get('message', 'Unknown error')}"})
             continue
@@ -477,7 +481,8 @@ async def quick_send_group_sms(
     total_parts_used = 0
     remaining_sms = subscription.remaining_sms
     sent_messages = []
-
+    # Build callback URL with user UUID
+    callback_url_with_user = f"{SMS_CALLBACK_URL}?id={user.uuid}"
     for phone, msg in personalized_messages:
         parts_needed, _, _ = sms_service.get_sms_parts_and_length(msg)
         if parts_needed > remaining_sms:
@@ -485,7 +490,7 @@ async def quick_send_group_sms(
             continue
 
         now = datetime.now(pytz.timezone("Africa/Nairobi")).replace(tzinfo=None)
-        send_result = await sms_service.send_sms_with_parts_check(phone, msg)
+        send_result = await sms_service.send_sms_with_parts_check(phone, msg, callback_url=callback_url_with_user)
         if not send_result.get("success"):
             errors.append({"recipient": phone, "error": f"Failed to send SMS: {send_result.get('message', 'Unknown error')}"})
             continue
@@ -737,6 +742,8 @@ async def quick_send_sms(
 @router.post("/webhook")
 async def sms_callback(request: Request, db: Session = Depends(get_db)):
     try:
+        # get all query params
+        user_uuid = request.query_params.get("id")
         data = await request.json()
 
         message_id = data.get("message_id")
@@ -750,7 +757,13 @@ async def sms_callback(request: Request, db: Session = Depends(get_db)):
         if not message_id or not phone:
             return {"success": False, "message": "message_id and phone are required", "data": None}
 
-        # East Africa Time
+        # Lookup user by UUID
+        user_id = None
+        if user_uuid:
+            user = db.query(User).filter(User.uuid == user_uuid).first()
+            if user:
+                user_id = user.id
+
         eat = pytz.timezone("Africa/Nairobi")
         received_at = datetime.now(eat).replace(tzinfo=None)
 
@@ -762,6 +775,7 @@ async def sms_callback(request: Request, db: Session = Depends(get_db)):
             remarks=remarks,
             sender_alias=sender_alias,
             payload=full_payload,
+            user_id=user_id,
             received_at=received_at
         )
 
@@ -774,6 +788,7 @@ async def sms_callback(request: Request, db: Session = Depends(get_db)):
                     'sender_alias': stmt.excluded.sender_alias,
                     'phone': stmt.excluded.phone,
                     'payload': stmt.excluded.payload,
+                    'user_id': stmt.excluded.user_id,
                     'received_at': stmt.excluded.received_at
                 }
             )
