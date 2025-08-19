@@ -141,7 +141,7 @@ async def submit_bank_payment(
         if not subscription_order:
             return {"success": False, "message": "No pending subscription order found for this UUID"}
 
-        if subscription_order.user_id != current_user.user_id:
+        if subscription_order.user_id != current_user.id:
             return {"success": False, "message": "Not authorized to submit payment for this order"}
 
         # Check file type and size
@@ -247,6 +247,7 @@ async def submit_bank_payment(
     except Exception as e:
         print("Unexpected error:", str(e))
         return {"success": False, "message": "An unexpected error occurred"}
+
 
 
 @router.post("/{subscription_order_uuid}/payments/mobile")
