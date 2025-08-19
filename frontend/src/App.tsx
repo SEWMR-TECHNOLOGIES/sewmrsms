@@ -35,6 +35,7 @@ import PaymentHistory from "./pages/dashboard/billing/PaymentHistory";
 import CreateOrder from "./pages/dashboard/billing/CreateOrder";
 import OrderPayment from "./pages/dashboard/billing/OrderPayment";
 import MobilePaymentWaiting from "./pages/dashboard/billing/MobilePaymentConfirmation";
+import Billing from "./pages/dashboard/billing/Billing";
 
 const queryClient = new QueryClient();
 
@@ -75,6 +76,7 @@ const App = () => (
             <Route path="reports/analytics" element={<div>Analytics</div>} />
 
             {/* Billing routes */}
+            <Route path="billing" element={<Billing />} />
             <Route path="billing/purchase" element={<BillingPurchase />} />
             <Route path="billing/history" element={<PaymentHistory />} />
             <Route path="billing/invoices" element={<div>Invoices</div>} />
