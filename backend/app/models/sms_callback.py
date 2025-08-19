@@ -4,7 +4,7 @@ from sqlalchemy.sql import func
 import uuid
 
 from db.base import Base
-from app.models.enums import SmsDeliveryStatusEnum
+from models.enums import SmsDeliveryStatusEnum
 
 
 class SmsCallback(Base):
