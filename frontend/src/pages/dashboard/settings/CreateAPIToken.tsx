@@ -50,7 +50,7 @@ export default function CreateToken() {
   const copyToClipboard = () => {
     if (generatedToken) {
       navigator.clipboard.writeText(generatedToken);
-      toast({ title: "Copied", description: "Token copied to clipboard" });
+      toast({ title: "Copied", description: "Token copied to clipboard" , variant: 'success'});
     }
   };
 
