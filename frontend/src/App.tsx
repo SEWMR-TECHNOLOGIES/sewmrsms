@@ -36,6 +36,8 @@ import CreateOrder from "./pages/dashboard/billing/CreateOrder";
 import OrderPayment from "./pages/dashboard/billing/OrderPayment";
 import MobilePaymentWaiting from "./pages/dashboard/billing/MobilePaymentConfirmation";
 import Billing from "./pages/dashboard/billing/Billing";
+import CreateAPIToken from "./pages/dashboard/settings/CreateAPIToken";
+import APITokens from "./pages/dashboard/settings/APITokens";
 
 const queryClient = new QueryClient();
 
@@ -94,6 +96,8 @@ const App = () => (
             {/* Settings routes */}
             <Route path="settings/profile" element={<div>Profile Settings</div>} />
             <Route path="settings/api" element={<div>API Settings</div>} />
+            <Route path="settings/create-token" element={<CreateAPIToken />} />
+            <Route path="settings/api-tokens" element={<APITokens />} />
             <Route path="settings/notifications" element={<div>Notification Settings</div>} />
           </Route>
 

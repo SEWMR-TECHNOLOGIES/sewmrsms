@@ -66,13 +66,13 @@ const menuItems: MenuItem[] = [
   //     { title: 'Usage Reports', url: '/console/reports/usage', icon: BarChart3 },
   //   ]
   // },
-  // { title: 'Settings', icon: Settings, items: [
-  //     { title: 'Profile', url: '/console/settings/profile', icon: User },
-  //     { title: 'API Keys', url: '/console/settings/api', icon: Key },
-  //     { title: 'Notifications', url: '/console/settings/notifications', icon: Bell },
-  //     { title: 'Security', url: '/console/settings/security', icon: Shield },
-  //   ]
-  // },
+  { title: 'Settings', icon: Settings, items: [
+      // { title: 'Profile', url: '/console/settings/profile', icon: User },
+      { title: 'API Keys', url: '/console/settings/api-tokens', icon: Key },
+      // { title: 'Notifications', url: '/console/settings/notifications', icon: Bell },
+      // { title: 'Security', url: '/console/settings/security', icon: Shield },
+    ]
+  },
 ];
 
 export const ModernSidebar = () => {

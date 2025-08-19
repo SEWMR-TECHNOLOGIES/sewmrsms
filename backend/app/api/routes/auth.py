@@ -5,6 +5,7 @@ from datetime import datetime, timedelta
 import hashlib
 import json
 import secrets
+from sqlite3 import IntegrityError
 from typing import Optional
 from urllib.parse import urlencode
 from fastapi import APIRouter, Cookie, Depends, HTTPException, Request, Response, status
@@ -424,34 +425,59 @@ async def logout(response: Response):
 
 @router.post("/generate-api-token")
 async def generate_api_token(
+    request: Request,
     current_user: User = Depends(get_current_user),
     db: Session = Depends(get_db)
 ):
-    raw_token = secrets.token_urlsafe(40)
-    token_hash = hashlib.sha256(raw_token.encode('utf-8')).hexdigest()
+    """
+    Generate an API token with a required 'name' field in JSON body.
+    Only the token hash is stored in DB; raw token is returned once.
+    """
+
+    body = await request.json()
+    token_name = body.get("name", "").strip()
+
+    if not token_name:
+        raise HTTPException(status_code=400, detail="Token name is required")
 
     now = datetime.now(pytz.timezone("Africa/Nairobi")).replace(tzinfo=None)
     expires_at = now + timedelta(days=30)
 
-    access_token = ApiAccessToken(
-        user_id=current_user.id,
-        token_hash=token_hash,
-        created_at=now,
-        expires_at=expires_at,
-        revoked=False
-    )
-    db.add(access_token)
-    db.commit()
-    db.refresh(access_token)
+    max_attempts = 5
+    for attempt in range(max_attempts):
+        raw_token = secrets.token_urlsafe(40)
+        token_hash = hashlib.sha256(raw_token.encode("utf-8")).hexdigest()
 
-    return {
-        "success": True,
-        "message": "API access token generated successfully",
-        "data": {
-            "access_token": raw_token,
-            "expires_at": expires_at.isoformat()
-        }
-    }
+        access_token = ApiAccessToken(
+            user_id=current_user.id,
+            name=token_name,      
+            token_hash=token_hash,
+            created_at=now,
+            expires_at=expires_at,
+            revoked=False
+        )
+
+        db.add(access_token)
+        try:
+            db.commit()
+            db.refresh(access_token)
+            return {
+                "success": True,
+                "message": "API access token generated successfully",
+                "data": {
+                    "access_token": raw_token,
+                    "expires_at": expires_at.isoformat(),
+                    "name": access_token.name
+                }
+            }
+        except IntegrityError as e:
+            db.rollback()
+            # retry if hash collision occurs
+            if "unique" in str(e).lower():
+                continue
+            raise HTTPException(status_code=500, detail="Database error while creating API token")
+
+    raise HTTPException(status_code=500, detail="Could not generate a unique API token. Try again later.")
 
 @router.get("/me")
 async def get_current_user_endpoint(current_user: User = Depends(get_current_user), db: Session = Depends(get_db)):
@@ -477,3 +503,78 @@ async def get_current_user_endpoint(current_user: User = Depends(get_current_use
             "remaining_sms": total_remaining_sms
         }
     }
+
+@router.get("/api-tokens")
+async def get_api_tokens(
+    current_user: User = Depends(get_current_user),
+    db: Session = Depends(get_db)
+):
+    tokens = db.query(ApiAccessToken).filter(ApiAccessToken.user_id == current_user.id).all()
+
+    token_list = []
+    for token in tokens:
+        # Mask token display: only last 6 chars visible
+        masked = f"****-****-****-{token.token_hash[-6:]}"
+        token_list.append({
+            "id": str(token.id),
+            "name": getattr(token, "name", f"Token {token.id}"),  # fallback if name exists
+            "token_masked": masked,
+            "created_at": token.created_at.isoformat() if token.created_at else None,
+            "expires_at": token.expires_at.isoformat() if token.expires_at else None,
+            "status": "revoked" if token.revoked else "active",
+            "last_used": getattr(token, "last_used", None)
+        })
+
+    return {"success": True, "data": token_list}
+
+@router.post("/api-tokens/{token_id}/revoke")
+async def revoke_api_token(
+    token_id: str,
+    current_user: User = Depends(get_current_user),
+    db: Session = Depends(get_db)
+):
+    """
+    Revoke an API token. Sets `revoked=True` in DB.
+    """
+    token = db.query(ApiAccessToken).filter(
+        ApiAccessToken.id == token_id,
+        ApiAccessToken.user_id == current_user.id
+    ).first()
+
+    if not token:
+        return JSONResponse(
+            status_code=404,
+            content={"success": False, "message": "Token not found", "data": None}
+        )
+
+    if token.revoked:
+        return {"success": True, "message": "Token is already revoked", "data": None}
+
+    token.revoked = True
+    db.commit()
+    return {"success": True, "message": "Token revoked successfully", "data": None}
+
+
+@router.delete("/api-tokens/{token_id}")
+async def delete_api_token(
+    token_id: str,
+    current_user: User = Depends(get_current_user),
+    db: Session = Depends(get_db)
+):
+    """
+    Delete an API token permanently.
+    """
+    token = db.query(ApiAccessToken).filter(
+        ApiAccessToken.id == token_id,
+        ApiAccessToken.user_id == current_user.id
+    ).first()
+
+    if not token:
+        return JSONResponse(
+            status_code=404,
+            content={"success": False, "message": "Token not found", "data": None}
+        )
+
+    db.delete(token)
+    db.commit()
+    return {"success": True, "message": "Token deleted successfully", "data": None}
