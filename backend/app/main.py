@@ -1,7 +1,7 @@
 from fastapi import FastAPI, HTTPException, Request
 from fastapi.responses import JSONResponse
 from fastapi.middleware.cors import CORSMiddleware
-from api.routes import subscription, sms_templates, sms, contacts, sender_id, cron, auth, plans
+from api.routes import subscription, sms_templates, sms, contacts, sender_id, cron, auth, plans, payments
 
 app = FastAPI(title="SEWMR SMS API", version="1.0.0")
 
@@ -31,6 +31,7 @@ app.include_router(sender_id.router, prefix=f"{API_PREFIX}/sender-ids", tags=["S
 app.include_router(subscription.router, prefix=f"{API_PREFIX}/subscriptions", tags=["Subscriptions"])
 app.include_router(sms_templates.router, prefix=f"{API_PREFIX}/templates", tags=["Templates"])
 app.include_router(sms.router, prefix=f"{API_PREFIX}/sms", tags=["Messaging"])
+app.include_router(payments.router, prefix=f"{API_PREFIX}/payments", tags=["Payments"])
 app.include_router(contacts.router, prefix=f"{API_PREFIX}/contacts", tags=["Contacts"])
 app.include_router(cron.router, prefix=f"{API_PREFIX}/cron", tags=["Cron Jobs"])
 
