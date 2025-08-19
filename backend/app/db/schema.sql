@@ -18,6 +18,20 @@ CREATE TYPE schedule_status_enum AS ENUM ('pending', 'sent', 'failed', 'cancelle
 
 CREATE TYPE message_status_enum AS ENUM ('pending', 'sent', 'failed');
 
+-- Sms Delivery Status Enum
+CREATE TYPE sms_delivery_status_enum AS ENUM (
+  'Pending',
+  'Delivered',
+  'Undeliverable',
+  'Acknowledged',
+  'Expired',
+  'Accepted',
+  'Rejected',
+  'Unknown',
+  'Failed',
+  'DND'
+);
+
 -- Users
 CREATE TABLE users (
   id SERIAL PRIMARY KEY,
@@ -256,8 +270,10 @@ CREATE TABLE sent_messages (
   message TEXT NOT NULL,
   message_id VARCHAR(100), 
   remarks TEXT,
+  number_of_parts INT NOT NULL DEFAULT 1,
   sent_at TIMESTAMP NOT NULL DEFAULT CURRENT_TIMESTAMP
 );
+
 
 -- SMS callbacks
 CREATE TABLE sms_callbacks (
@@ -265,7 +281,7 @@ CREATE TABLE sms_callbacks (
   uuid UUID NOT NULL DEFAULT uuid_generate_v4() UNIQUE,
   message_id TEXT NOT NULL,
   phone VARCHAR(15) NOT NULL,
-  status TEXT,
+  status sms_delivery_status_enum NOT NULL DEFAULT 'Pending',
   uid TEXT,
   remarks TEXT,
   payload JSONB,

@@ -312,6 +312,7 @@ async def quick_send_sms(
             sender_alias=sender.alias,
             user_id=user.id,
             phone_number=phone,
+            number_of_parts=parts_needed,
             message=message,
             message_id=str(message_id) if message_id else None,
             sent_at=now
@@ -516,6 +517,7 @@ async def quick_send_group_sms(
             sender_alias=sender.alias,
             user_id=user.id,
             phone_number=phone,
+            number_of_parts=parts_needed,
             message=msg,
             message_id=str(message_id) if message_id else None,
             sent_at=now
@@ -693,7 +695,7 @@ async def quick_send_sms(
     total_parts_used = 0
     remaining_sms = subscription.remaining_sms
     sent_messages = []
-        # Build callback URL with user UUID
+    # Build callback URL with user UUID
     callback_url_with_user = f"{SMS_CALLBACK_URL}?id={user.uuid}"
     for msg, phone in valid_messages:
         parts_needed, _, _ = sms_service.get_sms_parts_and_length(msg)
@@ -724,6 +726,7 @@ async def quick_send_sms(
             sender_alias=sender.alias,
             user_id=current_user.id,
             phone_number=phone,
+            number_of_parts=parts_needed,
             message=msg,
             message_id=str(message_id) if message_id else None,
             sent_at=now

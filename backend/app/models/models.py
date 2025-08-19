@@ -50,12 +50,24 @@ class ScheduleStatusEnum(enum.Enum):
     sent = 'sent'
     failed = 'failed'
     cancelled = 'cancelled'
-    partial = 'partial'  # Added for schedules that sent some messages but not all
+    partial = 'partial'  
 
 class MessageStatusEnum(enum.Enum):
     pending = 'pending'
     sent = 'sent'
     failed = 'failed'
+
+class SmsDeliveryStatusEnum(enum.Enum):
+    pending = 'Pending'
+    delivered = 'Delivered'
+    undeliverable = 'Undeliverable'
+    acknowledged = 'Acknowledged'
+    expired = 'Expired'
+    accepted = 'Accepted'
+    rejected = 'Rejected'
+    unknown = 'Unknown'
+    failed = 'Failed'
+    dnd = 'DND' # not allowed to receive sms
 
 # Models
 
@@ -282,7 +294,7 @@ class TemplateColumn(Base):
 
 
 class SentMessage(Base):
-    __tablename__ = 'sent_messages' # changed table name
+    __tablename__ = 'sent_messages'
 
     id = Column(Integer, primary_key=True)
     uuid = Column(UUID(as_uuid=True), unique=True, nullable=False, default=uuid.uuid4)
@@ -292,7 +304,9 @@ class SentMessage(Base):
     message = Column(Text, nullable=False)
     message_id = Column(String(100), nullable=True)     # aggregator message ID
     remarks = Column(Text, nullable=True)               # error messages or notes
+    number_of_parts = Column(Integer, nullable=False, default=1)
     sent_at = Column(DateTime, nullable=False, server_default=func.now())
+
 
 
 class SmsCallback(Base):
@@ -302,7 +316,7 @@ class SmsCallback(Base):
     uuid = Column(UUID(as_uuid=True), unique=True, nullable=False, default=uuid.uuid4)
     message_id = Column(Text, nullable=False)
     phone = Column(String(15), nullable=False)
-    status = Column(Text)
+    status = Column(Enum(SmsDeliveryStatusEnum, name="sms_delivery_status"), nullable=False, default=SmsDeliveryStatusEnum.pending)
     uid = Column(Text)
     remarks = Column(Text)
     payload = Column(JSON)

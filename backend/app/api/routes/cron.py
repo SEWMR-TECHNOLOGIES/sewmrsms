@@ -139,6 +139,7 @@ async def run_scheduled_sends(
                     sender_alias=sender.alias if sender else None,
                     user_id=sched.user_id,
                     phone_number=sm.phone_number,
+                    number_of_parts=parts_needed,
                     message=sm.message,
                     message_id=str(message_id) if message_id else None,
                     sent_at=now

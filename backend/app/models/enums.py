@@ -42,9 +42,21 @@ class ScheduleStatusEnum(enum.Enum):
     sent = 'sent'
     failed = 'failed'
     cancelled = 'cancelled'
-    partial = 'partial'  # Added for schedules that sent some messages but not all
+    partial = 'partial'
 
 class MessageStatusEnum(enum.Enum):
     pending = 'pending'
     sent = 'sent'
     failed = 'failed'
+
+class SmsDeliveryStatusEnum(enum.Enum):
+    pending = 'Pending'
+    delivered = 'Delivered'
+    undeliverable = 'Undeliverable'
+    acknowledged = 'Acknowledged'
+    expired = 'Expired'
+    accepted = 'Accepted'
+    rejected = 'Rejected'
+    unknown = 'Unknown'
+    failed = 'Failed'
+    dnd = 'DND'

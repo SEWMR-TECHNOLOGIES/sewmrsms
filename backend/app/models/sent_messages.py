@@ -15,7 +15,9 @@ class SentMessage(Base):
     user_id = Column(Integer, ForeignKey('users.id', ondelete='CASCADE'), nullable=False)
     phone_number = Column(String(15), nullable=False)
     message = Column(Text, nullable=False)
-    message_id = Column(String(100), nullable=True)  # aggregator message ID
-    remarks = Column(Text, nullable=True)             # error messages or notes
+    message_id = Column(String(100), nullable=True)     # aggregator message ID
+    remarks = Column(Text, nullable=True)               # error messages or notes
+    number_of_parts = Column(Integer, nullable=False, default=1)
     sent_at = Column(DateTime, nullable=False, server_default=func.now())
+
 

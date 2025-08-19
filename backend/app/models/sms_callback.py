@@ -1,9 +1,11 @@
-from sqlalchemy import Column, Integer, String, Text, JSON, DateTime, ForeignKey
+from sqlalchemy import Column, Integer, String, Text, JSON, DateTime, ForeignKey, Enum
 from sqlalchemy.dialects.postgresql import UUID
 from sqlalchemy.sql import func
 import uuid
 
 from db.base import Base
+from app.models.enums import SmsDeliveryStatusEnum
+
 
 class SmsCallback(Base):
     __tablename__ = 'sms_callbacks'
@@ -12,7 +14,7 @@ class SmsCallback(Base):
     uuid = Column(UUID(as_uuid=True), unique=True, nullable=False, default=uuid.uuid4)
     message_id = Column(Text, nullable=False)
     phone = Column(String(15), nullable=False)
-    status = Column(Text)
+    status = Column(Enum(SmsDeliveryStatusEnum, name="sms_delivery_status"), nullable=False, default=SmsDeliveryStatusEnum.pending)
     uid = Column(Text)
     remarks = Column(Text)
     payload = Column(JSON)
