@@ -12,7 +12,7 @@ from fastapi import APIRouter, Cookie, Depends, HTTPException, Request, Response
 from fastapi.responses import JSONResponse, RedirectResponse
 import pytz
 from uuid import uuid4
-from sqlalchemy import func, or_
+from sqlalchemy import and_, func, or_
 from sqlalchemy.orm import Session
 from api.deps import get_db
 from api.user_auth import get_current_user
@@ -429,16 +429,25 @@ async def generate_api_token(
     current_user: User = Depends(get_current_user),
     db: Session = Depends(get_db)
 ):
-    """
-    Generate an API token with a required 'name' field in JSON body.
-    Only the token hash is stored in DB; raw token is returned once.
-    """
-
     body = await request.json()
     token_name = body.get("name", "").strip()
 
     if not token_name:
         raise HTTPException(status_code=400, detail="Token name is required")
+
+    # ensure unique token name for this user
+    existing = db.query(ApiAccessToken).filter(
+        and_(
+            ApiAccessToken.user_id == current_user.id,
+            ApiAccessToken.name == token_name
+        )
+    ).first()
+
+    if existing:
+        raise HTTPException(
+            status_code=400,
+            detail=f"Token name '{token_name}' already exists. Please use a different name."
+        )
 
     now = datetime.now(pytz.timezone("Africa/Nairobi")).replace(tzinfo=None)
     expires_at = now + timedelta(days=30)
@@ -450,7 +459,7 @@ async def generate_api_token(
 
         access_token = ApiAccessToken(
             user_id=current_user.id,
-            name=token_name,      
+            name=token_name,
             token_hash=token_hash,
             created_at=now,
             expires_at=expires_at,

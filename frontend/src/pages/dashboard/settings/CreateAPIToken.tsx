@@ -153,7 +153,7 @@ export default function CreateToken() {
                     Generate Another Token
                   </Button>
                   <Button asChild className="flex-1">
-                    <a href="/console/api-tokens">View All Tokens</a>
+                    <a href="/console/settings/api-tokens">View All Tokens</a>
                   </Button>
                 </div>
               </>

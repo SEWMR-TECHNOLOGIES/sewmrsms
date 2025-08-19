@@ -44,7 +44,7 @@ export default function ApiTokens() {
       setLoading(false);
     }
   };
-  
+
   useEffect(() => {
     fetchTokens();
   }, []);
@@ -58,7 +58,7 @@ export default function ApiTokens() {
       const data = await res.json();
       if (data.success) {
         setTokens(prev => prev.map(t => t.id === tokenId ? { ...t, status: 'revoked' } : t));
-        toast({ title: 'Token Revoked', description: data.message });
+        toast({ title: 'Token Revoked', description: data.message, variant: 'success' });
       } else {
         toast({ title: 'Error', description: data.message, variant: 'destructive' });
       }
@@ -76,7 +76,7 @@ export default function ApiTokens() {
       const data = await res.json();
       if (data.success) {
         setTokens(prev => prev.filter(t => t.id !== tokenId));
-        toast({ title: 'Token Deleted', description: data.message });
+        toast({ title: 'Token Deleted', description: data.message, variant: 'success' });
       } else {
         toast({ title: 'Error', description: data.message, variant: 'destructive' });
       }
