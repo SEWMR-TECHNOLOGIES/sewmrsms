@@ -51,26 +51,26 @@ const menuItems: MenuItem[] = [
       { title: 'Request New', url: '/console/sender-ids/request', icon: UserPlus },
     ]
   },
-  { title: 'Reports', icon: BarChart3, items: [
-      { title: 'Delivery Reports', url: '/console/reports/delivery', icon: TrendingUp },
-      { title: 'Analytics', url: '/console/reports/analytics', icon: BarChart3 },
-      { title: 'Usage Reports', url: '/console/reports/usage', icon: BarChart3 },
-    ]
-  },
   { title: 'Billing', icon: CreditCard, items: [
       { title: 'Purchase Credits', url: '/console/billing/purchase', icon: ShoppingCart },
       { title: 'Payment History', url: '/console/billing/history', icon: History },
-      { title: 'Invoices', url: '/console/billing/invoices', icon: Receipt },
-      { title: 'Usage', url: '/console/billing/usage', icon: BarChart3 },
+      // { title: 'Invoices', url: '/console/billing/invoices', icon: Receipt },
+      // { title: 'Usage', url: '/console/billing/usage', icon: BarChart3 },
     ]
   },
-  { title: 'Settings', icon: Settings, items: [
-      { title: 'Profile', url: '/console/settings/profile', icon: User },
-      { title: 'API Keys', url: '/console/settings/api', icon: Key },
-      { title: 'Notifications', url: '/console/settings/notifications', icon: Bell },
-      { title: 'Security', url: '/console/settings/security', icon: Shield },
-    ]
-  },
+  // { title: 'Reports', icon: BarChart3, items: [
+  //     { title: 'Delivery Reports', url: '/console/reports/delivery', icon: TrendingUp },
+  //     { title: 'Analytics', url: '/console/reports/analytics', icon: BarChart3 },
+  //     { title: 'Usage Reports', url: '/console/reports/usage', icon: BarChart3 },
+  //   ]
+  // },
+  // { title: 'Settings', icon: Settings, items: [
+  //     { title: 'Profile', url: '/console/settings/profile', icon: User },
+  //     { title: 'API Keys', url: '/console/settings/api', icon: Key },
+  //     { title: 'Notifications', url: '/console/settings/notifications', icon: Bell },
+  //     { title: 'Security', url: '/console/settings/security', icon: Shield },
+  //   ]
+  // },
 ];
 
 export const ModernSidebar = () => {

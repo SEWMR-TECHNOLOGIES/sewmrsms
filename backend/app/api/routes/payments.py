@@ -176,3 +176,62 @@ def get_user_transactions(
             "total_transactions": len(transactions)
         }
     }
+
+@router.get("/all-transactions")
+def get_all_transactions(current_user: User = Depends(get_current_user), db: Session = Depends(get_db)):
+    # Fetch order payments for the user with subscription_order joined
+    orders = db.query(OrderPayment).join(SubscriptionOrder).options(joinedload(OrderPayment.subscription_order))\
+               .filter(SubscriptionOrder.user_id == current_user.id)\
+               .order_by(OrderPayment.paid_at.desc()).all()
+
+    transactions = []
+
+    for order in orders:
+        # Base info
+        subscription_order_uuid = str(order.subscription_order.uuid) if order.subscription_order else None
+        order_uuid = str(order.uuid)
+        amount = float(order.amount or 0)
+        credits = int(order.subscription_order.total_sms) if order.subscription_order else 0
+        status = _enum_to_str(order.status).lower() if order.status else "pending"
+        transaction_type = get_transaction_type_from_method(order.method)
+        payment_method_val = _enum_to_str(order.method) or None
+        created_at = order.paid_at
+        created_at_iso = created_at.astimezone(pytz.utc).isoformat() if isinstance(created_at, datetime) else None
+
+        # Mobile payment if exists
+        mobile = db.query(MobilePayment).filter(MobilePayment.order_payment_id == order.id).first()
+        mobile_data = {}
+        if mobile:
+            mobile_data = {
+                "mobile_uuid": str(mobile.uuid),
+                "checkout_request_id": mobile.checkout_request_id,
+                "transaction_reference": mobile.transaction_reference,
+                "gateway": mobile.gateway,
+                "amount": float(mobile.amount or 0)
+            }
+
+        # Bank payment if exists
+        bank = db.query(BankPayment).filter(BankPayment.order_payment_id == order.id).first()
+        bank_data = {}
+        if bank:
+            bank_data = {
+                "bank_uuid": str(bank.uuid),
+                "transaction_reference": bank.transaction_reference,
+                "bank_name": bank.bank_name,
+                "slip_path": bank.slip_path
+            }
+
+        transactions.append({
+            "subscription_order_uuid": subscription_order_uuid,
+            "order_uuid": order_uuid,
+            "amount": amount,
+            "credits": credits,
+            "transaction_type": transaction_type,
+            "status": status,
+            "payment_method": payment_method_val,
+            "created_at": created_at_iso,
+            **mobile_data,
+            **bank_data
+        })
+
+    return {"success": True, "data": {"transactions": transactions, "total_transactions": len(transactions)}}

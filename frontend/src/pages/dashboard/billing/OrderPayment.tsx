@@ -1,6 +1,6 @@
-import React, { useState } from 'react';
+import React, { useState, useEffect } from 'react';
 import { ArrowLeft, CreditCard, Loader } from 'lucide-react';
-import { useNavigate, useParams } from 'react-router-dom';
+import { useNavigate, useParams, useLocation } from 'react-router-dom';
 import { Button } from '@/components/ui/button';
 import { Card, CardContent, CardDescription, CardHeader, CardTitle } from '@/components/ui/card';
 import { Input } from '@/components/ui/input';
@@ -15,7 +15,13 @@ type PaymentMethod = 'bank' | 'mobile';
 export default function OrderPayment() {
   const { orderUuid } = useParams<{ orderUuid: string }>();
   const navigate = useNavigate();
+  const location = useLocation();
   const { toast } = useToast();
+
+  // --- detect query param
+  const searchParams = new URLSearchParams(location.search);
+  const reUploadSlip = searchParams.has('re-upload-slip');
+  const mobileRepay = searchParams.has('mobile-repay');
 
   const [paymentMethod, setPaymentMethod] = useState<PaymentMethod>('bank');
   const [loading, setLoading] = useState(false);
@@ -26,6 +32,15 @@ export default function OrderPayment() {
 
   const { progress, uploadFile, resetProgress } = useUpload();
 
+  // --- force method if query present
+  useEffect(() => {
+    if (reUploadSlip) {
+      setPaymentMethod('bank');
+    } else if (mobileRepay) {
+      setPaymentMethod('mobile');
+    }
+  }, [reUploadSlip, mobileRepay]);
+
   const resetForm = () => {
     setBankName('');
     setTransactionRef('');
@@ -33,7 +48,7 @@ export default function OrderPayment() {
     setMobileNumber('');
     resetProgress();
   };
-  
+
   const handleBankPayment = async () => {
     if (!bankName || !transactionRef || !file) {
       toast({ variant: 'destructive', title: 'Missing Fields', description: 'All bank fields are required.' });
@@ -46,6 +61,11 @@ export default function OrderPayment() {
       formData.append('bank_name', bankName);
       formData.append('transaction_reference', transactionRef);
       formData.append('file', file);
+
+      // add action if slip re-upload
+      if (reUploadSlip) {
+        formData.append('action', 'slip_reupload');
+      }
 
       const res = await uploadFile(
         `https://api.sewmrsms.co.tz/api/v1/subscriptions/${orderUuid}/payments/bank`,
@@ -60,7 +80,6 @@ export default function OrderPayment() {
         return;
       }
 
-      // Check the JSON "success" field instead of HTTP status only
       if (!data.success) {
         toast({ variant: 'destructive', title: 'Payment Failed', description: data.message || 'Bank payment failed' });
       } else {
@@ -76,7 +95,6 @@ export default function OrderPayment() {
     }
   };
 
-
   const handleMobilePayment = async () => {
     if (!mobileNumber) {
       toast({ variant: 'destructive', title: 'Missing Field', description: 'Mobile number is required' });
@@ -85,11 +103,18 @@ export default function OrderPayment() {
     setLoading(true);
 
     try {
+      const body: any = { mobile_number: mobileNumber };
+
+      // add action if mobile repay
+      if (mobileRepay) {
+        body.action = 'mobile_repay';
+      }
+
       const res = await fetch(`https://api.sewmrsms.co.tz/api/v1/subscriptions/${orderUuid}/payments/mobile`, {
         method: 'POST',
         headers: { 'Content-Type': 'application/json' },
         credentials: 'include',
-        body: JSON.stringify({ mobile_number: mobileNumber }),
+        body: JSON.stringify(body),
       });
 
       const data = await res.json();
@@ -99,10 +124,7 @@ export default function OrderPayment() {
         return;
       }
 
-      // Reset mobile number field before navigation
       resetForm();
-
-      // Navigate to waiting page
       navigate(`/console/billing/mobile-payment-waiting/${orderUuid}/${data.data.checkout_request_id}`);
     } catch (err) {
       toast({ variant: 'destructive', title: 'Network Error', description: 'Unable to reach the server' });
@@ -120,6 +142,14 @@ export default function OrderPayment() {
         <div className="space-y-1">
           <h1 className="text-3xl font-bold tracking-tight">Complete Payment</h1>
           <p className="text-muted-foreground">Pay for your SMS order to activate credits</p>
+
+          {/* Show info if re-upload or mobile repay */}
+          {(reUploadSlip || mobileRepay) && (
+            <p className="text-sm text-yellow-600 mt-1">
+              {reUploadSlip && "This payment is a replay because your previous bank payment was rejected."}
+              {mobileRepay && "This payment is a replay because your previous mobile payment was cancelled."}
+            </p>
+          )}
         </div>
       </div>
 
@@ -135,8 +165,20 @@ export default function OrderPayment() {
             </CardHeader>
             <CardContent className="space-y-6">
               <div className="flex gap-3">
-                <Button variant={paymentMethod === 'bank' ? 'default' : 'outline'} onClick={() => setPaymentMethod('bank')}>Bank</Button>
-                <Button variant={paymentMethod === 'mobile' ? 'default' : 'outline'} onClick={() => setPaymentMethod('mobile')}>Mobile</Button>
+                <Button
+                  variant={paymentMethod === 'bank' ? 'default' : 'outline'}
+                  onClick={() => !reUploadSlip && !mobileRepay && setPaymentMethod('bank')}
+                  disabled={reUploadSlip || mobileRepay}
+                >
+                  Bank
+                </Button>
+                <Button
+                  variant={paymentMethod === 'mobile' ? 'default' : 'outline'}
+                  onClick={() => !reUploadSlip && !mobileRepay && setPaymentMethod('mobile')}
+                  disabled={reUploadSlip || mobileRepay}
+                >
+                  Mobile
+                </Button>
               </div>
 
               {paymentMethod === 'bank' && (

@@ -249,7 +249,6 @@ async def submit_bank_payment(
         return {"success": False, "message": "An unexpected error occurred"}
 
 
-
 @router.post("/{subscription_order_uuid}/payments/mobile")
 async def submit_mobile_payment(
     request: Request,

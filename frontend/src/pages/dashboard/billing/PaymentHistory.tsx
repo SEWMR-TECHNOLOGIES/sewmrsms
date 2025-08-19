@@ -163,6 +163,39 @@ export default function PaymentHistory() {
   const totalSpent = transactions.filter(t => t.transaction_type === "purchase" && t.status === "completed").reduce((sum, t) => sum + t.amount, 0);
   const totalCredits = transactions.filter(t => t.transaction_type === "purchase" && t.status === "completed").reduce((sum, t) => sum + t.credits, 0);
 
+  // Inside PaymentHistory component, before return()
+  const exportToCSV = () => {
+    if (transactions.length === 0) return;
+
+    // Define CSV headers
+    const headers = ["Reference", "Type", "Amount (TZS)", "Credits", "Status", "Method", "Date"];
+    
+    // Map transactions to CSV rows
+    const rows = transactions.map(t => [
+      t.payment_reference || "",
+      t.transaction_type,
+      t.amount.toLocaleString("en-TZ", { maximumFractionDigits: 0 }),
+      t.credits.toLocaleString(),
+      t.status,
+      t.payment_method || "",
+      format(new Date(t.created_at), "yyyy-MM-dd HH:mm")
+    ]);
+
+    // Combine headers and rows
+    const csvContent =
+      [headers, ...rows].map(e => e.join(",")).join("\n");
+
+    // Create a blob and trigger download
+    const blob = new Blob([csvContent], { type: "text/csv;charset=utf-8;" });
+    const url = URL.createObjectURL(blob);
+    const link = document.createElement("a");
+    link.href = url;
+    link.setAttribute("download", `transactions_${Date.now()}.csv`);
+    document.body.appendChild(link);
+    link.click();
+    document.body.removeChild(link);
+  };
+
   return (
     <div className="space-y-6">
       {/* Header */}
@@ -172,7 +205,7 @@ export default function PaymentHistory() {
           <p className="text-muted-foreground">View all your payment transactions and download reports</p>
         </div>
         <div className="flex gap-2">
-          <Button variant="outline"><Download className="h-4 w-4 mr-2" />Export</Button>
+          <Button variant="outline" onClick={exportToCSV}><Download className="h-4 w-4 mr-2" />Export</Button>
         </div>
       </div>
 
