@@ -4,6 +4,10 @@ import {
   CreditCard,
   Download,
   ArrowUpDown,
+  CheckCircle,
+  Clock,
+  XCircle,
+  AlertCircle,
 } from "lucide-react";
 import { Button } from "@/components/ui/button";
 import {
@@ -261,47 +265,65 @@ export default function Billing() {
       <div className="flex justify-between items-center">
         <div className="space-y-2">
           <h1 className="text-3xl font-bold tracking-tight">
-            Payment History
+            Subscription Orders
           </h1>
           <p className="text-muted-foreground">
-            View all your payment transactions and manage them
+            View all your subscription orders and their status
           </p>
-        </div>
-        <div className="flex gap-2">
-          <Button variant="outline">
-            <Download className="h-4 w-4 mr-2" />
-            Export
-          </Button>
         </div>
       </div>
 
-      {/* Stats */}
-      <div className="grid grid-cols-2 md:grid-cols-4 gap-4">
+      {/* Stats Cards */}
+      <div className="grid grid-cols-1 md:grid-cols-4 gap-4">
         <Card>
-          <CardContent className="p-6 text-center">
-            <p className="text-sm text-muted-foreground">Completed</p>
-            <p className="text-2xl font-bold">{completedCount}</p>
-          </CardContent>
+            <CardContent className="p-6">
+            <div className="flex items-center justify-between">
+                <div>
+                <p className="text-sm font-medium text-muted-foreground">Completed</p>
+                <p className="text-2xl font-bold text-success">{completedCount}</p>
+                </div>
+                <CheckCircle className="h-8 w-8 text-success" />
+            </div>
+            </CardContent>
         </Card>
+
         <Card>
-          <CardContent className="p-6 text-center">
-            <p className="text-sm text-muted-foreground">Pending</p>
-            <p className="text-2xl font-bold">{pendingCount}</p>
-          </CardContent>
+            <CardContent className="p-6">
+            <div className="flex items-center justify-between">
+                <div>
+                <p className="text-sm font-medium text-muted-foreground">Pending</p>
+                <p className="text-2xl font-bold text-warning">{pendingCount}</p>
+                </div>
+                <Clock className="h-8 w-8 text-warning" />
+            </div>
+            </CardContent>
         </Card>
+
         <Card>
-          <CardContent className="p-6 text-center">
-            <p className="text-sm text-muted-foreground">Rejected</p>
-            <p className="text-2xl font-bold">{rejectedCount}</p>
-          </CardContent>
+            <CardContent className="p-6">
+            <div className="flex items-center justify-between">
+                <div>
+                <p className="text-sm font-medium text-muted-foreground">Rejected</p>
+                <p className="text-2xl font-bold text-destructive">{rejectedCount}</p>
+                </div>
+                <XCircle className="h-8 w-8 text-destructive" />
+            </div>
+            </CardContent>
         </Card>
+
         <Card>
-          <CardContent className="p-6 text-center">
-            <p className="text-sm text-muted-foreground">Cancelled</p>
-            <p className="text-2xl font-bold">{cancelledCount}</p>
-          </CardContent>
+            <CardContent className="p-6">
+            <div className="flex items-center justify-between">
+                <div>
+                <p className="text-sm font-medium text-muted-foreground">Cancelled</p>
+                <p className="text-2xl font-bold text-amber-700">{cancelledCount}</p>
+                </div>
+                <AlertCircle className="h-8 w-8 text-amber-700" />
+            </div>
+            </CardContent>
         </Card>
-      </div>
+    </div>
+
 
       {/* Transactions Table */}
       <Card>
