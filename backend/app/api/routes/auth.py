@@ -707,7 +707,6 @@ def dashboard_stats(
             }
         }
     }
-
 @router.get("/dashboard/recent-messages")
 def recent_messages(
     db: Session = Depends(get_db),
@@ -715,6 +714,7 @@ def recent_messages(
     limit: int = 5
 ):
     now = datetime.now(pytz.timezone("Africa/Nairobi")).replace(tzinfo=None)
+
     # Fetch the most recent schedules for this user
     schedules = (
         db.query(SmsSchedule)
@@ -733,26 +733,8 @@ def recent_messages(
             .scalar()
         ) or 0
 
-        # Compute overall status
-        msg_status_counts = (
-            db.query(
-                SmsScheduledMessage.status,
-                func.count(SmsScheduledMessage.id).label("cnt")
-            )
-            .filter(SmsScheduledMessage.schedule_id == schedule.id)
-            .group_by(SmsScheduledMessage.status)
-            .all()
-        )
-
-        status = "pending"
-        if msg_status_counts:
-            status_dict = {s: c for s, c in msg_status_counts}
-            if status_dict.get(MessageStatusEnum.failed.value, 0) == total_messages:
-                status = "failed"
-            elif status_dict.get(MessageStatusEnum.sent.value, 0) == total_messages:
-                status = "delivered"
-            elif 0 < status_dict.get(MessageStatusEnum.sent.value, 0) < total_messages:
-                status = "partial"
+        # Status comes directly from SmsSchedule
+        status = schedule.status.value if schedule.status else "pending"
 
         # Use the first message as a preview
         preview_msg = (
