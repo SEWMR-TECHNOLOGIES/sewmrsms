@@ -328,9 +328,9 @@ export default function Billing() {
       {/* Transactions Table */}
       <Card>
         <CardHeader>
-          <CardTitle>Transaction History</CardTitle>
+          <CardTitle>Subscription Orders History</CardTitle>
           <CardDescription>
-            Complete history of all your payment transactions
+            Complete history of all your subscription orders
           </CardDescription>
         </CardHeader>
         <CardContent className="relative">
@@ -352,7 +352,7 @@ export default function Billing() {
               No Transactions Yet
             </h3>
             <p className="text-muted-foreground mb-4">
-              Your payment history will appear here once you make your
+              Your subscription orders will appear here once you make your
               first purchase
             </p>
             <Button asChild>
