@@ -16,8 +16,10 @@ from sqlalchemy import and_, func, or_
 from sqlalchemy.orm import Session
 from api.deps import get_db
 from api.user_auth import get_current_user
+from models.scheduled_message import SmsScheduledMessage
+from models.sms_schedule import SmsSchedule
 from models.contact import Contact
-from models.enums import SmsDeliveryStatusEnum
+from models.enums import MessageStatusEnum, SmsDeliveryStatusEnum
 from models.sent_messages import SentMessage
 from models.sms_callback import SmsCallback
 from models.user_subscription import UserSubscription
@@ -705,3 +707,77 @@ def dashboard_stats(
             }
         }
     }
+
+@router.get("/dashboard/recent-messages")
+def recent_messages(
+    db: Session = Depends(get_db),
+    current_user: User = Depends(get_current_user),
+    limit: int = 5
+):
+    now = datetime.now(pytz.timezone("Africa/Nairobi")).replace(tzinfo=None)
+    # Fetch the most recent schedules for this user
+    schedules = (
+        db.query(SmsSchedule)
+        .filter(SmsSchedule.user_id == current_user.id)
+        .order_by(SmsSchedule.created_at.desc())
+        .limit(limit)
+        .all()
+    )
+
+    results = []
+    for schedule in schedules:
+        # Count total messages in this schedule
+        total_messages = (
+            db.query(func.count(SmsScheduledMessage.id))
+            .filter(SmsScheduledMessage.schedule_id == schedule.id)
+            .scalar()
+        ) or 0
+
+        # Compute overall status
+        msg_status_counts = (
+            db.query(
+                SmsScheduledMessage.status,
+                func.count(SmsScheduledMessage.id).label("cnt")
+            )
+            .filter(SmsScheduledMessage.schedule_id == schedule.id)
+            .group_by(SmsScheduledMessage.status)
+            .all()
+        )
+
+        status = "pending"
+        if msg_status_counts:
+            status_dict = {s: c for s, c in msg_status_counts}
+            if status_dict.get(MessageStatusEnum.failed.value, 0) == total_messages:
+                status = "failed"
+            elif status_dict.get(MessageStatusEnum.sent.value, 0) == total_messages:
+                status = "delivered"
+            elif 0 < status_dict.get(MessageStatusEnum.sent.value, 0) < total_messages:
+                status = "partial"
+
+        # Use the first message as a preview
+        preview_msg = (
+            db.query(SmsScheduledMessage.message)
+            .filter(SmsScheduledMessage.schedule_id == schedule.id)
+            .order_by(SmsScheduledMessage.created_at.asc())
+            .first()
+        )
+        preview_text = preview_msg[0] if preview_msg else ""
+
+        # Timestamp: use latest sent_at, fallback to schedule created_at
+        latest_sent = (
+            db.query(func.max(SmsScheduledMessage.sent_at))
+            .filter(SmsScheduledMessage.schedule_id == schedule.id)
+            .scalar()
+        )
+        timestamp = latest_sent or schedule.created_at
+
+        results.append({
+            "id": schedule.id,
+            "recipient": schedule.title,
+            "message": preview_text,
+            "status": status,
+            "timestamp": timestamp.isoformat(),
+            "count": total_messages
+        })
+
+    return {"recent_messages": results}

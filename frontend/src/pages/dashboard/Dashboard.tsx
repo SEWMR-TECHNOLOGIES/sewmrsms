@@ -13,8 +13,21 @@ import {
 } from 'lucide-react';
 import { Link } from 'react-router-dom';
 
+function formatRelative(isoTs: string) {
+  try {
+    const d = new Date(isoTs);
+    const now = new Date();
+    const diff = Math.floor((now.getTime() - d.getTime()) / 1000); // seconds
+    if (diff < 60) return `${diff}s ago`;
+    if (diff < 3600) return `${Math.floor(diff / 60)}m ago`;
+    if (diff < 86400) return `${Math.floor(diff / 3600)}h ago`;
+    return `${Math.floor(diff / 86400)}d ago`;
+  } catch {
+    return isoTs;
+  }
+}
+
 export default function Dashboard() {
-  // Inside your Dashboard component
   const placeholderStats = [
     { title: 'Messages Sent Today', value: '...', change: '...', trend: null, icon: MessageSquare, color: 'text-blue-600' },
     { title: 'Delivery Rate', value: '...', change: '...', trend: null, icon: Send, color: 'text-green-600' },
@@ -23,16 +36,16 @@ export default function Dashboard() {
   ];
 
   const [stats, setStats] = useState<any[]>(placeholderStats);
-  const [loading, setLoading] = useState(true);
+  const [loadingStats, setLoadingStats] = useState(true);
 
-  // Fetch logic stays the same
+  const [recentMessages, setRecentMessages] = useState<any[] | null>(null); 
+  const [loadingRecent, setLoadingRecent] = useState(true);
+
+  // Fetch stats
   const fetchStats = async () => {
     try {
-      const res = await fetch('https://api.sewmrsms.co.tz/api/v1/auth/dashboard/stats', {
-        credentials: 'include',
-      });
+      const res = await fetch('https://api.sewmrsms.co.tz/api/v1/auth/dashboard/stats', { credentials: 'include' });
       const data = await res.json();
-
       if (data?.metrics) {
         const mapped = [
           {
@@ -73,43 +86,60 @@ export default function Dashboard() {
     } catch (err) {
       console.error('Failed to fetch stats', err);
     } finally {
-      setLoading(false);
+      setLoadingStats(false);
     }
   };
 
+  // Fetch recent messages (from schedules endpoint)
+  const fetchRecentMessages = async () => {
+    setLoadingRecent(true);
+    try {
+      const res = await fetch('https://api.sewmrsms.co.tz/api/v1/auth/dashboard/recent-messages?limit=6', { credentials: 'include' });
+      const data = await res.json();
+      // API shape expected: { recent_messages: [ { id, recipient, message, status, timestamp, count } ] }
+      if (Array.isArray(data?.recent_messages)) {
+        setRecentMessages(
+          data.recent_messages.map((m: any) => ({
+            id: m.id,
+            recipient: m.recipient || 'Untitled',
+            message: m.message || '',
+            status: m.status || 'pending',
+            timestamp: m.timestamp || m.created_at || new Date().toISOString(),
+            count: m.count || 0,
+          }))
+        );
+      } else {
+        setRecentMessages([]); // empty
+      }
+    } catch (err) {
+      console.error('Failed to fetch recent messages', err);
+      setRecentMessages([]); // show empty state on failure to avoid spinner forever
+    } finally {
+      setLoadingRecent(false);
+    }
+  };
 
   useEffect(() => {
     fetchStats();
-    const interval = setInterval(fetchStats, 5 * 60 * 1000); // every 5 min
-    return () => clearInterval(interval);
+    fetchRecentMessages();
+
+    const statsInterval = setInterval(fetchStats, 5 * 60 * 1000); // every 5 minutes
+    const recentInterval = setInterval(fetchRecentMessages, 2 * 60 * 1000); // every 2 minutes
+
+    return () => {
+      clearInterval(statsInterval);
+      clearInterval(recentInterval);
+    };
   }, []);
 
-  const recentMessages = [
-    {
-      id: 1,
-      recipient: 'Marketing Campaign',
-      message: 'Special offer! Get 20% off your next purchase...',
-      status: 'delivered',
-      timestamp: '2 hours ago',
-      count: 1250,
-    },
-    {
-      id: 2,
-      recipient: 'Payment Reminder',
-      message: 'Your payment is due tomorrow. Please...',
-      status: 'sent',
-      timestamp: '4 hours ago',
-      count: 45,
-    },
-    {
-      id: 3,
-      recipient: 'Event Notification',
-      message: 'Reminder: Meeting scheduled for tomorrow...',
-      status: 'failed',
-      timestamp: '6 hours ago',
-      count: 12,
-    },
-  ];
+  const badgeVariantFor = (status: string) => {
+    if (!status) return 'default';
+    const s = status.toLowerCase();
+    if (s === 'delivered' || s === 'sent') return 'default';
+    if (s === 'partial') return 'secondary';
+    if (s === 'failed' || s === 'undeliverable') return 'destructive';
+    return 'secondary';
+  };
 
   return (
     <div className="space-y-6">
@@ -118,7 +148,7 @@ export default function Dashboard() {
         <div>
           <h1 className="text-3xl font-bold tracking-tight">Dashboard</h1>
           <p className="text-muted-foreground">
-            Welcome back! Here's what's happening with your SMS campaigns.
+            Welcome back. Here's what's happening with your SMS campaigns.
           </p>
         </div>
         <div className="flex items-center space-x-2">
@@ -133,30 +163,30 @@ export default function Dashboard() {
 
       {/* Stats Grid */}
       <div className="grid gap-4 md:grid-cols-2 lg:grid-cols-4">
-          {stats.map((stat) => (
-            <Card key={stat.title} className="hover:shadow-md transition-shadow">
-              <CardHeader className="flex flex-row items-center justify-between space-y-0 pb-2">
-                <CardTitle className="text-sm font-medium">{stat.title}</CardTitle>
-                <stat.icon className={`h-4 w-4 ${stat.color}`} />
-              </CardHeader>
-              <CardContent>
-                <div className="text-2xl font-bold">{stat.value}</div>
-                <div className="flex items-center text-xs text-muted-foreground">
-                  {stat.trend === 'up' ? (
-                    <ArrowUpRight className="mr-1 h-3 w-3 text-green-600" />
-                  ) : stat.trend === 'down' ? (
-                    <ArrowDownRight className="mr-1 h-3 w-3 text-red-600" />
-                  ) : (
-                    <span className="mr-1 h-3 w-3 text-muted-foreground">…</span> // subtle hint for placeholder
-                  )}
-                  <span className={stat.trend === 'up' ? 'text-green-600' : stat.trend === 'down' ? 'text-red-600' : 'text-muted-foreground'}>
-                    {stat.change}
-                  </span>
-                  <span className="ml-1">from yesterday</span>
-                </div>
-              </CardContent>
-            </Card>
-          ))}
+        {stats.map((stat) => (
+          <Card key={stat.title} className="hover:shadow-md transition-shadow">
+            <CardHeader className="flex flex-row items-center justify-between space-y-0 pb-2">
+              <CardTitle className="text-sm font-medium">{stat.title}</CardTitle>
+              <stat.icon className={`h-4 w-4 ${stat.color}`} />
+            </CardHeader>
+            <CardContent>
+              <div className="text-2xl font-bold">{stat.value}</div>
+              <div className="flex items-center text-xs text-muted-foreground">
+                {stat.trend === 'up' ? (
+                  <ArrowUpRight className="mr-1 h-3 w-3 text-green-600" />
+                ) : stat.trend === 'down' ? (
+                  <ArrowDownRight className="mr-1 h-3 w-3 text-red-600" />
+                ) : (
+                  <span className="mr-1 h-3 w-3 text-muted-foreground">…</span>
+                )}
+                <span className={stat.trend === 'up' ? 'text-green-600' : stat.trend === 'down' ? 'text-red-600' : 'text-muted-foreground'}>
+                  {stat.change}
+                </span>
+                <span className="ml-1">from yesterday</span>
+              </div>
+            </CardContent>
+          </Card>
+        ))}
       </div>
 
       <div className="grid gap-6 md:grid-cols-2">
@@ -170,38 +200,47 @@ export default function Dashboard() {
           </CardHeader>
           <CardContent>
             <div className="space-y-4">
-              {recentMessages.map((message) => (
-                <div key={message.id} className="flex items-center space-x-4">
-                  <div className="flex-1 space-y-1">
-                    <p className="text-sm font-medium leading-none">
-                      {message.recipient}
-                    </p>
-                    <p className="text-xs text-muted-foreground truncate">
-                      {message.message}
-                    </p>
-                    <div className="flex items-center space-x-2">
-                      <Badge
-                        variant={
-                          message.status === 'delivered'
-                            ? 'default'
-                            : message.status === 'sent'
-                            ? 'secondary'
-                            : 'destructive'
-                        }
-                        className="text-xs"
-                      >
-                        {message.status}
-                      </Badge>
-                      <span className="text-xs text-muted-foreground">
-                        {message.count} recipients
-                      </span>
+              {loadingRecent ? (
+                // simple skeleton rows while loading
+                [0, 1, 2].map((i) => (
+                  <div key={i} className="flex items-center space-x-4 animate-pulse">
+                    <div className="flex-1 space-y-1">
+                      <div className="h-4 w-1/3 bg-slate-200 rounded" />
+                      <div className="h-3 w-2/3 bg-slate-200 rounded mt-1" />
+                      <div className="h-3 w-1/4 bg-slate-200 rounded mt-2" />
+                    </div>
+                    <div className="h-3 w-10 bg-slate-200 rounded" />
+                  </div>
+                ))
+              ) : recentMessages && recentMessages.length === 0 ? (
+                <div className="text-sm text-muted-foreground text-center py-6">
+                  You have no scheduled messages at the moment.
+                </div>
+              ) : (
+                recentMessages?.map((message) => (
+                  <div key={message.id} className="flex items-center space-x-4">
+                    <div className="flex-1 space-y-1">
+                      <p className="text-sm font-medium leading-none">
+                        {message.recipient}
+                      </p>
+                      <p className="text-xs text-muted-foreground truncate">
+                        {message.message}
+                      </p>
+                      <div className="flex items-center space-x-2">
+                        <Badge variant={badgeVariantFor(message.status)} className="text-xs">
+                          {message.status}
+                        </Badge>
+                        <span className="text-xs text-muted-foreground">
+                          {message.count} recipients
+                        </span>
+                      </div>
+                    </div>
+                    <div className="text-xs text-muted-foreground">
+                      {formatRelative(message.timestamp)}
                     </div>
                   </div>
-                  <div className="text-xs text-muted-foreground">
-                    {message.timestamp}
-                  </div>
-                </div>
-              ))}
+                ))
+              )}
             </div>
             <div className="mt-4">
               <Button variant="outline" className="w-full" asChild>
@@ -239,12 +278,6 @@ export default function Dashboard() {
                   Purchase Credits
                 </Link>
               </Button>
-              {/* <Button asChild variant="outline" className="justify-start">
-                <Link to="/dashboard/reports/analytics">
-                  <TrendingUp className="mr-2 h-4 w-4" />
-                  View Reports
-                </Link>
-              </Button> */}
             </div>
           </CardContent>
         </Card>
