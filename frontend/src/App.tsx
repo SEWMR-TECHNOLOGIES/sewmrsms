@@ -34,6 +34,7 @@ import BillingPurchase from "./pages/dashboard/billing/BillingPurchase";
 import PaymentHistory from "./pages/dashboard/billing/PaymentHistory";
 import CreateOrder from "./pages/dashboard/billing/CreateOrder";
 import OrderPayment from "./pages/dashboard/billing/OrderPayment";
+import MobilePaymentWaiting from "./pages/dashboard/billing/MobilePaymentConfirmation";
 
 const queryClient = new QueryClient();
 
@@ -79,6 +80,7 @@ const App = () => (
             <Route path="billing/invoices" element={<div>Invoices</div>} />
             <Route path="billing/:packageUuid" element={<CreateOrder />} />
             <Route path="billing/:orderUuid/pay" element={<OrderPayment />} />
+            <Route path="billing/mobile-payment-waiting/:orderUuid/:checkoutRequestId" element={<MobilePaymentWaiting />} />
 
             {/* Sender ID routes */}
             <Route path="sender-ids" element={<SenderIds />} />

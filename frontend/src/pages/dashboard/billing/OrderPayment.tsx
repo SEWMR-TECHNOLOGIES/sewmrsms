@@ -24,7 +24,6 @@ export default function OrderPayment() {
   const [file, setFile] = useState<File | null>(null);
   const [mobileNumber, setMobileNumber] = useState('');
 
-  // useUpload provides progress, uploadFile(url, payload) and resetProgress
   const { progress, uploadFile, resetProgress } = useUpload();
 
   const handleBankPayment = async () => {
@@ -35,19 +34,16 @@ export default function OrderPayment() {
     setLoading(true);
 
     try {
-      // Build multipart form data including bank fields and the file
       const formData = new FormData();
       formData.append('bank_name', bankName);
       formData.append('transaction_reference', transactionRef);
       formData.append('file', file);
 
-      // Use your upload hook so progress is tracked. The hook should accept FormData as payload.
       const res = await uploadFile(
         `https://api.sewmrsms.co.tz/api/v1/subscriptions/${orderUuid}/payments/bank`,
         formData
       );
 
-      // keep your existing handling logic
       if (!res.ok) {
         let errMsg = 'Bank payment failed';
         try {
@@ -65,7 +61,6 @@ export default function OrderPayment() {
       toast({ variant: 'destructive', title: 'Network Error', description: 'Unable to reach the server' });
     } finally {
       setLoading(false);
-      // reset progress bar after upload completes or fails
       resetProgress();
     }
   };
@@ -78,7 +73,6 @@ export default function OrderPayment() {
     setLoading(true);
 
     try {
-      // initiate mobile payment (unchanged)
       const res = await fetch(`https://api.sewmrsms.co.tz/api/v1/subscriptions/${orderUuid}/payments/mobile`, {
         method: 'POST',
         headers: { 'Content-Type': 'application/json' },
@@ -93,39 +87,8 @@ export default function OrderPayment() {
         return;
       }
 
-      toast({ variant: 'success', title: 'Payment Requested', description: 'Waiting for confirmation...' });
-
-      let elapsed = 0;
-      const intervalMs = 5000;
-      const maxTime = 30000; // 30 seconds
-
-      const interval = setInterval(async () => {
-        elapsed += intervalMs;
-
-        try {
-          const statusRes = await fetch(
-            `https://api.sewmrsms.co.tz/api/v1/subscriptions/${orderUuid}/payments/${data.data.checkout_request_id}/status`,
-            { credentials: 'include' }
-          );
-          const statusData = await statusRes.json();
-
-          if (statusData.success) {
-            clearInterval(interval);
-            toast({ variant: 'success', title: 'Payment Completed', description: statusData.message });
-            navigate('/console/billing');
-          } else if (elapsed >= maxTime) {
-            clearInterval(interval);
-            toast({ variant: 'destructive', title: 'Payment Pending', description: 'Payment not confirmed within 30s. Check later.' });
-            navigate('/console/billing');
-          }
-        } catch (err) {
-          // network or parse error while polling — stop and go to orders page
-          clearInterval(interval);
-          console.error('Polling error', err);
-          toast({ variant: 'destructive', title: 'Network Error', description: 'Payment status check failed. Check orders page.' });
-          navigate('/console/billing');
-        }
-      }, intervalMs);
+      // After initiating mobile payment successfully
+      navigate(`/console/billing/mobile-payment-waiting/${orderUuid}/${data.data.checkout_request_id}`);
     } catch (err) {
       toast({ variant: 'destructive', title: 'Network Error', description: 'Unable to reach the server' });
     } finally {
@@ -135,7 +98,6 @@ export default function OrderPayment() {
 
   return (
     <div className="space-y-6">
-      {/* Header */}
       <div className="flex items-center gap-4">
         <Button variant="ghost" size="icon" onClick={() => navigate('/console/billing')}>
           <ArrowLeft className="h-4 w-4" />
@@ -147,7 +109,6 @@ export default function OrderPayment() {
       </div>
 
       <div className="grid grid-cols-1 lg:grid-cols-3 gap-6">
-        {/* Payment Form */}
         <div className="lg:col-span-2">
           <Card>
             <CardHeader>
@@ -158,7 +119,6 @@ export default function OrderPayment() {
               <CardDescription>Order ID: <code>{orderUuid}</code></CardDescription>
             </CardHeader>
             <CardContent className="space-y-6">
-
               <div className="flex gap-3">
                 <Button variant={paymentMethod === 'bank' ? 'default' : 'outline'} onClick={() => setPaymentMethod('bank')}>Bank</Button>
                 <Button variant={paymentMethod === 'mobile' ? 'default' : 'outline'} onClick={() => setPaymentMethod('mobile')}>Mobile</Button>
@@ -174,28 +134,18 @@ export default function OrderPayment() {
                     <Label>Transaction Reference</Label>
                     <Input value={transactionRef} onChange={e => setTransactionRef(e.target.value)} placeholder="Enter reference number" />
                   </div>
-
                   <div>
                     <Label>Upload Bank Slip</Label>
-
-                    {/* FileUpload handles accept and client-side validation.
-                        Accept only PDF and images as you requested. */}
                     <FileUpload
                       accept=".pdf,.jpg,.jpeg,.png"
                       maxSize={0.5}
                       onFileSelect={(files) => setFile(files[0] || null)}
                       onError={(message) => toast({ variant: 'destructive', title: 'File Error', description: message })}
                     />
-
-                    <div className="text-sm text-muted-foreground mt-2">
-                      {file ? file.name : 'No file chosen'}
-                    </div>
+                    <div className="text-sm text-muted-foreground mt-2">{file ? file.name : 'No file chosen'}</div>
                   </div>
 
-                  {/* Show progress only for bank uploads while uploading */}
-                  {loading && paymentMethod === 'bank' && (
-                    <UploadProgress progress={progress} message="Uploading bank slip..." />
-                  )}
+                  {loading && paymentMethod === 'bank' && <UploadProgress progress={progress} message="Uploading bank slip..." />}
 
                   <Button onClick={handleBankPayment} disabled={loading || !file} className="w-full">
                     {loading ? <Loader className="animate-spin h-4 w-4 mr-2 inline" /> : null} Pay Now
@@ -214,12 +164,10 @@ export default function OrderPayment() {
                   </Button>
                 </div>
               )}
-
             </CardContent>
           </Card>
         </div>
 
-        {/* Info Column */}
         <div className="space-y-6">
           <Card>
             <CardHeader>
@@ -229,7 +177,7 @@ export default function OrderPayment() {
               <ul className="text-sm text-muted-foreground list-disc pl-4 space-y-1">
                 <li>Bank payment requires slip upload and valid transaction reference.</li>
                 <li>Mobile payment requires your mobile number in format 255XXXXXXXXX.</li>
-                <li>Mobile payments are processed via gateway and will poll until successful for up to 30 seconds.</li>
+                <li>Mobile payments are processed via gateway and will poll until successful.</li>
               </ul>
             </CardContent>
           </Card>
