@@ -285,6 +285,7 @@ async def quick_send_sms(
         now = datetime.now(pytz.timezone("Africa/Nairobi")).replace(tzinfo=None)
         send_result = await sms_service.send_sms_with_parts_check(phone, message, callback_url=callback_url_with_user)
         # Print full API response for debugging
+        print(callback_url_with_user)
         print(f"SMS send_result for {phone}: {send_result}")
 
         if not send_result.get("success"):
