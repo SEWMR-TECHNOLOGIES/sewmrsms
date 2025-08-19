@@ -2,7 +2,8 @@ import React from 'react';
 import { 
   LayoutDashboard, Users, MessageSquare, BarChart3, CreditCard, Settings,
   UserPlus, Import, Send, FileText, History, TrendingUp, ShoppingCart, Receipt,
-  User, Key, Bell, ChevronDown, ChevronRight, Shield
+  User, Key, Bell, ChevronDown, ChevronRight, Shield,
+  ClipboardList
 } from 'lucide-react';
 import { NavLink } from 'react-router-dom';
 import { 
@@ -53,6 +54,7 @@ const menuItems: MenuItem[] = [
   },
   { title: 'Billing', icon: CreditCard, items: [
       { title: 'Purchase Credits', url: '/console/billing/purchase', icon: ShoppingCart },
+      { title: 'My Orders', url: '/console/billing', icon: ClipboardList },
       { title: 'Payment History', url: '/console/billing/history', icon: History },
       // { title: 'Invoices', url: '/console/billing/invoices', icon: Receipt },
       // { title: 'Usage', url: '/console/billing/usage', icon: BarChart3 },

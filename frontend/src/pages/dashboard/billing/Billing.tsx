@@ -73,7 +73,7 @@ const getTypeBadge = (type: string) => {
   }
 };
 
-export default function PaymentHistory() {
+export default function Billing() {
   const { toast } = useToast();
   const [transactions, setTransactions] = useState<Transaction[]>([]);
   const [loading, setLoading] = useState(true);
