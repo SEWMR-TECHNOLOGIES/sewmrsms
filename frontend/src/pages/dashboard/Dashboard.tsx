@@ -1,4 +1,4 @@
-import React from 'react';
+import React, { useState, useEffect } from 'react';
 import { Card, CardContent, CardDescription, CardHeader, CardTitle } from '@/components/ui/card';
 import { Badge } from '@/components/ui/badge';
 import { Button } from '@/components/ui/button';
@@ -8,75 +8,99 @@ import {
   Users,
   TrendingUp,
   DollarSign,
-  Calendar,
   ArrowUpRight,
   ArrowDownRight,
 } from 'lucide-react';
 import { Link } from 'react-router-dom';
 
-const stats = [
-  {
-    title: 'Messages Sent Today',
-    value: '1,245',
-    change: '+12.5%',
-    trend: 'up',
-    icon: MessageSquare,
-    color: 'text-blue-600',
-  },
-  {
-    title: 'Delivery Rate',
-    value: '98.2%',
-    change: '+0.3%',
-    trend: 'up',
-    icon: Send,
-    color: 'text-green-600',
-  },
-  {
-    title: 'Total Contacts',
-    value: '15,847',
-    change: '+234',
-    trend: 'up',
-    icon: Users,
-    color: 'text-purple-600',
-  },
-  {
-    title: 'Credits Remaining',
-    value: '2,500',
-    change: '-1,245',
-    trend: 'down',
-    icon: DollarSign,
-    color: 'text-orange-600',
-  },
-];
-
-const recentMessages = [
-  {
-    id: 1,
-    recipient: 'Marketing Campaign',
-    message: 'Special offer! Get 20% off your next purchase...',
-    status: 'delivered',
-    timestamp: '2 hours ago',
-    count: 1250,
-  },
-  {
-    id: 2,
-    recipient: 'Payment Reminder',
-    message: 'Your payment is due tomorrow. Please...',
-    status: 'sent',
-    timestamp: '4 hours ago',
-    count: 45,
-  },
-  {
-    id: 3,
-    recipient: 'Event Notification',
-    message: 'Reminder: Meeting scheduled for tomorrow...',
-    status: 'failed',
-    timestamp: '6 hours ago',
-    count: 12,
-  },
-];
-
 export default function Dashboard() {
+  const [stats, setStats] = useState<any[]>([]);
+  const [loading, setLoading] = useState(true);
+
+  const fetchStats = async () => {
+    try {
+      const res = await fetch('https://api.sewmrsms.co.tz/api/v1/auth/dashboard/stats', {
+        credentials: 'include',
+      });
+      const data = await res.json();
+
+      if (data?.metrics) {
+        const mapped = [
+          {
+            title: 'Messages Sent Today',
+            value: data.metrics.messages_sent_today.value,
+            change: `${data.metrics.messages_sent_today.change}%`,
+            trend: data.metrics.messages_sent_today.trend,
+            icon: MessageSquare,
+            color: 'text-blue-600',
+          },
+          {
+            title: 'Delivery Rate',
+            value: `${data.metrics.delivery_rate.value}%`,
+            change: `${data.metrics.delivery_rate.change}%`,
+            trend: data.metrics.delivery_rate.trend,
+            icon: Send,
+            color: 'text-green-600',
+          },
+          {
+            title: 'Total Contacts',
+            value: data.metrics.total_contacts.value,
+            change: `${data.metrics.total_contacts.change}%`,
+            trend: data.metrics.total_contacts.trend,
+            icon: Users,
+            color: 'text-purple-600',
+          },
+          {
+            title: 'Credits Remaining',
+            value: data.metrics.credits_remaining.value,
+            change: `${data.metrics.credits_remaining.change}%`,
+            trend: data.metrics.credits_remaining.trend,
+            icon: DollarSign,
+            color: 'text-orange-600',
+          },
+        ];
+        setStats(mapped);
+      }
+    } catch (err) {
+      console.error('Failed to fetch stats', err);
+    } finally {
+      setLoading(false);
+    }
+  };
+
+  useEffect(() => {
+    fetchStats();
+    const interval = setInterval(fetchStats, 5 * 60 * 1000); // every 5 min
+    return () => clearInterval(interval);
+  }, []);
+
+  const recentMessages = [
+    {
+      id: 1,
+      recipient: 'Marketing Campaign',
+      message: 'Special offer! Get 20% off your next purchase...',
+      status: 'delivered',
+      timestamp: '2 hours ago',
+      count: 1250,
+    },
+    {
+      id: 2,
+      recipient: 'Payment Reminder',
+      message: 'Your payment is due tomorrow. Please...',
+      status: 'sent',
+      timestamp: '4 hours ago',
+      count: 45,
+    },
+    {
+      id: 3,
+      recipient: 'Event Notification',
+      message: 'Reminder: Meeting scheduled for tomorrow...',
+      status: 'failed',
+      timestamp: '6 hours ago',
+      count: 12,
+    },
+  ];
+
   return (
     <div className="space-y-6">
       {/* Header */}
@@ -99,28 +123,32 @@ export default function Dashboard() {
 
       {/* Stats Grid */}
       <div className="grid gap-4 md:grid-cols-2 lg:grid-cols-4">
-        {stats.map((stat) => (
-          <Card key={stat.title} className="hover:shadow-md transition-shadow">
-            <CardHeader className="flex flex-row items-center justify-between space-y-0 pb-2">
-              <CardTitle className="text-sm font-medium">{stat.title}</CardTitle>
-              <stat.icon className={`h-4 w-4 ${stat.color}`} />
-            </CardHeader>
-            <CardContent>
-              <div className="text-2xl font-bold">{stat.value}</div>
-              <div className="flex items-center text-xs text-muted-foreground">
-                {stat.trend === 'up' ? (
-                  <ArrowUpRight className="mr-1 h-3 w-3 text-green-600" />
-                ) : (
-                  <ArrowDownRight className="mr-1 h-3 w-3 text-red-600" />
-                )}
-                <span className={stat.trend === 'up' ? 'text-green-600' : 'text-red-600'}>
-                  {stat.change}
-                </span>
-                <span className="ml-1">from yesterday</span>
-              </div>
-            </CardContent>
-          </Card>
-        ))}
+        {loading ? (
+          <p className="col-span-4 text-center text-muted-foreground">Loading stats...</p>
+        ) : (
+          stats.map((stat) => (
+            <Card key={stat.title} className="hover:shadow-md transition-shadow">
+              <CardHeader className="flex flex-row items-center justify-between space-y-0 pb-2">
+                <CardTitle className="text-sm font-medium">{stat.title}</CardTitle>
+                <stat.icon className={`h-4 w-4 ${stat.color}`} />
+              </CardHeader>
+              <CardContent>
+                <div className="text-2xl font-bold">{stat.value}</div>
+                <div className="flex items-center text-xs text-muted-foreground">
+                  {stat.trend === 'up' ? (
+                    <ArrowUpRight className="mr-1 h-3 w-3 text-green-600" />
+                  ) : (
+                    <ArrowDownRight className="mr-1 h-3 w-3 text-red-600" />
+                  )}
+                  <span className={stat.trend === 'up' ? 'text-green-600' : 'text-red-600'}>
+                    {stat.change}
+                  </span>
+                  <span className="ml-1">from yesterday</span>
+                </div>
+              </CardContent>
+            </Card>
+          ))
+        )}
       </div>
 
       <div className="grid gap-6 md:grid-cols-2">

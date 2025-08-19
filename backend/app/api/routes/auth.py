@@ -16,6 +16,10 @@ from sqlalchemy import and_, func, or_
 from sqlalchemy.orm import Session
 from api.deps import get_db
 from api.user_auth import get_current_user
+from models.contact import Contact
+from models.enums import SmsDeliveryStatusEnum
+from models.sent_messages import SentMessage
+from models.sms_callback import SmsCallback
 from models.user_subscription import UserSubscription
 from models.api_access_tokens import ApiAccessToken
 from models.password_reset_tokens import PasswordResetToken
@@ -586,3 +590,118 @@ async def delete_api_token(
     db.delete(token)
     db.commit()
     return {"success": True, "message": "Token deleted successfully", "data": None}
+
+
+DELIVERED_STATUSES = [
+    SmsDeliveryStatusEnum.delivered.value,
+    SmsDeliveryStatusEnum.acknowledged.value,
+    SmsDeliveryStatusEnum.accepted.value
+]
+
+def compute_percent_change(current: float, previous: float) -> float:
+    if previous == 0:
+        return 100.0 if current > 0 else 0.0
+    return round(((current - previous) / previous) * 100, 2)
+
+@router.get("/dashboard/stats")
+def dashboard_stats(
+    db: Session = Depends(get_db),
+    current_user: User = Depends(get_current_user)
+):
+    now = datetime.now(pytz.timezone("Africa/Nairobi")).replace(tzinfo=None)
+    today_start = now.replace(hour=0, minute=0, second=0, microsecond=0)
+    yesterday_start = today_start - timedelta(days=1)
+    yesterday_end = today_start - timedelta(seconds=1)
+
+    # -----------------------
+    # Messages Sent
+    # -----------------------
+    messages_today = db.query(func.count(SentMessage.id))\
+        .filter(SentMessage.user_id == current_user.id)\
+        .filter(SentMessage.sent_at >= today_start).scalar() or 0
+
+    messages_yesterday = db.query(func.count(SentMessage.id))\
+        .filter(SentMessage.user_id == current_user.id)\
+        .filter(SentMessage.sent_at.between(yesterday_start, yesterday_end)).scalar() or 0
+
+    messages_change = compute_percent_change(messages_today, messages_yesterday)
+
+    # -----------------------
+    # Delivery Rate
+    # -----------------------
+    delivered_today = db.query(func.count(SmsCallback.id))\
+        .filter(SmsCallback.user_id == current_user.id)\
+        .filter(SmsCallback.received_at >= today_start)\
+        .filter(SmsCallback.status.in_(DELIVERED_STATUSES)).scalar() or 0
+
+    total_callbacks_today = db.query(func.count(SmsCallback.id))\
+        .filter(SmsCallback.user_id == current_user.id)\
+        .filter(SmsCallback.received_at >= today_start).scalar() or 0
+
+    delivery_rate_today = round((delivered_today / max(total_callbacks_today, 1)) * 100, 2)
+
+    delivered_yesterday = db.query(func.count(SmsCallback.id))\
+        .filter(SmsCallback.user_id == current_user.id)\
+        .filter(SmsCallback.received_at.between(yesterday_start, yesterday_end))\
+        .filter(SmsCallback.status.in_(DELIVERED_STATUSES)).scalar() or 0
+
+    total_callbacks_yesterday = db.query(func.count(SmsCallback.id))\
+        .filter(SmsCallback.user_id == current_user.id)\
+        .filter(SmsCallback.received_at.between(yesterday_start, yesterday_end)).scalar() or 0
+
+    delivery_rate_yesterday = round((delivered_yesterday / max(total_callbacks_yesterday, 1)) * 100, 2)
+    delivery_change = compute_percent_change(delivery_rate_today, delivery_rate_yesterday)
+
+    # -----------------------
+    # Contacts
+    # -----------------------
+    total_contacts = db.query(func.count(Contact.id))\
+        .filter(Contact.user_id == current_user.id).scalar() or 0
+
+    contacts_yesterday = db.query(func.count(Contact.id))\
+        .filter(Contact.user_id == current_user.id)\
+        .filter(Contact.created_at < today_start).scalar() or 0
+
+    contacts_change = compute_percent_change(total_contacts, contacts_yesterday)
+
+    # -----------------------
+    # Credits Remaining
+    # -----------------------
+    credits_today = db.query(func.coalesce(func.sum(UserSubscription.remaining_sms), 0))\
+        .filter(UserSubscription.user_id == current_user.id).scalar() or 0
+
+    used_since_yesterday = db.query(func.coalesce(func.sum(SentMessage.number_of_parts), 0))\
+        .filter(SentMessage.user_id == current_user.id)\
+        .filter(SentMessage.sent_at >= yesterday_start).scalar() or 0
+
+    credits_yesterday = credits_today + used_since_yesterday
+    credits_change = compute_percent_change(credits_today, credits_yesterday)
+
+    # -----------------------
+    # Response
+    # -----------------------
+    return {
+        "timestamp": now.isoformat(),
+        "metrics": {
+            "messages_sent_today": {
+                "value": messages_today,
+                "change": messages_change,
+                "trend": "up" if messages_change >= 0 else "down"
+            },
+            "delivery_rate": {
+                "value": delivery_rate_today,
+                "change": delivery_change,
+                "trend": "up" if delivery_change >= 0 else "down"
+            },
+            "total_contacts": {
+                "value": total_contacts,
+                "change": contacts_change,
+                "trend": "up" if contacts_change >= 0 else "down"
+            },
+            "credits_remaining": {
+                "value": credits_today,
+                "change": credits_change,
+                "trend": "up" if credits_change >= 0 else "down"
+            }
+        }
+    }
