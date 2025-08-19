@@ -62,7 +62,7 @@ export default function PaymentHistory() {
       if (!res.ok || !json.success) throw new Error(json.message || "Failed to fetch transactions");
 
       setTransactions(
-        (json.data || []).map((t: any) => ({
+        (json.data.transactions || []).map((t: any) => ({
           ...t,
           transaction_type: t.transaction_type as "purchase" | "usage" | "refund",
           status: t.status as "pending" | "completed" | "failed" | "refunded",
@@ -101,7 +101,6 @@ export default function PaymentHistory() {
           <p className="text-muted-foreground">View all your payment transactions and download reports</p>
         </div>
         <div className="flex gap-2">
-          <Button variant="outline"><Filter className="h-4 w-4 mr-2" />Filter</Button>
           <Button variant="outline"><Download className="h-4 w-4 mr-2" />Export</Button>
         </div>
       </div>
@@ -112,7 +111,7 @@ export default function PaymentHistory() {
           <CardContent className="p-6 flex justify-between items-center">
             <div>
               <p className="text-sm font-medium text-muted-foreground">Total Spent</p>
-              <p className="text-2xl font-bold">${totalSpent.toFixed(2)}</p>
+              <p className="text-2xl font-bold">TZS {totalSpent.toLocaleString("en-TZ", { maximumFractionDigits: 0 })}</p>
             </div>
             <CreditCard className="h-8 w-8 text-primary" />
           </CardContent>
@@ -122,7 +121,7 @@ export default function PaymentHistory() {
           <CardContent className="p-6 flex justify-between items-center">
             <div>
               <p className="text-sm font-medium text-muted-foreground">Credits Purchased</p>
-              <p className="text-2xl font-bold">{totalCredits.toLocaleString()}</p>
+              <p className="text-2xl font-bold">{totalCredits.toLocaleString("en-TZ", { maximumFractionDigits: 0 })}</p>
             </div>
             <Calendar className="h-8 w-8 text-primary" />
           </CardContent>
