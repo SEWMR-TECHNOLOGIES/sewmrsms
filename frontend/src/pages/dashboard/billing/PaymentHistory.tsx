@@ -80,13 +80,84 @@ export default function PaymentHistory() {
   }, []);
 
   const columns: ColumnDef<Transaction>[] = [
-    { accessorKey: "payment_reference", header: "Reference", cell: ({ row }) => <span className="font-mono text-sm">{row.getValue("payment_reference") || "N/A"}</span> },
-    { accessorKey: "transaction_type", header: "Type", cell: ({ row }) => getTypeBadge(row.getValue("transaction_type")) },
-    { accessorKey: "amount", header: ({ column }) => <Button variant="ghost" onClick={() => column.toggleSorting(column.getIsSorted() === "asc")}>Amount<ArrowUpDown className="ml-2 h-4 w-4" /></Button>, cell: ({ row }) => <span className="font-medium">${parseFloat(row.getValue("amount")).toFixed(2)}</span> },
-    { accessorKey: "credits", header: "Credits", cell: ({ row }) => <span className="font-medium">{(row.getValue("credits") as number).toLocaleString()}</span> },
-    { accessorKey: "status", header: "Status", cell: ({ row }) => getStatusBadge(row.getValue("status")) },
-    { accessorKey: "payment_method", header: "Method", cell: ({ row }) => <span className="capitalize">{row.getValue("payment_method") || "N/A"}</span> },
-    { accessorKey: "created_at", header: ({ column }) => <Button variant="ghost" onClick={() => column.toggleSorting(column.getIsSorted() === "asc")}>Date<ArrowUpDown className="ml-2 h-4 w-4" /></Button>, cell: ({ row }) => { const date = new Date(row.getValue("created_at")); return <div className="text-sm"><div>{format(date, "MMM dd, yyyy")}</div><div className="text-muted-foreground">{format(date, "HH:mm")}</div></div> } },
+    {
+      accessorKey: "payment_reference",
+      header: "Reference",
+      cell: ({ row }) => (
+        <span className="font-mono text-sm">
+          {row.getValue("payment_reference") || "N/A"}
+        </span>
+      ),
+    },
+    {
+      accessorKey: "transaction_type",
+      header: "Type",
+      cell: ({ row }) => getTypeBadge(row.getValue("transaction_type")),
+    },
+    {
+      accessorKey: "amount",
+      header: ({ column }) => (
+        <Button
+          variant="ghost"
+          onClick={() =>
+            column.toggleSorting(column.getIsSorted() === "asc")
+          }
+        >
+          Amount <ArrowUpDown className="ml-2 h-4 w-4" />
+        </Button>
+      ),
+      cell: ({ row }) => {
+        const amt = Number(row.getValue("amount") ?? 0);
+        return (
+          <span className="font-medium">
+            TZS {amt.toLocaleString("en-TZ", { maximumFractionDigits: 0 })}
+          </span>
+        );
+      },
+    },
+    {
+      accessorKey: "credits",
+      header: "Credits",
+      cell: ({ row }) => (
+        <span className="font-medium">
+          {(row.getValue("credits") as number).toLocaleString()}
+        </span>
+      ),
+    },
+    {
+      accessorKey: "status",
+      header: "Status",
+      cell: ({ row }) => getStatusBadge(row.getValue("status")),
+    },
+    {
+      accessorKey: "payment_method",
+      header: "Method",
+      cell: ({ row }) => (
+        <span className="capitalize">{row.getValue("payment_method") || "N/A"}</span>
+      ),
+    },
+    {
+      accessorKey: "created_at",
+      header: ({ column }) => (
+        <Button
+          variant="ghost"
+          onClick={() =>
+            column.toggleSorting(column.getIsSorted() === "asc")
+          }
+        >
+          Date <ArrowUpDown className="ml-2 h-4 w-4" />
+        </Button>
+      ),
+      cell: ({ row }) => {
+        const date = new Date(row.getValue("created_at"));
+        return (
+          <div className="text-sm">
+            <div>{format(date, "MMM dd, yyyy")}</div>
+            <div className="text-muted-foreground">{format(date, "HH:mm")}</div>
+          </div>
+        );
+      },
+    },
   ];
 
   const totalSpent = transactions.filter(t => t.transaction_type === "purchase" && t.status === "completed").reduce((sum, t) => sum + t.amount, 0);
