@@ -278,61 +278,70 @@ export default function SendFromTemplate() {
                 </AlertDescription>
               </Alert>
 
-              {scheduleFlag && (
-                <div className="flex flex-col md:flex-row md:items-center md:space-x-4 space-y-2 md:space-y-0">
-                  <div className="flex-1">
-                    <Label className="mb-1">Schedule Name</Label>
-                    <Input
-                      placeholder="Enter a name for this schedule"
-                      value={scheduleName}
-                      onChange={(e) => setScheduleName(e.target.value)}
-                      className="w-full"
-                    />
-                  </div>
+              <div className="space-y-2">
+                <ToggleSwitch checked={scheduleFlag} onChange={setScheduleFlag} label="Schedule Message" />
+                {scheduleFlag && (
+                  // <-- Responsive row: stacked on small, single-line on large screens
+                  <div className="flex flex-col lg:flex-row lg:items-end gap-2">
+                    <div className="flex-1">
+                      <Label className="mb-1">Schedule Name</Label>
+                      <Input
+                        placeholder="Enter a name for this schedule"
+                        value={scheduleName}
+                        onChange={(e) => setScheduleName(e.target.value)}
+                        className="w-full"
+                      />
+                    </div>
 
-                  <div className="flex-1">
-                    <Label className="mb-1">Scheduled Date & Time</Label>
-                    <Popover>
-                      <PopoverTrigger>
-                        <Input
-                          placeholder={
-                            scheduledFor
-                              ? format(scheduledFor, 'yyyy-MM-dd HH:mm:ss')
-                              : 'Select date & time (GMT+3)'
-                          }
-                          readOnly
-                          className="cursor-pointer w-full"
-                        />
-                      </PopoverTrigger>
-                      <PopoverContent className="w-auto p-3">
-                        <div className="grid gap-3 md:grid-cols-2">
-                          <Calendar mode="single" selected={scheduledFor || undefined} onSelect={onCalendarSelect} />
-                          <div className="space-y-2">
-                            <div className="text-sm font-medium">Time (GMT+3)</div>
-                            <div className="flex gap-2 mt-1">
-                              <SearchableSelect
-                                options={hourOptions}
-                                value={hourSel}
-                                onValueChange={(v) => onTimeChange(v, minuteSel)}
-                                className="flex-1"
-                                placeholder="Hour"
-                              />
-                              <SearchableSelect
-                                options={minuteOptions}
-                                value={minuteSel}
-                                onValueChange={(v) => onTimeChange(hourSel, v)}
-                                className="flex-1"
-                                placeholder="Minute"
-                              />
+                    <div className="flex-1">
+                      <Label className="mb-1">Date & Time (GMT+3)</Label>
+                      <Popover>
+                        <PopoverTrigger>
+                          <Input
+                            placeholder={
+                              scheduledFor
+                                ? format(scheduledFor, 'yyyy-MM-dd HH:mm:ss')
+                                : 'Select date & time (GMT+3)'
+                            }
+                            readOnly
+                            className="cursor-pointer w-full"
+                          />
+                        </PopoverTrigger>
+                        <PopoverContent className="w-auto p-3">
+                          <div className="grid gap-3 md:grid-cols-2">
+                            <Calendar mode="single" selected={scheduledFor || undefined} onSelect={onCalendarSelect} />
+                            <div className="space-y-2">
+                              <div className="text-sm font-medium">Time (GMT+3)</div>
+                              <div className="flex gap-2 mt-1">
+                                <SearchableSelect
+                                  options={hourOptions}
+                                  value={hourSel}
+                                  onValueChange={(v) => onTimeChange(v, minuteSel)}
+                                  className="flex-1"
+                                  placeholder="Hour"
+                                />
+                                <SearchableSelect
+                                  options={minuteOptions}
+                                  value={minuteSel}
+                                  onValueChange={(v) => onTimeChange(hourSel, v)}
+                                  className="flex-1"
+                                  placeholder="Minute"
+                                />
+                              </div>
                             </div>
                           </div>
-                        </div>
-                      </PopoverContent>
-                    </Popover>
+                        </PopoverContent>
+                      </Popover>
+                    </div>
                   </div>
-                </div>
-              )}
+                )}
 
+                {scheduleFlag && (
+                  <Popover>
+                    {/* Kept your original popover for other uses if needed; no behavioral change */}
+                  </Popover>
+                )}
+              </div>
 
               {uploading && <UploadProgress progress={uploadProgress} message="Uploading file..." />}
 
