@@ -30,7 +30,7 @@ export default function ApiTokens() {
     setLoading(true);
     try {
       const res = await fetch('https://api.sewmrsms.co.tz/api/v1/auth/api-tokens', {
-        credentials: 'include', // <-- add this
+        credentials: 'include', 
       });
       const data = await res.json();
       if (data.success) {
@@ -44,12 +44,16 @@ export default function ApiTokens() {
       setLoading(false);
     }
   };
+  
+  useEffect(() => {
+    fetchTokens();
+  }, []);
 
   const revokeToken = async (tokenId: string) => {
     try {
       const res = await fetch(`https://api.sewmrsms.co.tz/api/v1/auth/api-tokens/${tokenId}/revoke`, {
         method: 'POST',
-        credentials: 'include', // <-- add this
+        credentials: 'include', 
       });
       const data = await res.json();
       if (data.success) {
@@ -67,7 +71,7 @@ export default function ApiTokens() {
     try {
       const res = await fetch(`https://api.sewmrsms.co.tz/api/v1/auth/api-tokens/${tokenId}`, {
         method: 'DELETE',
-        credentials: 'include', // <-- add this
+        credentials: 'include', 
       });
       const data = await res.json();
       if (data.success) {

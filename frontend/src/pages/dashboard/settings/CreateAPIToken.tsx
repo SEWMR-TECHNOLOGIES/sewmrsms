@@ -36,7 +36,7 @@ export default function CreateToken() {
         setGeneratedToken(data.data.access_token);
         setExpiresAt(data.data.expires_at);
         setTokenName('');
-        toast({ title: "Token Generated", description: data.message });
+        toast({ title: "Token Generated", description: data.message , variant: 'success'});
       } else {
         toast({ title: "Error", description: data.message || "Failed to generate token", variant: "destructive" });
       }
@@ -141,7 +141,7 @@ export default function CreateToken() {
                   <div className="space-y-2">
                     <Label>Expires At</Label>
                     <Badge variant="outline">
-                      {new Date(expiresAt).toLocaleDateString()} at {new Date(expiresAt).toLocaleTimeString()}
+                      {new Date(expiresAt).toLocaleDateString("en-GB")} at {new Date(expiresAt).toLocaleTimeString()}
                     </Badge>
                   </div>
                 )}
