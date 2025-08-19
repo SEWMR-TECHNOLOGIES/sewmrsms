@@ -1,7 +1,6 @@
 # backend/app/models/api_access_tokens.py
 from sqlalchemy import Column, Integer, Boolean, DateTime, CHAR, ForeignKey, Index, String
 from sqlalchemy.sql import func
-
 from db.base import Base
 
 class ApiAccessToken(Base):
@@ -14,8 +13,9 @@ class ApiAccessToken(Base):
     created_at = Column(DateTime, nullable=False, server_default=func.now())
     expires_at = Column(DateTime, nullable=True)
     revoked = Column(Boolean, nullable=False, default=False)
+    last_used = Column(DateTime, nullable=True)
 
 # Indexes
 Index('idx_api_access_tokens_user_id', ApiAccessToken.user_id)
 Index('idx_api_access_tokens_token_hash', ApiAccessToken.token_hash)
-Index('idx_api_access_tokens_name', ApiAccessToken.name)    
+Index('idx_api_access_tokens_name', ApiAccessToken.name)

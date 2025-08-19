@@ -522,16 +522,15 @@ async def get_api_tokens(
 
     token_list = []
     for token in tokens:
-        # Mask token display: only last 6 chars visible
         masked = f"****-****-****-{token.token_hash[-6:]}"
         token_list.append({
             "id": str(token.id),
-            "name": getattr(token, "name", f"Token {token.id}"),  # fallback if name exists
+            "name": getattr(token, "name", f"Token {token.id}"),
             "token_masked": masked,
             "created_at": token.created_at.isoformat() if token.created_at else None,
             "expires_at": token.expires_at.isoformat() if token.expires_at else None,
             "status": "revoked" if token.revoked else "active",
-            "last_used": getattr(token, "last_used", None)
+            "last_used": token.last_used.isoformat() if token.last_used else None
         })
 
     return {"success": True, "data": token_list}

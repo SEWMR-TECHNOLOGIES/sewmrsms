@@ -36,13 +36,19 @@ CREATE TABLE users (
 CREATE TABLE api_access_tokens (
     id SERIAL PRIMARY KEY,
     user_id INTEGER NOT NULL REFERENCES users(id) ON DELETE CASCADE,
+    name VARCHAR(255) NOT NULL,
     token_hash CHAR(64) NOT NULL UNIQUE,
     created_at TIMESTAMP WITHOUT TIME ZONE DEFAULT NOW() NOT NULL,
     expires_at TIMESTAMP WITHOUT TIME ZONE,
-    revoked BOOLEAN NOT NULL DEFAULT FALSE
+    revoked BOOLEAN NOT NULL DEFAULT FALSE,
+    last_used TIMESTAMP WITHOUT TIME ZONE NULL
 );
+
+-- Indexes
 CREATE INDEX idx_api_access_tokens_user_id ON api_access_tokens(user_id);
 CREATE INDEX idx_api_access_tokens_token_hash ON api_access_tokens(token_hash);
+CREATE INDEX idx_api_access_tokens_name ON api_access_tokens(name);
+
 
 
 -- Contact groups

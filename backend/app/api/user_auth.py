@@ -55,8 +55,8 @@ async def get_current_user_optional(
 ) -> Optional[User]:
     """
     Try to authenticate user via JWT bearer token.
-    If header missing or JWT invalid, return None instead of raising,
-    so endpoint can fall back to API-token verification.
+    If JWT missing or invalid, fall back to API-token verification.
+    Updates `last_used` on API token access using Africa/Nairobi timezone.
     """
     token = None
 
@@ -64,7 +64,6 @@ async def get_current_user_optional(
         token = session_token
     elif authorization:
         if not authorization.startswith("Bearer "):
-            # not a bearer token — return None so caller can attempt other auth
             return None
         token = authorization[len("Bearer "):].strip()
     else:
@@ -78,9 +77,31 @@ async def get_current_user_optional(
             user = db.query(User).filter(User.uuid == user_uuid).first()
             return user
     except Exception:
-        # JWT invalid or expired — swallow and let endpoint try API token
-        # Optional: log for debugging
-        # traceback.print_exc()
+        pass  # JWT invalid or expired, continue to API token
+
+    # 2) try API token
+    try:
+        import hashlib
+        import pytz
+        from datetime import datetime
+        from models.api_access_tokens import ApiAccessToken
+
+        token_hash = hashlib.sha256(token.encode("utf-8")).hexdigest()
+        api_token = db.query(ApiAccessToken).filter(
+            ApiAccessToken.token_hash == token_hash,
+            ApiAccessToken.revoked == False
+        ).first()
+
+        if api_token and (not api_token.expires_at or api_token.expires_at > datetime.now(pytz.timezone("Africa/Nairobi")).replace(tzinfo=None)):
+            # update last_used in Nairobi timezone
+            tz = pytz.timezone("Africa/Nairobi")
+            api_token.last_used = datetime.now(tz).replace(tzinfo=None)
+            db.commit()
+            db.refresh(api_token)
+
+            user = db.query(User).filter(User.id == api_token.user_id).first()
+            return user
+    except Exception:
         return None
 
     return None
