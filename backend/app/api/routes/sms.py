@@ -762,7 +762,7 @@ async def sms_callback(request: Request, db: Session = Depends(get_db)):
 
         message_id = data.get("message_id")
         phone = data.get("PhoneNumber") or data.get("phone")
-        status = data.get("DLRStatus")
+        status = data.get("DLRStatus", "").lower()
         uid = data.get("uid")
         remarks = data.get("Remarks")
         sender_alias = data.get("SenderId")
@@ -849,6 +849,13 @@ def get_message_history(
                 .first()
             )
 
+            # Make sure status is UPPERCASE in response
+            status_value = (
+                latest_callback.status.value.upper()
+                if latest_callback
+                else SmsDeliveryStatusEnum.pending.value.upper()
+            )
+
             history.append({
                 "id": msg.id,
                 "sender_alias": msg.sender_alias,
@@ -857,7 +864,7 @@ def get_message_history(
                 "message_id": msg.message_id,
                 "remarks": msg.remarks,
                 "number_of_parts": msg.number_of_parts,
-                "status": latest_callback.status.value if latest_callback else SmsDeliveryStatusEnum.pending.value
+                "status": status_value
             })
 
         return {

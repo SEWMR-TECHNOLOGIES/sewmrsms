@@ -18,19 +18,19 @@ CREATE TYPE schedule_status_enum AS ENUM ('pending', 'sent', 'failed', 'cancelle
 
 CREATE TYPE message_status_enum AS ENUM ('pending', 'sent', 'failed');
 
--- Sms Delivery Status Enum
 CREATE TYPE sms_delivery_status_enum AS ENUM (
-  'Pending',
-  'Delivered',
-  'Undeliverable',
-  'Acknowledged',
-  'Expired',
-  'Accepted',
-  'Rejected',
-  'Unknown',
-  'Failed',
-  'DND'
+  'pending',
+  'delivered',
+  'undeliverable',
+  'acknowledged',
+  'expired',
+  'accepted',
+  'rejected',
+  'unknown',
+  'failed',
+  'dnd'
 );
+
 
 -- Users
 CREATE TABLE users (

@@ -58,16 +58,16 @@ class MessageStatusEnum(enum.Enum):
     failed = 'failed'
 
 class SmsDeliveryStatusEnum(enum.Enum):
-    pending = 'Pending'
-    delivered = 'Delivered'
-    undeliverable = 'Undeliverable'
-    acknowledged = 'Acknowledged'
-    expired = 'Expired'
-    accepted = 'Accepted'
-    rejected = 'Rejected'
-    unknown = 'Unknown'
-    failed = 'Failed'
-    dnd = 'DND' # not allowed to receive sms
+    pending = "pending"
+    delivered = "delivered"
+    undeliverable = "undeliverable"
+    acknowledged = "acknowledged"
+    expired = "expired"
+    accepted = "accepted"
+    rejected = "rejected"
+    unknown = "unknown"
+    failed = "failed"
+    dnd = "dnd"
 
 # Models
 
