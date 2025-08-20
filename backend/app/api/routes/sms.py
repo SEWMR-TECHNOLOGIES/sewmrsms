@@ -651,7 +651,7 @@ async def quick_send_sms(
                 sender_id=sender.id,
                 title=schedule_name,
                 scheduled_for=datetime.strptime(scheduled_for, "%Y-%m-%d %H:%M:%S") if scheduled_for else None,
-                status=ScheduleStatusEnum.pending,
+                status=ScheduleStatusEnum.pending.value,
                 created_at=now,
                 updated_at=now
             )
@@ -663,13 +663,12 @@ async def quick_send_sms(
                     schedule_id=sms_schedule.id,
                     phone_number=phone,
                     message=msg,
-                    status=MessageStatusEnum.pending,
+                    status=MessageStatusEnum.pending.value,
                     created_at=now,
                     updated_at=now
                 )
                 db.add(sched_msg)
-            
-            db.commit()
+                db.commit()
 
             return {
                 "success": True,
