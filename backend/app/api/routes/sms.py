@@ -1,5 +1,6 @@
 # backend/app/api/messaging.py
 import re
+import traceback
 from typing import Optional
 import uuid
 from fastapi import APIRouter, File, Form, Request, Depends, HTTPException, Header, UploadFile
@@ -547,6 +548,7 @@ async def quick_send_group_sms(
             "sent_messages": sent_messages
         }
     }
+
 @router.post("/send-from-file")
 async def quick_send_sms(
     sender_id: str = Form(...),
@@ -566,19 +568,16 @@ async def quick_send_sms(
         user = current_user
         if user is None:
             if not authorization or not authorization.lower().startswith("bearer "):
-                print("AUTH STAGE: Missing authorization")
                 raise HTTPException(status_code=401, detail="Missing authorization. Provide JWT or API token.")
             raw_token = authorization.split(" ", 1)[1].strip()
             user = verify_api_token(db, raw_token)
             if not user:
-                print("AUTH STAGE: Invalid token")
                 raise HTTPException(status_code=401, detail="Invalid or expired API token")
 
         # Validate sender
         try:
             sender_uuid = uuid.UUID(sender_id)
-        except ValueError as e:
-            print("SENDER VALIDATION STAGE:", e)
+        except ValueError:
             raise HTTPException(status_code=400, detail="Invalid sender_id UUID")
 
         sender = db.query(SenderId).filter(
@@ -586,14 +585,12 @@ async def quick_send_sms(
             SenderId.user_id == user.id
         ).first()
         if not sender:
-            print("SENDER VALIDATION STAGE: sender not found")
             raise HTTPException(status_code=404, detail="Sender ID not found or unauthorized")
 
         # Validate template
         try:
             tmpl_uuid = uuid.UUID(template_uuid)
-        except ValueError as e:
-            print("TEMPLATE VALIDATION STAGE:", e)
+        except ValueError:
             raise HTTPException(status_code=400, detail="Invalid template_uuid")
 
         template = db.query(SmsTemplate).filter(
@@ -601,7 +598,6 @@ async def quick_send_sms(
             SmsTemplate.user_id == user.id
         ).first()
         if not template:
-            print("TEMPLATE VALIDATION STAGE: template not found")
             raise HTTPException(status_code=404, detail="Template not found or unauthorized")
 
         # Update template if flagged
@@ -610,30 +606,21 @@ async def quick_send_sms(
             template.updated_at = datetime.utcnow()
             db.add(template)
             db.commit()
-            print("TEMPLATE UPDATE STAGE: updated")
 
         # Fetch template columns
         columns = db.query(TemplateColumn).filter(
             TemplateColumn.template_id == template.id
         ).all()
         if not columns:
-            print("COLUMNS STAGE: no columns found")
             raise HTTPException(status_code=400, detail="Template has no columns defined")
 
         # Parse uploaded file
-        try:
-            rows = parse_excel_or_csv(file)
-        except Exception as e:
-            print("FILE PARSING STAGE:", e)
-            raise HTTPException(status_code=400, detail=f"Failed to parse uploaded file: {str(e)}")
-
+        rows = parse_excel_or_csv(file)
         if not rows:
-            print("FILE PARSING STAGE: no rows found")
             raise HTTPException(status_code=400, detail="Uploaded file contains no data rows")
 
         # Generate personalized messages
         messages = generate_messages(message_template, columns, rows)
-        print(f"MESSAGES GENERATED STAGE: {len(messages)} messages")
 
         # Validate phone numbers
         valid_messages = []
@@ -645,7 +632,6 @@ async def quick_send_sms(
             valid_messages.append((msg, phone))
 
         if not valid_messages:
-            print("PHONE VALIDATION STAGE: no valid recipients")
             return {
                 "success": False,
                 "message": "No valid recipients found after validation",
@@ -655,53 +641,36 @@ async def quick_send_sms(
 
         now = datetime.now(pytz.timezone("Africa/Nairobi")).replace(tzinfo=None)
 
+        # Handle scheduled send using first endpoint approach
         if schedule_flag:
-            print("SCHEDULE FLAG STAGE: Scheduling flow entered")
-
-            # Validate scheduled_for
-            if not scheduled_for:
-                print("SCHEDULE VALIDATION STAGE: scheduled_for missing")
-                raise HTTPException(status_code=400, detail="scheduled_for is required when schedule_flag is True")
-            try:
-                scheduled_dt = datetime.strptime(scheduled_for, "%Y-%m-%d %H:%M:%S")
-            except ValueError as e:
-                print("SCHEDULE VALIDATION STAGE:", e)
-                raise HTTPException(status_code=400, detail="scheduled_for must be 'YYYY-MM-DD HH:MM:SS' format")
-
             schedule_name_clean = schedule_name.strip() if schedule_name else None
             if not schedule_name_clean:
                 schedule_name_clean = (message_template[:50] + "...") if len(message_template) > 50 else message_template
 
-            try:
-                sms_schedule = SmsSchedule(
-                    user_id=user.id,
-                    sender_id=sender.id,
-                    title=schedule_name_clean,
-                    scheduled_for=scheduled_dt,
-                    status=ScheduleStatusEnum.pending.value,
+            sms_schedule = SmsSchedule(
+                user_id=user.id,
+                sender_id=sender.id,
+                title=schedule_name_clean,
+                scheduled_for=datetime.strptime(scheduled_for, "%Y-%m-%d %H:%M:%S") if scheduled_for else None,
+                status=ScheduleStatusEnum.pending.value,
+                created_at=now,
+                updated_at=now
+            )
+            db.add(sms_schedule)
+            db.flush()
+
+            for msg, phone in valid_messages:
+                sched_msg = SmsScheduledMessage(
+                    schedule_id=sms_schedule.id,
+                    phone_number=phone,
+                    message=msg,
+                    status=MessageStatusEnum.pending.value,
                     created_at=now,
                     updated_at=now
                 )
-                db.add(sms_schedule)
-                db.flush()
-                print("SCHEDULE DB STAGE: schedule created")
+                db.add(sched_msg)
 
-                for msg, phone in valid_messages:
-                    sched_msg = SmsScheduledMessage(
-                        schedule_id=sms_schedule.id,
-                        phone_number=phone,
-                        message=msg,
-                        status=MessageStatusEnum.pending.value,
-                        created_at=now,
-                        updated_at=now
-                    )
-                    db.add(sched_msg)
-
-                db.commit()
-                print("SCHEDULE DB STAGE: committed")
-            except Exception as e:
-                print("SCHEDULE DB STAGE ERROR:", e)
-                raise
+            db.commit()
 
             return {
                 "success": True,
@@ -709,21 +678,18 @@ async def quick_send_sms(
                 "errors": errors,
                 "data": {
                     "schedule_uuid": str(sms_schedule.uuid),
-                    "scheduled_for": scheduled_dt.isoformat(),
+                    "scheduled_for": scheduled_for,
                     "total_recipients": len(valid_messages),
                     "failed_recipients": len(errors)
                 }
             }
 
-        # Immediate send path (untouched, but log entry)
-        print("IMMEDIATE SEND STAGE: Sending flow entered")
-
+        # Immediate send
         subscription = db.query(UserSubscription).filter(
             UserSubscription.user_id == user.id,
             UserSubscription.status == "active"
         ).first()
         if not subscription or subscription.remaining_sms <= 0:
-            print("IMMEDIATE SEND STAGE: No subscription or insufficient balance")
             raise HTTPException(status_code=403, detail="No active subscription or insufficient SMS balance")
 
         sms_service = SmsGatewayService(sender.alias)
@@ -770,7 +736,6 @@ async def quick_send_sms(
 
         db.add(subscription)
         db.commit()
-        print("IMMEDIATE SEND STAGE: committed")
 
         return {
             "success": sent_count > 0,
@@ -786,6 +751,7 @@ async def quick_send_sms(
 
     except Exception as e:
         print("GENERAL ERROR STAGE:", e)
+        traceback.print_exc() 
         raise
 
 
