@@ -4,7 +4,8 @@ import traceback
 from typing import Optional
 import uuid
 from fastapi import APIRouter, File, Form, Request, Depends, HTTPException, Header, UploadFile
-from sqlalchemy import insert
+from sqlalchemy import insert, inspect
+import sqlalchemy
 from sqlalchemy.orm import Session
 from datetime import datetime
 import pytz
@@ -471,6 +472,37 @@ async def quick_send_group_sms(
             )
             db.add(sched_msg)
 
+        # 1) Which model class file are we using?
+        print("MODEL FILE:", inspect.getsourcefile(SmsScheduledMessage))
+
+        # 2) Status column SQLAlchemy type info (very important)
+        status_col_type = SmsScheduledMessage.__table__.c.status.type
+        print("STATUS TYPE repr:", repr(status_col_type))
+        print("STATUS TYPE python type:", getattr(status_col_type, "python_type", None))
+        print("STATUS native_enum attr:", getattr(status_col_type, "native_enum", None))
+        print("STATUS enum name:", getattr(status_col_type, "name", None))
+        print("STATUS enum schema:", getattr(status_col_type, "schema", None))
+
+        # 3) How many objects are staged in the session (this proves multi-row)
+        print("SESSION new objects count:", len(db.new))
+        print("SESSION dirty count:", len(db.dirty))
+        print("SESSION deleted count:", len(db.deleted))
+
+        # 4) Show sample staged objects and their status attribute types/values
+        sample = list(db.new)[:6]
+        for i, o in enumerate(sample):
+            print("NEW OBJ", i, "type:", type(o), "attr status (value, type):", getattr(o, "status", None), type(getattr(o, "status", None)))
+
+        # 5) Show bound engine URL (which DB/conn is actually used)
+        bind = db.get_bind()
+        try:
+            print("ENGINE URL (masked):", str(bind.url).replace(bind.url.password or "", ""))
+        except Exception:
+            print("ENGINE URL: (couldn't print)")
+
+        # 6) SQLAlchemy version and enabled logging hint
+        print("SQLAlchemy version:", sqlalchemy.__version__)
+        
         db.commit()
         return {
             "success": True,
@@ -669,6 +701,36 @@ async def quick_send_sms(
                 )
                 db.add(sched_msg)
 
+            # 1) Which model class file are we using?
+            print("MODEL FILE:", inspect.getsourcefile(SmsScheduledMessage))
+
+            # 2) Status column SQLAlchemy type info (very important)
+            status_col_type = SmsScheduledMessage.__table__.c.status.type
+            print("STATUS TYPE repr:", repr(status_col_type))
+            print("STATUS TYPE python type:", getattr(status_col_type, "python_type", None))
+            print("STATUS native_enum attr:", getattr(status_col_type, "native_enum", None))
+            print("STATUS enum name:", getattr(status_col_type, "name", None))
+            print("STATUS enum schema:", getattr(status_col_type, "schema", None))
+
+            # 3) How many objects are staged in the session (this proves multi-row)
+            print("SESSION new objects count:", len(db.new))
+            print("SESSION dirty count:", len(db.dirty))
+            print("SESSION deleted count:", len(db.deleted))
+
+            # 4) Show sample staged objects and their status attribute types/values
+            sample = list(db.new)[:6]
+            for i, o in enumerate(sample):
+                print("NEW OBJ", i, "type:", type(o), "attr status (value, type):", getattr(o, "status", None), type(getattr(o, "status", None)))
+
+            # 5) Show bound engine URL (which DB/conn is actually used)
+            bind = db.get_bind()
+            try:
+                print("ENGINE URL (masked):", str(bind.url).replace(bind.url.password or "", ""))
+            except Exception:
+                print("ENGINE URL: (couldn't print)")
+
+            # 6) SQLAlchemy version and enabled logging hint
+            print("SQLAlchemy version:", sqlalchemy.__version__)
             db.commit()
 
             return {
