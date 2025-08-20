@@ -561,228 +561,200 @@ async def quick_send_sms(
     authorization: Optional[str] = Header(None),
     db: Session = Depends(get_db)
 ):
-    import traceback
+    # Determine user: prefer logged-in user, else API token
+    user = current_user
+    if user is None:
+        if not authorization or not authorization.lower().startswith("bearer "):
+            raise HTTPException(status_code=401, detail="Missing authorization. Provide JWT or API token.")
+        raw_token = authorization.split(" ", 1)[1].strip()
+        user = verify_api_token(db, raw_token)
+        if not user:
+            raise HTTPException(status_code=401, detail="Invalid or expired API token")
+
+    # Validate sender UUID and ownership
     try:
-        # Determine user: prefer logged-in user, else API token
-        user = current_user
-        if user is None:
-            if not authorization or not authorization.lower().startswith("bearer "):
-                raise HTTPException(status_code=401, detail="Missing authorization. Provide JWT or API token.")
-            raw_token = authorization.split(" ", 1)[1].strip()
-            user = verify_api_token(db, raw_token)
-            if not user:
-                raise HTTPException(status_code=401, detail="Invalid or expired API token")
+        sender_uuid = uuid.UUID(sender_id)
+    except ValueError:
+        raise HTTPException(status_code=400, detail="Invalid sender_id UUID")
 
-        # Validate sender UUID and ownership
+    sender = db.query(SenderId).filter(
+        SenderId.uuid == sender_uuid,
+        SenderId.user_id == user.id
+    ).first()
+    if not sender:
+        raise HTTPException(status_code=404, detail="Sender ID not found or unauthorized")
+
+    # Validate template UUID and ownership
+    try:
+        tmpl_uuid = uuid.UUID(template_uuid)
+    except ValueError:
+        raise HTTPException(status_code=400, detail="Invalid template_uuid")
+
+    template = db.query(SmsTemplate).filter(
+        SmsTemplate.uuid == tmpl_uuid,
+        SmsTemplate.user_id == user.id
+    ).first()
+    if not template:
+        raise HTTPException(status_code=404, detail="Template not found or unauthorized")
+
+    # Update template sample message if flagged
+    if update_template:
+        template.sample_message = message_template
+        template.updated_at = datetime.utcnow()
+        db.add(template)
+        db.commit()
+
+    # Get template columns
+    columns = db.query(TemplateColumn).filter(
+        TemplateColumn.template_id == template.id
+    ).all()
+    if not columns:
+        raise HTTPException(status_code=400, detail="Template has no columns defined")
+
+    # Parse uploaded file rows
+    try:
+        rows = parse_excel_or_csv(file)
+    except Exception as e:
+        raise HTTPException(status_code=400, detail=f"Failed to parse uploaded file: {str(e)}")
+
+    if not rows:
+        raise HTTPException(status_code=400, detail="Uploaded file contains no data rows")
+
+    # Generate personalized messages and phones
+    messages = generate_messages(message_template, columns, rows)
+
+    # Validate phone numbers
+    valid_messages = []
+    errors = []
+    for idx, (msg, phone) in enumerate(messages, start=1):
+        if not phone or not validate_phone(phone):
+            errors.append({"row": idx, "phone": phone, "error": "Invalid or missing phone number"})
+            continue
+        valid_messages.append((msg, phone))
+
+    if not valid_messages:
+        return {
+            "success": False,
+            "message": "No valid recipients found after validation",
+            "errors": errors,
+            "data": None
+        }
+
+    now = datetime.now(pytz.timezone("Africa/Nairobi")).replace(tzinfo=None)
+
+    if schedule:
+        # Validate scheduled_for datetime
+        if not scheduled_for:
+            raise HTTPException(status_code=400, detail="scheduled_for is required when schedule is True")
         try:
-            sender_uuid = uuid.UUID(sender_id)
-        except ValueError as e:
-            print(f"Sender UUID parsing error: {e}")
-            raise HTTPException(status_code=400, detail="Invalid sender_id UUID")
+            scheduled_dt = datetime.strptime(scheduled_for, "%Y-%m-%d %H:%M:%S")
+        except ValueError:
+            raise HTTPException(status_code=400, detail="scheduled_for must be 'YYYY-MM-DD HH:MM:SS' format")
 
-        sender = db.query(SenderId).filter(
-            SenderId.uuid == sender_uuid,
-            SenderId.user_id == user.id
-        ).first()
-        if not sender:
-            raise HTTPException(status_code=404, detail="Sender ID not found or unauthorized")
+        if not schedule_name:
+            schedule_name = (message_template[:50] + "...") if len(message_template) > 50 else message_template
 
-        # Validate template UUID and ownership
-        try:
-            tmpl_uuid = uuid.UUID(template_uuid)
-        except ValueError as e:
-            print(f"Template UUID parsing error: {e}")
-            raise HTTPException(status_code=400, detail="Invalid template_uuid")
+        sms_schedule = SmsSchedule(
+            user_id=current_user.id,
+            sender_id=sender.id,
+            title=schedule_name,
+            scheduled_for=scheduled_dt,
+            status=ScheduleStatusEnum.pending.value,
+            created_at=now,
+            updated_at=now
+        )
+        db.add(sms_schedule)
+        db.flush()  
 
-        template = db.query(SmsTemplate).filter(
-            SmsTemplate.uuid == tmpl_uuid,
-            SmsTemplate.user_id == user.id
-        ).first()
-        if not template:
-            raise HTTPException(status_code=404, detail="Template not found or unauthorized")
-
-        # Update template sample message if flagged
-        if update_template:
-            template.sample_message = message_template
-            template.updated_at = datetime.utcnow()
-            db.add(template)
-            db.commit()
-
-        # Get template columns
-        columns = db.query(TemplateColumn).filter(
-            TemplateColumn.template_id == template.id
-        ).all()
-        if not columns:
-            raise HTTPException(status_code=400, detail="Template has no columns defined")
-
-        # Parse uploaded file rows
-        try:
-            rows = parse_excel_or_csv(file)
-        except Exception as e:
-            print(f"File parsing exception: {e}")
-            traceback.print_exc()
-            raise HTTPException(status_code=400, detail=f"Failed to parse uploaded file: {str(e)}")
-
-        if not rows:
-            raise HTTPException(status_code=400, detail="Uploaded file contains no data rows")
-
-        # Generate personalized messages and phones
-        messages = generate_messages(message_template, columns, rows)
-
-        # Validate phone numbers
-        valid_messages = []
-        errors = []
-        for idx, (msg, phone) in enumerate(messages, start=1):
-            if not phone or not validate_phone(phone):
-                errors.append({"row": idx, "phone": phone, "error": "Invalid or missing phone number"})
-                continue
-            valid_messages.append((msg, phone))
-
-        if not valid_messages:
-            return {
-                "success": False,
-                "message": "No valid recipients found after validation",
-                "errors": errors,
-                "data": None
-            }
-
-        now = datetime.now(pytz.timezone("Africa/Nairobi")).replace(tzinfo=None)
-
-        # Handle schedule
-        if schedule:
-            # Print received schedule_name for debugging
-            print(f"Received schedule_name: {repr(schedule_name)}")
-
-            if not scheduled_for:
-                raise HTTPException(status_code=400, detail="scheduled_for is required when schedule is True")
-            try:
-                scheduled_dt = datetime.strptime(scheduled_for, "%Y-%m-%d %H:%M:%S")
-            except ValueError as e:
-                print(f"Scheduled datetime parsing error: {e}")
-                traceback.print_exc()
-                raise HTTPException(status_code=400, detail="scheduled_for must be 'YYYY-MM-DD HH:MM:SS' format")
-
-            if not schedule_name:
-                schedule_name = (message_template[:50] + "...") if len(message_template) > 50 else message_template
-
-            sms_schedule = SmsSchedule(
-                user_id=user.id,
-                sender_id=sender.id,
-                title=schedule_name,
-                scheduled_for=scheduled_dt,
-                status=ScheduleStatusEnum.pending.value,
+        for msg, phone in valid_messages:
+            sched_msg = SmsScheduledMessage(
+                schedule_id=sms_schedule.id,
+                phone_number=phone,
+                message=msg,
+                status=MessageStatusEnum.pending.value,
                 created_at=now,
                 updated_at=now
             )
-            db.add(sms_schedule)
-            db.flush()  # to get sms_schedule.id
+            db.add(sched_msg)
 
-            for msg, phone in valid_messages:
-                try:
-                    sched_msg = SmsScheduledMessage(
-                        schedule_id=sms_schedule.id,
-                        phone_number=phone,
-                        message=msg,
-                        status=MessageStatusEnum.pending.value,
-                        created_at=now,
-                        updated_at=now
-                    )
-                    db.add(sched_msg)
-                except Exception as e:
-                    print(f"Exception creating scheduled message for {phone}: {e}")
-                    traceback.print_exc()
-                    errors.append({"recipient": phone, "error": str(e)})
-
-            db.commit()
-
-            return {
-                "success": True,
-                "message": f"Scheduled {len(valid_messages)} personalized SMS messages.",
-                "errors": errors,
-                "data": {
-                    "schedule_uuid": str(sms_schedule.uuid),
-                    "scheduled_for": scheduled_dt.isoformat(),
-                    "total_recipients": len(valid_messages),
-                    "failed_recipients": len(errors)
-                }
-            }
-
-        # Immediate send path
-        subscription = db.query(UserSubscription).filter(
-            UserSubscription.user_id == user.id,
-            UserSubscription.status == "active"
-        ).first()
-        if not subscription or subscription.remaining_sms <= 0:
-            raise HTTPException(status_code=403, detail="No active subscription or insufficient SMS balance")
-
-        sms_service = SmsGatewayService(sender.alias)
-        sent_count = 0
-        total_parts_used = 0
-        remaining_sms = subscription.remaining_sms
-        sent_messages = []
-        callback_url_with_user = f"{SMS_CALLBACK_URL}?id={user.uuid}"
-
-        for msg, phone in valid_messages:
-            try:
-                parts_needed, _, _ = sms_service.get_sms_parts_and_length(msg)
-
-                if parts_needed > remaining_sms:
-                    errors.append({"recipient": phone, "error": "Insufficient SMS balance for message parts"})
-                    continue
-
-                send_result = await sms_service.send_sms_with_parts_check(phone, msg, callback_url=callback_url_with_user)
-
-                if not send_result.get("success"):
-                    errors.append({"recipient": phone, "error": f"Failed to send SMS: {send_result.get('message', 'Unknown error')}"})
-                    continue
-
-                remaining_sms -= parts_needed
-                subscription.used_sms += parts_needed
-                total_parts_used += parts_needed
-                sent_count += 1
-
-                gateway_data = send_result.get("data", {}) or {}
-                message_id = gateway_data.get("message_id")
-
-                sent_messages.append({
-                    "recipient": phone,
-                    "sms_gateway_response": gateway_data
-                })
-
-                db.add(SentMessage(
-                    sender_alias=sender.alias,
-                    user_id=user.id,
-                    phone_number=phone,
-                    number_of_parts=parts_needed,
-                    message=msg,
-                    message_id=str(message_id) if message_id else None,
-                    sent_at=now
-                ))
-
-            except Exception as e:
-                print(f"Exception sending SMS to {phone}: {e}")
-                traceback.print_exc()
-                errors.append({"recipient": phone, "error": str(e)})
-
-        db.add(subscription)
         db.commit()
 
         return {
-            "success": sent_count > 0,
-            "message": f"Sent {sent_count} SMS messages. {len(errors)} errors.",
+            "success": True,
+            "message": f"Scheduled {len(valid_messages)} personalized SMS messages.",
             "errors": errors,
             "data": {
-                "total_sent": sent_count,
-                "total_parts_used": total_parts_used,
-                "remaining_sms": remaining_sms,
-                "sent_messages": sent_messages
+                "schedule_uuid": str(sms_schedule.uuid),
+                "scheduled_for": scheduled_dt.isoformat(),
+                "total_recipients": len(valid_messages),
+                "failed_recipients": len(errors)
             }
         }
 
-    except Exception as e:
-        print(f"Unexpected exception: {e}")
-        traceback.print_exc()
-        raise HTTPException(status_code=500, detail=f"Internal server error")
+    # Immediate send path
+    subscription = db.query(UserSubscription).filter(
+        UserSubscription.user_id == current_user.id,
+        UserSubscription.status == "active"
+    ).first()
+    if not subscription or subscription.remaining_sms <= 0:
+        raise HTTPException(status_code=403, detail="No active subscription or insufficient SMS balance")
+
+    sms_service = SmsGatewayService(sender.alias)
+    sent_count = 0
+    total_parts_used = 0
+    remaining_sms = subscription.remaining_sms
+    sent_messages = []
+    # Build callback URL with user UUID
+    callback_url_with_user = f"{SMS_CALLBACK_URL}?id={user.uuid}"
+    for msg, phone in valid_messages:
+        parts_needed, _, _ = sms_service.get_sms_parts_and_length(msg)
+
+        if parts_needed > remaining_sms:
+            errors.append({"recipient": phone, "error": "Insufficient SMS balance for message parts"})
+            continue
+
+        send_result = await sms_service.send_sms_with_parts_check(phone, msg, callback_url=callback_url_with_user)
+        if not send_result.get("success"):
+            errors.append({"recipient": phone, "error": f"Failed to send SMS: {send_result.get('message', 'Unknown error')}"})
+            continue
+
+        remaining_sms -= parts_needed
+        subscription.used_sms += parts_needed
+        total_parts_used += parts_needed
+        sent_count += 1
+
+        gateway_data = send_result.get("data", {}) or {}
+        message_id = gateway_data.get("message_id")
+
+        sent_messages.append({
+            "recipient": phone,
+            "sms_gateway_response": gateway_data
+        })
+
+        db.add(SentMessage(
+            sender_alias=sender.alias,
+            user_id=current_user.id,
+            phone_number=phone,
+            number_of_parts=parts_needed,
+            message=msg,
+            message_id=str(message_id) if message_id else None,
+            sent_at=now
+        ))
+
+    db.add(subscription)
+    db.commit()
+
+    return {
+        "success": sent_count > 0,
+        "message": f"Sent {sent_count} SMS messages. {len(errors)} errors.",
+        "errors": errors,
+        "data": {
+            "total_sent": sent_count,
+            "total_parts_used": total_parts_used,
+            "remaining_sms": remaining_sms,
+            "sent_messages": sent_messages
+        }
+    }
 
 @router.post("/webhook")
 async def sms_callback(request: Request, db: Session = Depends(get_db)):

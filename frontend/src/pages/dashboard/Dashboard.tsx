@@ -91,7 +91,7 @@ export default function Dashboard() {
   const fetchRecentMessages = async () => {
     setLoadingRecent(true);
     try {
-      const res = await fetch('https://api.sewmrsms.co.tz/api/v1/auth/dashboard/recent-messages?limit=6', { credentials: 'include' });
+      const res = await fetch('https://api.sewmrsms.co.tz/api/v1/auth/dashboard/recent-messages?limit=4', { credentials: 'include' });
       const data = await res.json();
       if (Array.isArray(data?.recent_messages)) {
         setRecentMessages(
