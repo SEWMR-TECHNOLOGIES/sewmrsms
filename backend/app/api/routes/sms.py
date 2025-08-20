@@ -670,7 +670,7 @@ async def quick_send_sms(
                 sender_id=sender.id,
                 title=schedule_name,
                 scheduled_for=scheduled_dt,
-                status=MessageStatusEnum.pending,
+                status=ScheduleStatusEnum.pending.value,
                 created_at=now,
                 updated_at=now
             )
@@ -683,7 +683,7 @@ async def quick_send_sms(
                         schedule_id=sms_schedule.id,
                         phone_number=phone,
                         message=msg,
-                        status=MessageStatusEnum.pending,
+                        status=MessageStatusEnum.pending.value,
                         created_at=now,
                         updated_at=now
                     )
@@ -782,7 +782,7 @@ async def quick_send_sms(
     except Exception as e:
         print(f"Unexpected exception: {e}")
         traceback.print_exc()
-        raise HTTPException(status_code=500, detail=f"Internal server error: {str(e)}")
+        raise HTTPException(status_code=500, detail=f"Internal server error")
 
 @router.post("/webhook")
 async def sms_callback(request: Request, db: Session = Depends(get_db)):
