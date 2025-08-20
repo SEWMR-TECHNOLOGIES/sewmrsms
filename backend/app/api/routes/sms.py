@@ -4,12 +4,12 @@ import traceback
 from typing import Optional
 import uuid
 from fastapi import APIRouter, File, Form, Request, Depends, HTTPException, Header, UploadFile
-from sqlalchemy import insert
+from sqlalchemy import and_, insert
 from sqlalchemy.orm import Session
 from datetime import datetime
 import pytz
 from api.deps import get_db
-from api.user_auth import get_current_user_optional
+from api.user_auth import get_current_user, get_current_user_optional
 from models.sms_callback import SmsCallback
 from models.sms_template import SmsTemplate
 from core.config import SMS_CALLBACK_URL
@@ -18,7 +18,7 @@ from models.contact_group import ContactGroup
 from models.template_column import TemplateColumn
 from utils.helpers import generate_messages, parse_excel_or_csv
 from models.sent_messages import SentMessage
-from models.enums import MessageStatusEnum, ScheduleStatusEnum
+from models.enums import MessageStatusEnum, ScheduleStatusEnum, SmsDeliveryStatusEnum
 from models.scheduled_message import SmsScheduledMessage
 from models.sms_schedule import SmsSchedule
 from utils.security import verify_api_token
@@ -818,56 +818,52 @@ async def sms_callback(request: Request, db: Session = Depends(get_db)):
 
 @router.get("/history")
 def get_message_history(
-    current_user: Optional[User] = Depends(get_current_user_optional),
-    authorization: Optional[str] = Header(None),
+    current_user: User = Depends(get_current_user),
     db: Session = Depends(get_db)
 ):
     """
-    Fetch all SMS history for the logged-in user.
-    Uses normal SQL join by message_id (no relationships).
+    Returns SMS message history for the logged-in user.
+    Includes the most recent delivery status per message.
     """
+
     try:
-        # Query messages and join callbacks by message_id
-        results = (
-            db.query(
-                SentMessage.id.label("sent_id"),
-                SentMessage.uuid.label("sent_uuid"),
-                SentMessage.sender_alias,
-                SentMessage.phone_number,
-                SentMessage.message,
-                SentMessage.number_of_parts,
-                SentMessage.message_id,
-                SentMessage.sent_at,
-                SmsCallback.status.label("delivery_status"),
-                SmsCallback.received_at.label("delivered_at"),
-                SmsCallback.remarks.label("delivery_remarks"),
-            )
-            .outerjoin(SmsCallback, SentMessage.message_id == SmsCallback.message_id)
+        sent_messages = (
+            db.query(SentMessage)
             .filter(SentMessage.user_id == current_user.id)
             .order_by(SentMessage.sent_at.desc())
             .all()
         )
 
         history = []
-        for row in results:
+
+        for msg in sent_messages:
+            latest_callback = (
+                db.query(SmsCallback)
+                .filter(
+                    and_(
+                        SmsCallback.message_id == msg.message_id,
+                        SmsCallback.user_id == current_user.id
+                    )
+                )
+                .order_by(SmsCallback.received_at.desc())
+                .first()
+            )
+
             history.append({
-                "sent_id": row.sent_id,
-                "uuid": str(row.sent_uuid),
-                "sender_alias": row.sender_alias,
-                "phone_number": row.phone_number,
-                "message": row.message,
-                "num_parts": row.number_of_parts,
-                "message_id": row.message_id,
-                "sent_at": row.sent_at.isoformat() if row.sent_at else None,
-                "delivery_status": row.delivery_status,
-                "delivered_at": row.delivered_at.isoformat() if row.delivered_at else None,
-                "remarks": row.delivery_remarks,
+                "id": msg.id,
+                "sender_alias": msg.sender_alias,
+                "phone_number": msg.phone_number,
+                "message": msg.message,
+                "message_id": msg.message_id,
+                "remarks": msg.remarks,
+                "number_of_parts": msg.number_of_parts,
+                "status": latest_callback.status.value if latest_callback else SmsDeliveryStatusEnum.pending.value
             })
 
         return {
             "success": True,
-            "count": len(history),
-            "data": history,
+            "message": f"Fetched {len(history)} messages",
+            "data": history
         }
 
     except Exception as e:
@@ -877,4 +873,3 @@ def get_message_history(
             "message": f"Internal Server Error: {str(e)}",
             "data": None
         }
-
