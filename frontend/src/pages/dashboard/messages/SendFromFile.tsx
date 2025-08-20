@@ -146,7 +146,7 @@ export default function SendFromTemplate() {
     formData.append('message_template', message);
     formData.append('template_uuid', selectedTemplate);
     formData.append('file', selectedFile);
-    formData.append('schedule', String(scheduleFlag));
+    formData.append('schedule_flag', String(scheduleFlag));
     if (scheduledStr) formData.append('scheduled_for', scheduledStr);
     if (scheduleFlag && scheduleName.trim()) {
       formData.append('schedule_name', scheduleName);

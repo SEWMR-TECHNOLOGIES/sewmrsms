@@ -554,7 +554,7 @@ async def quick_send_sms(
     message_template: str = Form(...),
     template_uuid: str = Form(...),
     update_template: bool = Form(False),
-    schedule: bool = Form(False),
+    schedule_flag: bool = Form(False), 
     scheduled_for: Optional[str] = Form(None),
     schedule_name: Optional[str] = Form(None),
     file: UploadFile = File(...),
@@ -643,23 +643,22 @@ async def quick_send_sms(
 
     now = datetime.now(pytz.timezone("Africa/Nairobi")).replace(tzinfo=None)
 
-    if schedule:
+    if schedule_flag:
         # Validate scheduled_for datetime
         if not scheduled_for:
-            raise HTTPException(status_code=400, detail="scheduled_for is required when schedule is True")
+            raise HTTPException(status_code=400, detail="scheduled_for is required when schedule_flag is True")
         try:
             scheduled_dt = datetime.strptime(scheduled_for, "%Y-%m-%d %H:%M:%S")
         except ValueError:
             raise HTTPException(status_code=400, detail="scheduled_for must be 'YYYY-MM-DD HH:MM:SS' format")
 
-        # Trim schedule_name if provided, else fallback
-        if schedule_name:
-            schedule_name = schedule_name.strip()
+        # schedule_name only trimmed if provided
+        schedule_name = schedule_name.strip() if schedule_name else None
         if not schedule_name:
             schedule_name = (message_template[:50] + "...") if len(message_template) > 50 else message_template
 
         sms_schedule = SmsSchedule(
-            user_id=user.id,  # always use 'user.id' now
+            user_id=user.id,
             sender_id=sender.id,
             title=schedule_name,
             scheduled_for=scheduled_dt,
@@ -668,7 +667,7 @@ async def quick_send_sms(
             updated_at=now
         )
         db.add(sms_schedule)
-        db.flush()  
+        db.flush()  # flush immediately after schedule creation, before adding messages
 
         for msg, phone in valid_messages:
             sched_msg = SmsScheduledMessage(
@@ -695,7 +694,7 @@ async def quick_send_sms(
             }
         }
 
-    # Immediate send path remains unchanged
+    # Immediate send path (unchanged)
     subscription = db.query(UserSubscription).filter(
         UserSubscription.user_id == user.id,
         UserSubscription.status == "active"
@@ -709,6 +708,7 @@ async def quick_send_sms(
     remaining_sms = subscription.remaining_sms
     sent_messages = []
     callback_url_with_user = f"{SMS_CALLBACK_URL}?id={user.uuid}"
+
     for msg, phone in valid_messages:
         parts_needed, _, _ = sms_service.get_sms_parts_and_length(msg)
 
