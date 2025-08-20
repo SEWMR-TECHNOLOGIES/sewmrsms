@@ -38,6 +38,7 @@ import MobilePaymentWaiting from "./pages/dashboard/billing/MobilePaymentConfirm
 import Billing from "./pages/dashboard/billing/Billing";
 import CreateAPIToken from "./pages/dashboard/settings/CreateAPIToken";
 import APITokens from "./pages/dashboard/settings/APITokens";
+import MessageHistory from "./pages/dashboard/messages/MessageHistory";
 
 const queryClient = new QueryClient();
 
@@ -71,7 +72,7 @@ const App = () => (
             <Route path="contacts/import" element={<div>Import Contacts</div>} />
             <Route path="messages/quick-send" element={<QuickSend />} />
             <Route path="messages/from-template" element={<SendFromTemplate />} />
-            <Route path="messages/history" element={<div>Message History</div>} />
+            <Route path="messages/history" element={<MessageHistory />} />
             <Route path="templates" element={<TemplatesPage />} />
             <Route path="templates/new" element={<CreateTemplate />} />
             <Route path="reports/delivery" element={<div>Delivery Reports</div>} />
