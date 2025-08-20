@@ -306,6 +306,8 @@ class SentMessage(Base):
     remarks = Column(Text, nullable=True)               # error messages or notes
     number_of_parts = Column(Integer, nullable=False, default=1)
     sent_at = Column(DateTime, nullable=False, server_default=func.now())
+     # Relationship
+    callbacks = relationship("SmsCallback", back_populates="sent_message", cascade="all, delete-orphan")
 
 
 
@@ -323,6 +325,8 @@ class SmsCallback(Base):
     received_at = Column(DateTime, nullable=False, server_default=func.now())
     sender_alias = Column(Text)
     user_id = Column(Integer, ForeignKey("users.id"), nullable=True)
+    # Relationship
+    sent_message = relationship("SentMessage", back_populates="callbacks")
 
 
 class SmsSchedule(Base):

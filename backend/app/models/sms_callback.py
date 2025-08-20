@@ -5,6 +5,7 @@ import uuid
 
 from db.base import Base
 from models.enums import SmsDeliveryStatusEnum
+from sqlalchemy.orm import relationship
 
 
 class SmsCallback(Base):
@@ -21,3 +22,5 @@ class SmsCallback(Base):
     received_at = Column(DateTime, nullable=False, server_default=func.now())
     sender_alias = Column(Text)
     user_id = Column(Integer, ForeignKey("users.id"), nullable=True)
+    # Relationship
+    sent_message = relationship("SentMessage", back_populates="callbacks")
