@@ -824,7 +824,8 @@ async def sms_callback(request: Request, db: Session = Depends(get_db)):
 
 @router.get("/history")
 def get_message_history(
-    current_user: User = Depends(get_current_user),
+    current_user: Optional[User] = Depends(get_current_user_optional),
+    authorization: Optional[str] = Header(None),
     db: Session = Depends(get_db)
 ):
     """
