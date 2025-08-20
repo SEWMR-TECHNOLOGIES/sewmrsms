@@ -138,6 +138,16 @@ export default function SendFromTemplate() {
         toast({ title: 'Error', description: 'Please select a scheduled date and time', variant: 'destructive' });
         return;
       }
+
+      const now = new Date();
+      if (scheduledFor.getTime() <= now.getTime()) {
+        toast({
+          title: "Error",
+          description: "Scheduled time must be in the future",
+          variant: "destructive"
+        });
+        return;
+      }
       scheduledStr = format(scheduledFor, 'yyyy-MM-dd HH:mm:ss');
     }
 
