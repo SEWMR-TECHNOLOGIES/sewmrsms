@@ -183,7 +183,7 @@ export default function SendFromTemplate() {
       }
     } catch (err) {
       setUploadProgress(0);
-      toast({ title: 'Error', description: 'Failed to send messages', variant: 'destructive' });
+      toast({ title: 'Error',  description: err?.message || String(err), variant: 'destructive' });
     } finally {
       setUploading(false);
     }
