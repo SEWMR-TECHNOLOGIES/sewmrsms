@@ -202,7 +202,7 @@ export default function MessageHistory() {
       link.click();
       document.body.removeChild(link);
       window.URL.revokeObjectURL(url);
-      toast({ title: 'Success', description: 'CSV exported' });
+      toast({ title: 'Success', description: 'CSV exported', variant: 'success'});
     } catch (err: any) {
       toast({ title: 'Error', description: 'Failed to export CSV', variant: 'destructive' });
     } finally {
@@ -214,7 +214,7 @@ export default function MessageHistory() {
     setStartDate(undefined);
     setEndDate(undefined);
     setStatusFilter(undefined);
-    toast({ title: 'Filters cleared' });
+    toast({ title: 'Filters cleared', description: 'All filters have been reset', variant: 'success' });
   };
 
   // prepare SearchableSelect options
