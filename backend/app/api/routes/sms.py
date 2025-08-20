@@ -823,64 +823,63 @@ async def sms_callback(request: Request, db: Session = Depends(get_db)):
         return {"success": False, "message": "Internal server error", "data": None}
 
 @router.get("/history")
-async def get_message_history(
-    current_user: Optional[User] = Depends(get_current_user_optional),
-    authorization: Optional[str] = Header(None),
-    db: Session = Depends(get_db),
+def get_message_history(
+    current_user: User = Depends(get_current_user),
+    db: Session = Depends(get_db)
 ):
     """
-    Fetch all SMS history for the current user.
-    Uses normal SQL join by message_id.
+    Fetch all SMS history for the logged-in user.
+    Uses normal SQL join by message_id (no relationships).
     """
-    # Determine user (JWT first, fallback to API token)
-    user = current_user
-    if user is None:
-        if not authorization or not authorization.lower().startswith("bearer "):
-            raise HTTPException(status_code=401, detail="Missing authorization. Provide JWT or API token.")
-        raw_token = authorization.split(" ", 1)[1].strip()
-        user = verify_api_token(db, raw_token)
-        if not user:
-            raise HTTPException(status_code=401, detail="Invalid or expired API token")
-
-    # Query messages and join callbacks by message_id
-    results = (
-        db.query(
-            SentMessage.id.label("sent_id"),
-            SentMessage.uuid.label("sent_uuid"),
-            SentMessage.sender_alias,
-            SentMessage.phone_number,
-            SentMessage.message,
-            SentMessage.number_of_parts,
-            SentMessage.message_id,
-            SentMessage.sent_at,
-            SmsCallback.status.label("delivery_status"),
-            SmsCallback.received_at.label("delivered_at"),
-            SmsCallback.remarks.label("delivery_remarks"),
+    try:
+        # Query messages and join callbacks by message_id
+        results = (
+            db.query(
+                SentMessage.id.label("sent_id"),
+                SentMessage.uuid.label("sent_uuid"),
+                SentMessage.sender_alias,
+                SentMessage.phone_number,
+                SentMessage.message,
+                SentMessage.number_of_parts,
+                SentMessage.message_id,
+                SentMessage.sent_at,
+                SmsCallback.status.label("delivery_status"),
+                SmsCallback.received_at.label("delivered_at"),
+                SmsCallback.remarks.label("delivery_remarks"),
+            )
+            .outerjoin(SmsCallback, SentMessage.message_id == SmsCallback.message_id)
+            .filter(SentMessage.user_id == current_user.id)
+            .order_by(SentMessage.sent_at.desc())
+            .all()
         )
-        .outerjoin(SmsCallback, SentMessage.message_id == SmsCallback.message_id)
-        .filter(SentMessage.user_id == user.id)
-        .order_by(SentMessage.sent_at.desc())
-        .all()
-    )
 
-    history = []
-    for row in results:
-        history.append({
-            "sent_id": row.sent_id,
-            "uuid": str(row.sent_uuid),
-            "sender_alias": row.sender_alias,
-            "phone_number": row.phone_number,
-            "message": row.message,
-            "num_parts": row.number_of_parts,
-            "message_id": row.message_id,
-            "sent_at": row.sent_at.isoformat() if row.sent_at else None,
-            "delivery_status": row.delivery_status,
-            "delivered_at": row.delivered_at.isoformat() if row.delivered_at else None,
-            "remarks": row.delivery_remarks,
-        })
+        history = []
+        for row in results:
+            history.append({
+                "sent_id": row.sent_id,
+                "uuid": str(row.sent_uuid),
+                "sender_alias": row.sender_alias,
+                "phone_number": row.phone_number,
+                "message": row.message,
+                "num_parts": row.number_of_parts,
+                "message_id": row.message_id,
+                "sent_at": row.sent_at.isoformat() if row.sent_at else None,
+                "delivery_status": row.delivery_status,
+                "delivered_at": row.delivered_at.isoformat() if row.delivered_at else None,
+                "remarks": row.delivery_remarks,
+            })
 
-    return {
-        "success": True,
-        "count": len(history),
-        "data": history,
-    }
+        return {
+            "success": True,
+            "count": len(history),
+            "data": history,
+        }
+
+    except Exception as e:
+        print("Error fetching message history:", str(e))
+        return {
+            "success": False,
+            "message": f"Internal Server Error: {str(e)}",
+            "data": None
+        }
+
