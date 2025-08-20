@@ -8,10 +8,11 @@ import { Popover, PopoverContent, PopoverTrigger } from '@/components/ui/popover
 import { DataTable } from '@/components/ui/data-table';
 import { ColumnDef } from '@tanstack/react-table';
 import { CalendarIcon, Download, MessageSquare, Filter } from 'lucide-react';
-import { format } from 'date-fns';
+import { format, startOfDay, endOfDay, isValid } from 'date-fns';
 import { cn } from '@/lib/utils';
 import { useToast } from '@/hooks/use-toast';
 import { Loader } from '@/components/ui/loader';
+import { SearchableSelect } from '@/components/ui/searchable-select';
 
 interface SentMessage {
   id: number;
@@ -25,12 +26,25 @@ interface SentMessage {
   status: string;
 }
 
+const STATUS_OPTIONS = [
+  'PENDING',
+  'DELIVERED',
+  'UNDELIVERABLE',
+  'ACKNOWLEDGED',
+  'EXPIRED',
+  'ACCEPTED',
+  'REJECTED',
+  'UNKNOWN',
+  'FAILED',
+  'DND',
+];
+
 export default function MessageHistory() {
   const [messages, setMessages] = useState<SentMessage[]>([]);
   const [loading, setLoading] = useState(true);
-  const [startDate, setStartDate] = useState<Date>();
-  const [endDate, setEndDate] = useState<Date>();
-  const [statusFilter, setStatusFilter] = useState<string>();
+  const [startDate, setStartDate] = useState<Date | undefined>();
+  const [endDate, setEndDate] = useState<Date | undefined>();
+  const [statusFilter, setStatusFilter] = useState<string | undefined>();
   const [exporting, setExporting] = useState(false);
   const { toast } = useToast();
 
@@ -39,7 +53,10 @@ export default function MessageHistory() {
       accessorKey: 'sent_at',
       header: 'Date/Time',
       cell: ({ row }) => {
-        const date = new Date(row.getValue('sent_at'));
+        const raw = row.getValue('sent_at') as string | undefined;
+        if (!raw) return <span className="text-muted-foreground">-</span>;
+        const date = new Date(raw);
+        if (!isValid(date)) return <span className="text-muted-foreground">Invalid date</span>;
         return (
           <div className="space-y-1">
             <div className="font-medium">{format(date, 'MMM dd, yyyy')}</div>
@@ -91,7 +108,7 @@ export default function MessageHistory() {
       accessorKey: 'status',
       header: 'Status',
       cell: ({ row }) => {
-        const status = row.getValue('status') as string;
+        const status = (row.getValue('status') as string || '').toUpperCase();
         const variant =
           status === 'DELIVERED' || status === 'ACKNOWLEDGED' || status === 'ACCEPTED'
             ? 'default'
@@ -108,10 +125,14 @@ export default function MessageHistory() {
     try {
       const res = await fetch('https://api.sewmrsms.co.tz/api/v1/sms/history', { credentials: 'include' });
       if (!res.ok) throw new Error('Failed to fetch messages');
-      const data = await res.json();
-      setMessages(data.data || []);
+      const payload = await res.json();
+      // Ensure sent_at exists and is ISO. Backend should provide sent_at; fallback to empty string.
+      const data = Array.isArray(payload.data)
+        ? payload.data.map((m: any) => ({ ...m, sent_at: m.sent_at ?? '' }))
+        : [];
+      setMessages(data);
     } catch (err: any) {
-      toast({ title: 'Error', description: err.message || 'Failed to fetch messages', variant: 'destructive' });
+      toast({ title: 'Error', description: err?.message || 'Failed to fetch messages', variant: 'destructive' });
     } finally {
       setLoading(false);
     }
@@ -121,17 +142,28 @@ export default function MessageHistory() {
     fetchMessages();
   }, []);
 
-  // Filtered messages by date and status locally
+  // compute inclusive start/end days for intuitive filtering
+  const appliedStart = startDate ? startOfDay(startDate) : undefined;
+  const appliedEnd = endDate ? endOfDay(endDate) : undefined;
+
   const filteredMessages = messages.filter(msg => {
-    const msgDate = new Date(msg.sent_at);
-    const matchDate =
-      (!startDate || msgDate >= startDate) &&
-      (!endDate || msgDate <= endDate);
+    // date filter using ISO sent_at
+    if (msg.sent_at) {
+      const msgDate = new Date(msg.sent_at);
+      if (!isValid(msgDate)) return false;
+      if (appliedStart && msgDate < appliedStart) return false;
+      if (appliedEnd && msgDate > appliedEnd) return false;
+    } else {
+      // if message has no sent_at, only include it when no date filters applied
+      if (appliedStart || appliedEnd) return false;
+    }
 
-    const matchStatus =
-      !statusFilter || msg.status.toUpperCase() === statusFilter.toUpperCase();
+    // status filter: compare uppercase exact
+    if (statusFilter && statusFilter.trim() !== '') {
+      if ((msg.status || '').toUpperCase() !== statusFilter.toUpperCase()) return false;
+    }
 
-    return matchDate && matchStatus;
+    return true;
   });
 
   const exportMessagesCSV = () => {
@@ -142,29 +174,51 @@ export default function MessageHistory() {
 
     setExporting(true);
 
-    const headers = ['Date/Time', 'Sender ID', 'Recipient', 'Message', 'Parts', 'Message ID', 'Status'];
-    const rows = filteredMessages.map(m => [
-      `"${format(new Date(m.sent_at), 'yyyy-MM-dd HH:mm')}"`,
-      `"${m.sender_alias}"`,
-      `"${m.phone_number}"`,
-      `"${m.message.replace(/"/g, '""')}"`,
-      `"${m.number_of_parts}"`,
-      `"${m.message_id || ''}"`,
-      `"${m.status}"`
-    ]);
+    try {
+      const headers = ['Date/Time', 'Sender ID', 'Recipient', 'Message', 'Parts', 'Message ID', 'Status'];
+      const rows = filteredMessages.map(m => {
+        // safe date formatting
+        const dateStr = m.sent_at && isValid(new Date(m.sent_at))
+          ? format(new Date(m.sent_at), 'yyyy-MM-dd HH:mm')
+          : '';
+        return [
+          `"${dateStr}"`,
+          `"${(m.sender_alias || '').replace(/"/g, '""')}"`,
+          `"${(m.phone_number || '').replace(/"/g, '""')}"`,
+          `"${(m.message || '').replace(/"/g, '""')}"`,
+          `"${m.number_of_parts ?? ''}"`,
+          `"${m.message_id ?? ''}"`,
+          `"${(m.status ?? '').toUpperCase()}"`
+        ].join(',');
+      });
 
-    const csvContent = [headers.join(','), ...rows.map(r => r.join(','))].join('\n');
-    const blob = new Blob([csvContent], { type: 'text/csv;charset=utf-8;' });
-    const url = URL.createObjectURL(blob);
-    const link = document.createElement('a');
-    link.href = url;
-    link.setAttribute('download', `message_history_${new Date().toISOString().split('T')[0]}.csv`);
-    document.body.appendChild(link);
-    link.click();
-    document.body.removeChild(link);
-
-    setExporting(false);
+      const csvContent = [headers.join(','), ...rows].join('\n');
+      const blob = new Blob([csvContent], { type: 'text/csv;charset=utf-8;' });
+      const url = URL.createObjectURL(blob);
+      const link = document.createElement('a');
+      link.href = url;
+      link.setAttribute('download', `message_history_${new Date().toISOString().slice(0,10)}.csv`);
+      document.body.appendChild(link);
+      link.click();
+      document.body.removeChild(link);
+      window.URL.revokeObjectURL(url);
+      toast({ title: 'Success', description: 'CSV exported' });
+    } catch (err: any) {
+      toast({ title: 'Error', description: 'Failed to export CSV', variant: 'destructive' });
+    } finally {
+      setExporting(false);
+    }
   };
+
+  const resetFilters = () => {
+    setStartDate(undefined);
+    setEndDate(undefined);
+    setStatusFilter(undefined);
+    toast({ title: 'Filters cleared' });
+  };
+
+  // prepare SearchableSelect options
+  const statusOptions = STATUS_OPTIONS.map(s => ({ value: s, label: s }));
 
   return (
     <div className="space-y-6">
@@ -193,7 +247,10 @@ export default function MessageHistory() {
               <Label>Start Date</Label>
               <Popover>
                 <PopoverTrigger asChild>
-                  <Button variant="outline" className={cn("w-[240px] justify-start text-left font-normal", !startDate && "text-muted-foreground")}>
+                  <Button
+                    variant="outline"
+                    className={cn("w-[240px] justify-start text-left font-normal", !startDate && "text-muted-foreground")}
+                  >
                     <CalendarIcon className="mr-2 h-4 w-4" />
                     {startDate ? format(startDate, "PPP") : "Pick start date"}
                   </Button>
@@ -209,7 +266,10 @@ export default function MessageHistory() {
               <Label>End Date</Label>
               <Popover>
                 <PopoverTrigger asChild>
-                  <Button variant="outline" className={cn("w-[240px] justify-start text-left font-normal", !endDate && "text-muted-foreground")}>
+                  <Button
+                    variant="outline"
+                    className={cn("w-[240px] justify-start text-left font-normal", !endDate && "text-muted-foreground")}
+                  >
                     <CalendarIcon className="mr-2 h-4 w-4" />
                     {endDate ? format(endDate, "PPP") : "Pick end date"}
                   </Button>
@@ -220,33 +280,25 @@ export default function MessageHistory() {
               </Popover>
             </div>
 
-            {/* Status */}
-            <div className="space-y-2">
+            {/* Status (SearchableSelect) */}
+            <div className="space-y-2 w-[240px]">
               <Label>Status</Label>
-              <select
-                value={statusFilter || ''}
-                onChange={e => setStatusFilter(e.target.value || undefined)}
-                className="border rounded p-2 w-full"
-              >
-                <option value="">All</option>
-                <option value="PENDING">PENDING</option>
-                <option value="DELIVERED">DELIVERED</option>
-                <option value="UNDELIVERABLE">UNDELIVERABLE</option>
-                <option value="ACKNOWLEDGED">ACKNOWLEDGED</option>
-                <option value="EXPIRED">EXPIRED</option>
-                <option value="ACCEPTED">ACCEPTED</option>
-                <option value="REJECTED">REJECTED</option>
-                <option value="UNKNOWN">UNKNOWN</option>
-                <option value="FAILED">FAILED</option>
-                <option value="DND">DND</option>
-              </select>
+              <SearchableSelect
+                options={statusOptions}
+                value={statusFilter ?? ''}
+                onValueChange={(v: string) => setStatusFilter(v || undefined)}
+                placeholder="Filter by status..."
+                searchPlaceholder="Search status..."
+                className="w-full"
+              />
             </div>
 
             {/* Actions */}
             <div className="flex gap-2">
-              <Button onClick={() => {}} variant="default">
-                <Filter className="mr-2 h-4 w-4" /> Filter
+              <Button onClick={() => { /* filtering is reactive, this button kept for UX parity */ }} variant="default">
+                <Filter className="mr-2 h-4 w-4" /> Apply
               </Button>
+              <Button onClick={resetFilters} variant="ghost">Reset</Button>
               <Button onClick={exportMessagesCSV} variant="outline" disabled={exporting || filteredMessages.length === 0}>
                 <Download className="mr-2 h-4 w-4" /> {exporting ? 'Exporting...' : 'Export CSV'}
               </Button>
