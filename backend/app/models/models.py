@@ -316,7 +316,7 @@ class SmsCallback(Base):
     uuid = Column(UUID(as_uuid=True), unique=True, nullable=False, default=uuid.uuid4)
     message_id = Column(Text, nullable=False)
     phone = Column(String(15), nullable=False)
-    status = Column(Enum(SmsDeliveryStatusEnum, name="sms_delivery_status", native_enum=True), nullable=False, default=SmsDeliveryStatusEnum.pending.value)
+    status = Column(Enum(SmsDeliveryStatusEnum, name="sms_delivery_status"), nullable=False, default=SmsDeliveryStatusEnum.pending)
     uid = Column(Text)
     remarks = Column(Text)
     payload = Column(JSON)

@@ -825,12 +825,11 @@ async def sms_callback(request: Request, db: Session = Depends(get_db)):
 @router.get("/history")
 def get_message_history(
     current_user: Optional[User] = Depends(get_current_user_optional),
-    authorization: Optional[str] = Header(None),
     db: Session = Depends(get_db)
 ):
     """
     Fetch all SMS history for the logged-in user.
-    Uses normal SQL join by message_id (no relationships).
+    Uses normal SQL join by message_id (no relationships, no Enum conversion).
     """
     try:
         # Query messages and join callbacks by message_id
@@ -844,7 +843,7 @@ def get_message_history(
                 SentMessage.number_of_parts,
                 SentMessage.message_id,
                 SentMessage.sent_at,
-                SmsCallback.status.label("delivery_status"),
+                SmsCallback.status.label("delivery_status"),  # fetch as string
                 SmsCallback.received_at.label("delivered_at"),
                 SmsCallback.remarks.label("delivery_remarks"),
             )
@@ -865,7 +864,7 @@ def get_message_history(
                 "num_parts": row.number_of_parts,
                 "message_id": row.message_id,
                 "sent_at": row.sent_at.isoformat() if row.sent_at else None,
-                "delivery_status": row.delivery_status,
+                "delivery_status": row.delivery_status,  # string
                 "delivered_at": row.delivered_at.isoformat() if row.delivered_at else None,
                 "remarks": row.delivery_remarks,
             })
@@ -883,4 +882,3 @@ def get_message_history(
             "message": f"Internal Server Error: {str(e)}",
             "data": None
         }
-
