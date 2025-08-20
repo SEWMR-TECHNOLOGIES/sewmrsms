@@ -30,6 +30,7 @@ export default function MessageHistory() {
   const [loading, setLoading] = useState(true);
   const [startDate, setStartDate] = useState<Date>();
   const [endDate, setEndDate] = useState<Date>();
+  const [statusFilter, setStatusFilter] = useState<string>();
   const [exporting, setExporting] = useState(false);
   const { toast } = useToast();
 
@@ -50,9 +51,7 @@ export default function MessageHistory() {
     {
       accessorKey: 'sender_alias',
       header: 'Sender ID',
-      cell: ({ row }) => (
-        <Badge variant="outline" className="font-mono">{row.getValue('sender_alias')}</Badge>
-      ),
+      cell: ({ row }) => <Badge variant="outline" className="font-mono">{row.getValue('sender_alias')}</Badge>,
     },
     {
       accessorKey: 'phone_number',
@@ -88,30 +87,26 @@ export default function MessageHistory() {
         ) : <span className="text-muted-foreground">-</span>;
       },
     },
-   {
-    accessorKey: 'status',
-    header: 'Status',
-    cell: ({ row }) => {
+    {
+      accessorKey: 'status',
+      header: 'Status',
+      cell: ({ row }) => {
         const status = row.getValue('status') as string;
         const variant =
-        status === 'DELIVERED' || status === 'ACKNOWLEDGED' || status === 'ACCEPTED'
+          status === 'DELIVERED' || status === 'ACKNOWLEDGED' || status === 'ACCEPTED'
             ? 'default'
             : status === 'FAILED'
             ? 'destructive'
             : 'secondary';
         return <Badge variant={variant}>{status}</Badge>;
-    },
+      },
     },
   ];
 
-  const fetchMessages = async (start?: Date, end?: Date) => {
+  const fetchMessages = async () => {
     setLoading(true);
     try {
-      const params = new URLSearchParams();
-      if (start) params.append('start_date', start.toISOString().split('T')[0]);
-      if (end) params.append('end_date', end.toISOString().split('T')[0]);
-
-      const res = await fetch(`https://api.sewmrsms.co.tz/api/v1/sms/history?${params}`, { credentials: 'include' });
+      const res = await fetch('https://api.sewmrsms.co.tz/api/v1/sms/history', { credentials: 'include' });
       if (!res.ok) throw new Error('Failed to fetch messages');
       const data = await res.json();
       setMessages(data.data || []);
@@ -126,23 +121,36 @@ export default function MessageHistory() {
     fetchMessages();
   }, []);
 
-  const handleFilter = () => fetchMessages(startDate, endDate);
+  // Filtered messages by date and status locally
+  const filteredMessages = messages.filter(msg => {
+    const msgDate = new Date(msg.sent_at);
+    const matchDate =
+      (!startDate || msgDate >= startDate) &&
+      (!endDate || msgDate <= endDate);
+
+    const matchStatus =
+      !statusFilter || msg.status.toUpperCase() === statusFilter.toUpperCase();
+
+    return matchDate && matchStatus;
+  });
 
   const exportMessagesCSV = () => {
-    if (messages.length === 0) {
-        toast({ title: 'Info', description: 'No messages to export', variant: 'default' });
-        return;
+    if (filteredMessages.length === 0) {
+      toast({ title: 'Info', description: 'No messages to export', variant: 'default' });
+      return;
     }
 
+    setExporting(true);
+
     const headers = ['Date/Time', 'Sender ID', 'Recipient', 'Message', 'Parts', 'Message ID', 'Status'];
-    const rows = messages.map(m => [
-        `"${format(new Date(m.sent_at), 'yyyy-MM-dd HH:mm')}"`,
-        `"${m.sender_alias}"`,
-        `"${m.phone_number}"`,
-        `"${m.message.replace(/"/g, '""')}"`,
-        `"${m.number_of_parts}"`,
-        `"${m.message_id || ''}"`,
-        `"${!m.message_id && m.remarks ? 'Failed' : m.message_id ? 'Sent' : 'Pending'}"`
+    const rows = filteredMessages.map(m => [
+      `"${format(new Date(m.sent_at), 'yyyy-MM-dd HH:mm')}"`,
+      `"${m.sender_alias}"`,
+      `"${m.phone_number}"`,
+      `"${m.message.replace(/"/g, '""')}"`,
+      `"${m.number_of_parts}"`,
+      `"${m.message_id || ''}"`,
+      `"${m.status}"`
     ]);
 
     const csvContent = [headers.join(','), ...rows.map(r => r.join(','))].join('\n');
@@ -154,7 +162,9 @@ export default function MessageHistory() {
     document.body.appendChild(link);
     link.click();
     document.body.removeChild(link);
-    };
+
+    setExporting(false);
+  };
 
   return (
     <div className="space-y-6">
@@ -174,7 +184,7 @@ export default function MessageHistory() {
             <Filter className="h-5 w-5" />
             Filters & Export
           </CardTitle>
-          <CardDescription>Filter messages by date range and export to CSV</CardDescription>
+          <CardDescription>Filter messages by date range and status</CardDescription>
         </CardHeader>
         <CardContent>
           <div className="flex flex-col sm:flex-row gap-4 items-end">
@@ -210,12 +220,34 @@ export default function MessageHistory() {
               </Popover>
             </div>
 
+            {/* Status */}
+            <div className="space-y-2">
+              <Label>Status</Label>
+              <select
+                value={statusFilter || ''}
+                onChange={e => setStatusFilter(e.target.value || undefined)}
+                className="border rounded p-2 w-full"
+              >
+                <option value="">All</option>
+                <option value="PENDING">PENDING</option>
+                <option value="DELIVERED">DELIVERED</option>
+                <option value="UNDELIVERABLE">UNDELIVERABLE</option>
+                <option value="ACKNOWLEDGED">ACKNOWLEDGED</option>
+                <option value="EXPIRED">EXPIRED</option>
+                <option value="ACCEPTED">ACCEPTED</option>
+                <option value="REJECTED">REJECTED</option>
+                <option value="UNKNOWN">UNKNOWN</option>
+                <option value="FAILED">FAILED</option>
+                <option value="DND">DND</option>
+              </select>
+            </div>
+
             {/* Actions */}
             <div className="flex gap-2">
-              <Button onClick={handleFilter} variant="default">
+              <Button onClick={() => {}} variant="default">
                 <Filter className="mr-2 h-4 w-4" /> Filter
               </Button>
-              <Button onClick={exportMessagesCSV} variant="outline" disabled={exporting || messages.length === 0}>
+              <Button onClick={exportMessagesCSV} variant="outline" disabled={exporting || filteredMessages.length === 0}>
                 <Download className="mr-2 h-4 w-4" /> {exporting ? 'Exporting...' : 'Export CSV'}
               </Button>
             </div>
@@ -226,12 +258,12 @@ export default function MessageHistory() {
       {/* Messages Table */}
       <Card>
         <CardHeader>
-          <CardTitle>Messages ({messages.length})</CardTitle>
+          <CardTitle>Messages ({filteredMessages.length})</CardTitle>
           <CardDescription>All your sent messages with delivery status</CardDescription>
         </CardHeader>
         <CardContent className="relative">
           {loading && <Loader overlay />}
-          <DataTable columns={columns} data={messages} searchPlaceholder="Search messages..." />
+          <DataTable columns={columns} data={filteredMessages} searchPlaceholder="Search messages..." />
         </CardContent>
       </Card>
     </div>
