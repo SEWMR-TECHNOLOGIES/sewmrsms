@@ -620,18 +620,18 @@ async def quick_send_sms(
             raise HTTPException(status_code=400, detail="Uploaded file contains no data rows")
 
         # Generate personalized messages
-        messages = generate_messages(message_template, columns, rows)
+        raw_messages = generate_messages(message_template, columns, rows)
 
-        # Validate phone numbers
-        valid_messages = []
+        # Validate phone numbers and build personalized_messages
+        personalized_messages = []
         errors = []
-        for idx, (msg, phone) in enumerate(messages, start=1):
+        for idx, (msg, phone) in enumerate(raw_messages, start=1):
             if not phone or not validate_phone(phone):
                 errors.append({"row": idx, "phone": phone, "error": "Invalid or missing phone number"})
                 continue
-            valid_messages.append((msg, phone))
+            personalized_messages.append((phone, msg)) 
 
-        if not valid_messages:
+        if not personalized_messages:
             return {
                 "success": False,
                 "message": "No valid recipients found after validation",
@@ -641,16 +641,15 @@ async def quick_send_sms(
 
         now = datetime.now(pytz.timezone("Africa/Nairobi")).replace(tzinfo=None)
 
-        # Handle scheduled send using first endpoint approach
+        # Handle scheduled send
         if schedule_flag:
-            schedule_name_clean = schedule_name.strip() if schedule_name else None
-            if not schedule_name_clean:
-                schedule_name_clean = (message_template[:50] + "...") if len(message_template) > 50 else message_template
+            if not schedule_name:
+                schedule_name = (message_template[:50] + "...") if len(message_template) > 50 else message_template
 
             sms_schedule = SmsSchedule(
                 user_id=user.id,
                 sender_id=sender.id,
-                title=schedule_name_clean,
+                title=schedule_name,
                 scheduled_for=datetime.strptime(scheduled_for, "%Y-%m-%d %H:%M:%S") if scheduled_for else None,
                 status=ScheduleStatusEnum.pending.value,
                 created_at=now,
@@ -659,7 +658,7 @@ async def quick_send_sms(
             db.add(sms_schedule)
             db.flush()
 
-            for msg, phone in valid_messages:
+            for phone, msg in personalized_messages:
                 sched_msg = SmsScheduledMessage(
                     schedule_id=sms_schedule.id,
                     phone_number=phone,
@@ -674,12 +673,12 @@ async def quick_send_sms(
 
             return {
                 "success": True,
-                "message": f"Scheduled {len(valid_messages)} personalized SMS messages.",
+                "message": f"Scheduled {len(personalized_messages)} personalized SMS messages.",
                 "errors": errors,
                 "data": {
                     "schedule_uuid": str(sms_schedule.uuid),
                     "scheduled_for": scheduled_for,
-                    "total_recipients": len(valid_messages),
+                    "total_recipients": len(personalized_messages),
                     "failed_recipients": len(errors)
                 }
             }
@@ -699,7 +698,7 @@ async def quick_send_sms(
         sent_messages = []
         callback_url_with_user = f"{SMS_CALLBACK_URL}?id={user.uuid}"
 
-        for msg, phone in valid_messages:
+        for phone, msg in personalized_messages:
             parts_needed, _, _ = sms_service.get_sms_parts_and_length(msg)
 
             if parts_needed > remaining_sms:
@@ -708,7 +707,7 @@ async def quick_send_sms(
 
             send_result = await sms_service.send_sms_with_parts_check(phone, msg, callback_url=callback_url_with_user)
             if not send_result.get("success"):
-                errors.append({"recipient": phone, "error": f"Failed to send SMS: {send_result.get('message', 'Unknown error')}"})
+                errors.append({"recipient": phone, "error": f"Failed to send SMS: {send_result.get('message', 'Unknown error')}"} )
                 continue
 
             remaining_sms -= parts_needed
@@ -751,9 +750,8 @@ async def quick_send_sms(
 
     except Exception as e:
         print("GENERAL ERROR STAGE:", e)
-        traceback.print_exc() 
+        traceback.print_exc()
         raise
-
 
 @router.post("/webhook")
 async def sms_callback(request: Request, db: Session = Depends(get_db)):
