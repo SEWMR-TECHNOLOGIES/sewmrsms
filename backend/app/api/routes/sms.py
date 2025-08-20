@@ -651,11 +651,14 @@ async def quick_send_sms(
         except ValueError:
             raise HTTPException(status_code=400, detail="scheduled_for must be 'YYYY-MM-DD HH:MM:SS' format")
 
+        # Trim schedule_name if provided, else fallback
+        if schedule_name:
+            schedule_name = schedule_name.strip()
         if not schedule_name:
             schedule_name = (message_template[:50] + "...") if len(message_template) > 50 else message_template
 
         sms_schedule = SmsSchedule(
-            user_id=current_user.id,
+            user_id=user.id,  # always use 'user.id' now
             sender_id=sender.id,
             title=schedule_name,
             scheduled_for=scheduled_dt,
@@ -691,9 +694,9 @@ async def quick_send_sms(
             }
         }
 
-    # Immediate send path
+    # Immediate send path remains unchanged
     subscription = db.query(UserSubscription).filter(
-        UserSubscription.user_id == current_user.id,
+        UserSubscription.user_id == user.id,
         UserSubscription.status == "active"
     ).first()
     if not subscription or subscription.remaining_sms <= 0:
@@ -704,7 +707,6 @@ async def quick_send_sms(
     total_parts_used = 0
     remaining_sms = subscription.remaining_sms
     sent_messages = []
-    # Build callback URL with user UUID
     callback_url_with_user = f"{SMS_CALLBACK_URL}?id={user.uuid}"
     for msg, phone in valid_messages:
         parts_needed, _, _ = sms_service.get_sms_parts_and_length(msg)
@@ -733,7 +735,7 @@ async def quick_send_sms(
 
         db.add(SentMessage(
             sender_alias=sender.alias,
-            user_id=current_user.id,
+            user_id=user.id,
             phone_number=phone,
             number_of_parts=parts_needed,
             message=msg,
@@ -755,6 +757,7 @@ async def quick_send_sms(
             "sent_messages": sent_messages
         }
     }
+
 
 @router.post("/webhook")
 async def sms_callback(request: Request, db: Session = Depends(get_db)):
