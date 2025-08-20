@@ -278,13 +278,15 @@ export default function SendFromTemplate() {
                 </AlertDescription>
               </Alert>
 
-              <div className="space-y-2">
+<div className="space-y-2">
                 <ToggleSwitch checked={scheduleFlag} onChange={setScheduleFlag} label="Schedule Message" />
+
                 {scheduleFlag && (
-                  // <-- Responsive row: stacked on small, single-line on large screens
-                  <div className="flex flex-col lg:flex-row lg:items-end gap-2">
+                  <div className="flex flex-col lg:flex-row lg:items-start lg:gap-4 space-y-2 lg:space-y-0">
+                    
+                    {/* Schedule Name */}
                     <div className="flex-1">
-                      <Label className="mb-1">Schedule Name</Label>
+                      <label className="block mb-1 font-medium">Schedule Name</label>
                       <Input
                         placeholder="Enter a name for this schedule"
                         value={scheduleName}
@@ -293,15 +295,16 @@ export default function SendFromTemplate() {
                       />
                     </div>
 
+                    {/* Schedule Date & Time */}
                     <div className="flex-1">
-                      <Label className="mb-1">Date & Time (GMT+3)</Label>
+                      <label className="block mb-1 font-medium">Schedule Date & Time (GMT+3)</label>
                       <Popover>
                         <PopoverTrigger>
                           <Input
                             placeholder={
                               scheduledFor
                                 ? format(scheduledFor, 'yyyy-MM-dd HH:mm:ss')
-                                : 'Select date & time (GMT+3)'
+                                : 'Select date & time'
                             }
                             readOnly
                             className="cursor-pointer w-full"
@@ -309,7 +312,11 @@ export default function SendFromTemplate() {
                         </PopoverTrigger>
                         <PopoverContent className="w-auto p-3">
                           <div className="grid gap-3 md:grid-cols-2">
-                            <Calendar mode="single" selected={scheduledFor || undefined} onSelect={onCalendarSelect} />
+                            <Calendar
+                              mode="single"
+                              selected={scheduledFor || undefined}
+                              onSelect={onCalendarSelect}
+                            />
                             <div className="space-y-2">
                               <div className="text-sm font-medium">Time (GMT+3)</div>
                               <div className="flex gap-2 mt-1">
@@ -334,12 +341,6 @@ export default function SendFromTemplate() {
                       </Popover>
                     </div>
                   </div>
-                )}
-
-                {scheduleFlag && (
-                  <Popover>
-                    {/* Kept your original popover for other uses if needed; no behavioral change */}
-                  </Popover>
                 )}
               </div>
 
