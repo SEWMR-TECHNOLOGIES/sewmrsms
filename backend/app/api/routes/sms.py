@@ -865,7 +865,7 @@ def get_message_history(
                 "num_parts": row.number_of_parts,
                 "message_id": row.message_id,
                 "sent_at": row.sent_at.isoformat() if row.sent_at else None,
-                "delivery_status": row.delivery_status,
+                "delivery_status": row.delivery_status.value,
                 "delivered_at": row.delivered_at.isoformat() if row.delivered_at else None,
                 "remarks": row.delivery_remarks,
             })
