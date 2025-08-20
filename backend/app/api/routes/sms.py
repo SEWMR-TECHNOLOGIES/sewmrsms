@@ -864,7 +864,8 @@ def get_message_history(
                 "message_id": msg.message_id,
                 "remarks": msg.remarks,
                 "number_of_parts": msg.number_of_parts,
-                "status": status_value
+                "status": status_value,
+                 "sent_at": msg.sent_at.isoformat() 
             })
 
         return {
