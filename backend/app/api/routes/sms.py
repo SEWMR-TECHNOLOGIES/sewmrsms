@@ -470,8 +470,9 @@ async def quick_send_group_sms(
                 updated_at=now
             )
             db.add(sched_msg)
+            db.commit()
 
-        db.commit()
+        
         return {
             "success": True,
             "message": f"Scheduled SMS to {len(personalized_messages)} recipients.",
