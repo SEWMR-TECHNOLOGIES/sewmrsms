@@ -829,8 +829,8 @@ async def get_message_history(
     db: Session = Depends(get_db),
 ):
     """
-    Fetch all SMS history for the current user (no pagination).
-    Includes sent message details + latest delivery callback.
+    Fetch all SMS history for the current user.
+    Uses normal SQL join by message_id.
     """
     # Determine user (JWT first, fallback to API token)
     user = current_user
@@ -842,7 +842,7 @@ async def get_message_history(
         if not user:
             raise HTTPException(status_code=401, detail="Invalid or expired API token")
 
-    # Query messages and join callbacks (left join so even if no callback yet)
+    # Query messages and join callbacks by message_id
     results = (
         db.query(
             SentMessage.id.label("sent_id"),
