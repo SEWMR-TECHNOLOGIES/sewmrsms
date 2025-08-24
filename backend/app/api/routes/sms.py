@@ -10,6 +10,7 @@ from datetime import datetime
 import pytz
 from api.deps import get_db
 from api.user_auth import get_current_user, get_current_user_optional
+from tasks.send_sms_task import send_sms_task
 from models.sms_callback import SmsCallback
 from models.sms_template import SmsTemplate
 from core.config import SMS_CALLBACK_URL
@@ -27,10 +28,14 @@ from models.user import User
 from models.sender_id import SenderId
 from models.user_subscription import UserSubscription
 from services.sms_gateway_service import SmsGatewayService
+from rq import Queue
+from core.worker_config import redis_conn
+from models.sms_job import SMSJob
 
 PLACEHOLDER_PATTERN = re.compile(r"\{(\w+)\}")
 
 router = APIRouter()
+q = Queue("sms_queue", connection=redis_conn)
 
 @router.post("/send")
 async def send_sms(
@@ -343,6 +348,224 @@ async def quick_send_sms(
         traceback.print_exc()
         raise HTTPException(status_code=500, detail=f"Internal server error: {str(e)}")
 
+@router.post("/quick-send-immediate")
+async def quick_send_sms(
+    request: Request,
+    current_user: Optional[User] = Depends(get_current_user_optional),
+    authorization: Optional[str] = Header(None),
+    db: Session = Depends(get_db),
+):
+    try:
+        # Validate content type
+        content_type = request.headers.get("content-type", "")
+        if "application/json" not in content_type.lower():
+            raise HTTPException(status_code=415, detail="Invalid content type. Expected application/json")
+
+        data = await request.json()
+        sender_id_uuid = data.get("sender_id")
+        message = data.get("message")
+        recipients_text = data.get("recipients")
+        schedule_flag = data.get("schedule", False)
+        scheduled_for_str = data.get("scheduled_for")
+
+        # Safe extraction of schedule_name
+        raw_schedule_name = data.get("schedule_name", None)
+        schedule_name = None
+        if schedule_flag:
+            if raw_schedule_name is not None:
+                schedule_name = str(raw_schedule_name)
+                if schedule_name.strip() == "":
+                    schedule_name = None
+
+
+        # Validate required inputs presence
+        if not sender_id_uuid:
+            raise HTTPException(status_code=400, detail="sender_id is required")
+        if not message or not message.strip():
+            raise HTTPException(status_code=400, detail="message is required")
+        if not recipients_text or not recipients_text.strip():
+            raise HTTPException(status_code=400, detail="recipients is required")
+
+        # Parse and validate sender UUID
+        try:
+            sender_uuid = uuid.UUID(sender_id_uuid)
+        except ValueError as e:
+            print(f"UUID parsing error: {e}")
+            raise HTTPException(status_code=400, detail="sender_id must be a valid UUID")
+
+        # Validate schedule if flagged
+        now = datetime.now(pytz.timezone("Africa/Nairobi")).replace(tzinfo=None)
+        scheduled_for = None
+        if schedule_flag:
+            if not scheduled_for_str:
+                raise HTTPException(status_code=400, detail="scheduled_for datetime is required when schedule")
+            try:
+                scheduled_for = datetime.strptime(scheduled_for_str, "%Y-%m-%d %H:%M:%S")
+            except ValueError as e:
+                print(f"Scheduled datetime parsing error: {e}")
+                raise HTTPException(status_code=400, detail="scheduled_for must be in format 'YYYY-MM-DD HH:MM:SS'")
+
+        # Determine user: prefer logged-in user, else API token
+        user = current_user
+        if user is None:
+            if not authorization or not authorization.lower().startswith("bearer "):
+                raise HTTPException(status_code=401, detail="Missing authorization. Provide JWT or API token.")
+            raw_token = authorization.split(" ", 1)[1].strip()
+            user = verify_api_token(db, raw_token)
+            if not user:
+                raise HTTPException(status_code=401, detail="Invalid or expired API token")
+
+        # Lookup sender by UUID and user_id
+        sender = db.query(SenderId).filter(
+            SenderId.uuid == sender_uuid,
+            SenderId.user_id == user.id
+        ).first()
+        if not sender:
+            raise HTTPException(status_code=404, detail="Sender ID not found or not owned by user")
+
+        # Parse recipients
+        raw_recipients = [line.strip() for line in recipients_text.splitlines() if line.strip()]
+        valid_recipients = []
+        errors = []
+
+        for idx, phone in enumerate(raw_recipients, start=1):
+            if not validate_phone(phone):
+                errors.append({"recipient": phone, "error": "Invalid phone number format"})
+                continue
+            valid_recipients.append(phone)
+
+        if not valid_recipients:
+            return {
+                "success": False,
+                "message": "No valid recipients to send SMS",
+                "errors": errors,
+                "data": None
+            }
+
+        # Scheduling path
+        if schedule_flag:
+            if not schedule_name:
+                schedule_name = (message[:50] + "...") if len(message) > 50 else message
+
+            sms_schedule = SmsSchedule(
+                user_id=user.id,
+                sender_id=sender.id,
+                title=schedule_name,
+                scheduled_for=scheduled_for,
+                status=ScheduleStatusEnum.pending.value,
+                created_at=now,
+                updated_at=now
+            )
+            db.add(sms_schedule)
+            db.flush()
+
+            for phone in valid_recipients:
+                sched_msg = SmsScheduledMessage(
+                    schedule_id=sms_schedule.id,
+                    phone_number=phone,
+                    message=message,
+                    status=MessageStatusEnum.pending.value,
+                    created_at=now,
+                    updated_at=now
+                )
+                db.add(sched_msg)
+
+            db.commit()
+
+            return {
+                "success": True,
+                "message": f"Scheduled SMS to {len(valid_recipients)} recipients.",
+                "errors": errors,
+                "data": {
+                    "schedule_uuid": str(sms_schedule.uuid),
+                    "scheduled_for": scheduled_for.isoformat(),
+                    "total_recipients": len(valid_recipients),
+                    "failed_recipients": len(errors)
+                }
+            }
+
+        # Immediate send path
+        # Get active subscription
+        subscription = db.query(UserSubscription).filter(
+            UserSubscription.user_id == user.id,
+            UserSubscription.status == "active"
+        ).first()
+        if not subscription or subscription.remaining_sms <= 0:
+            raise HTTPException(status_code=403, detail="Insufficient SMS balance or no active subscription")
+
+        sent_count = 0
+        total_parts_used = 0
+        remaining_sms = subscription.remaining_sms
+        queued_messages = []
+
+        # Compute parts once
+        sms_service = SmsGatewayService(sender.alias)
+        parts_needed, _, _ = sms_service.get_sms_parts_and_length(message)
+
+        for phone in valid_recipients:
+            if parts_needed > remaining_sms:
+                errors.append({"recipient": phone, "error": "Insufficient SMS balance for message parts"})
+                continue
+
+            now = datetime.utcnow()
+
+            # Create SMSJob row in DB
+            new_job = SMSJob(
+                user_id=user.id,
+                sender_id=sender.id,
+                phone_number=phone,
+                message=message,
+                status=MessageStatusEnum.pending.value,
+                retries=0,
+                max_retries=3,
+                scheduled_for=None,
+                created_at=now,
+                updated_at=now
+            )
+            db.add(new_job)
+
+            # Reserve parts immediately
+            subscription.used_sms = (subscription.used_sms or 0) + parts_needed
+            db.add(subscription)
+
+            # Flush to get job.id
+            db.flush()
+            job_id = new_job.id
+
+            # Enqueue the job
+            q.enqueue(send_sms_task, job_id, job_timeout=300)
+
+            sent_count += 1
+            total_parts_used += parts_needed
+            remaining_sms -= parts_needed
+
+            queued_messages.append({
+                "recipient": phone,
+                "queued_job_id": job_id
+            })
+
+        # Commit DB for all jobs + subscription update
+        db.commit()
+
+        return {
+            "success": sent_count > 0,
+            "message": f"Queued {sent_count} SMS for sending. {len(errors)} errors.",
+            "errors": errors,
+            "data": {
+                "total_enqueued": sent_count,
+                "total_parts_reserved": total_parts_used,
+                "remaining_sms": remaining_sms,
+                "queued_messages": queued_messages
+            }
+        }
+
+    except Exception as e:
+        # Catch any unexpected exception and print it
+        import traceback
+        print(f"Unexpected exception: {e}")
+        traceback.print_exc()
+        raise HTTPException(status_code=500, detail=f"Internal server error: {str(e)}")
+    
 
 @router.post("/quick-send/group")
 async def quick_send_group_sms(

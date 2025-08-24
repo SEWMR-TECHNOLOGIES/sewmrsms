@@ -3,7 +3,7 @@ from sqlalchemy import Column, Integer, Text, ForeignKey, Boolean, Enum, DateTim
 from sqlalchemy.dialects.postgresql import UUID
 from sqlalchemy.sql import func
 import uuid
-
+from sqlalchemy.orm import relationship
 from db.base import Base
 from models.enums import SenderStatusEnum
 
@@ -17,3 +17,5 @@ class SenderId(Base):
     status = Column(Enum(SenderStatusEnum), default=SenderStatusEnum.active)
     created_at = Column(DateTime, nullable=False, server_default=func.now())
     updated_at = Column(DateTime, nullable=False, server_default=func.now(), onupdate=func.now())
+
+    sms_jobs = relationship("SMSJob", back_populates="sender", cascade="all, delete")

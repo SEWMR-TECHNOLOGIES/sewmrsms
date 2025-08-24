@@ -372,3 +372,38 @@ CREATE TABLE password_reset_tokens (
 
 CREATE INDEX idx_password_reset_tokens_user_id ON password_reset_tokens(user_id);
 CREATE INDEX idx_password_reset_tokens_token_hash ON password_reset_tokens(token_hash);
+
+
+-- SMS Job Queue
+CREATE TABLE sms_jobs (
+  id SERIAL PRIMARY KEY,
+  uuid UUID NOT NULL DEFAULT uuid_generate_v4() UNIQUE,
+  
+  -- who owns this job
+  user_id INT NOT NULL REFERENCES users(id) ON DELETE CASCADE,
+  sender_id INT NOT NULL REFERENCES sender_ids(id) ON DELETE CASCADE,
+
+  -- message details
+  phone_number VARCHAR(15) NOT NULL,
+  message TEXT NOT NULL,
+  
+  -- job control
+  status message_status_enum DEFAULT 'pending',   -- pending, sent, failed
+  retries INT NOT NULL DEFAULT 0,
+  max_retries INT NOT NULL DEFAULT 3,
+  
+  -- scheduling (optional, for campaigns)
+  scheduled_for TIMESTAMP NULL,  -- if NULL → process immediately
+  
+  -- processing info
+  sent_at TIMESTAMP,
+  error_message TEXT,
+  
+  created_at TIMESTAMP NOT NULL DEFAULT CURRENT_TIMESTAMP,
+  updated_at TIMESTAMP NOT NULL DEFAULT CURRENT_TIMESTAMP
+);
+
+-- Indexes for faster lookups
+CREATE INDEX idx_sms_jobs_status ON sms_jobs(status);
+CREATE INDEX idx_sms_jobs_scheduled_for ON sms_jobs(scheduled_for);
+CREATE INDEX idx_sms_jobs_user_id ON sms_jobs(user_id);

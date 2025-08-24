@@ -35,3 +35,6 @@ if APP_ENV == "production":
     COOKIE_DOMAIN = ".sewmrsms.co.tz"
 else:
     COOKIE_DOMAIN = None 
+UPSTASH_REDIS_REST_URL = os.getenv("UPSTASH_REDIS_REST_URL")
+UPSTASH_REDIS_REST_TOKEN = os.getenv("UPSTASH_REDIS_REST_TOKEN")
+REDIS_URL = os.getenv("REDIS_URL")
