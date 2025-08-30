@@ -126,7 +126,7 @@ export default function RequestSenderID() {
       const data = await res.json();
       if (data.success) {
         toast({ variant: 'success', title: 'Request submitted successfully', description: data.message });
-        navigate('/console/sender-ids');
+        navigate('/console/sender-ids/requests');
       } else {
         toast({ variant: 'destructive', title: 'Submission failed', description: data.message || 'Unable to submit request' });
       }
