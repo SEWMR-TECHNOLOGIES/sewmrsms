@@ -14,12 +14,94 @@ servers:
     description: Production server
 
 tags:
+  - name: Contacts
+    description: Retrieve contact groups and their associated contacts.
   - name: Sender IDs
     description: Retrieve the sender IDs associated with the current user.
   - name: SMS
     description: Send SMS immediately or schedule for later.
 
 paths:
+  /contacts/groups:
+    get:
+      summary: Get Contact Groups
+      description: |
+        Retrieves all contact groups belonging to the currently authenticated user,
+        including the list of contacts inside each group.
+      operationId: getContactGroups
+      tags:
+        - Contacts
+      security:
+        - bearerAuth: []
+      responses:
+        "200":
+          description: Contact groups retrieved successfully
+          content:
+            application/json:
+              schema:
+                type: object
+                properties:
+                  success:
+                    type: boolean
+                    example: true
+                  message:
+                    type: string
+                    example: Found 3 contact groups
+                  data:
+                    type: array
+                    items:
+                      type: object
+                      properties:
+                        uuid:
+                          type: string
+                          format: uuid
+                          example: "4f93a3c4-5d52-4ab7-92be-b442d58b1a20"
+                        name:
+                          type: string
+                          example: "VIP Customers"
+                        description:
+                          type: string
+                          example: "Top-tier customers receiving premium updates"
+                        contact_count:
+                          type: integer
+                          example: 15
+                        created_at:
+                          type: string
+                          format: date-time
+                          example: "2025-08-28 13:30:00"
+                        updated_at:
+                          type: string
+                          format: date-time
+                          example: "2025-08-28 14:10:00"
+                        contacts:
+                          type: array
+                          items:
+                            type: object
+                            properties:
+                              uuid:
+                                type: string
+                                format: uuid
+                                example: "c1e1c3d2-92bc-4c7a-bfc4-78a1e9f59b7d"
+                              name:
+                                type: string
+                                example: "John Doe"
+                              phone:
+                                type: string
+                                example: "+255712345678"
+                              email:
+                                type: string
+                                example: "john@example.com"
+                              created_at:
+                                type: string
+                                format: date-time
+                                example: "2025-08-28 13:35:00"
+        "401":
+          description: Unauthorized - Missing or invalid token
+          content:
+            application/json:
+              example:
+                detail: "Missing authorization. Provide JWT or API token."
+
   /sender-ids:
     get:
       summary: Get Sender IDs
@@ -190,6 +272,142 @@ paths:
             application/json:
               example:
                 detail: "Insufficient SMS balance or no active subscription"
+        "415":
+          description: Unsupported Media Type
+          content:
+            application/json:
+              example:
+                detail: "Invalid content type. Expected application/json"
+        "500":
+          description: Internal Server Error
+          content:
+            application/json:
+              example:
+                detail: "Internal server error: Unexpected exception occurred"
+
+  /sms/quick-send/group:
+    post:
+      summary: Quick Send SMS to Group
+      description: |
+        Send SMS messages to **all contacts inside a specific contact group**.  
+        You can send **immediately** or **schedule** messages for a future date.  
+
+        **Steps to use:**
+        1. First, retrieve your contact groups from `/contacts/groups`
+        2. Use the `group_uuid` of the desired group to send SMS.
+        3. To send to all contacts regardless of group, pass `"all"` as `group_uuid`.
+        4. To send to ungrouped contacts only, pass `"none"` as `group_uuid`.
+      operationId: quickSendGroupSMS
+      tags:
+        - SMS
+      security:
+        - bearerAuth: []
+      requestBody:
+        required: true
+        content:
+          application/json:
+            schema:
+              type: object
+              required:
+                - sender_id
+                - message
+                - group_uuid
+              properties:
+                sender_id:
+                  type: string
+                  format: uuid
+                  description: UUID of the sender ID.
+                  example: "9f4b93f6-49ab-4b02-9e6c-88f3f86c7d22"
+                message:
+                  type: string
+                  description: SMS message content. Supports placeholders like `{name}`.
+                  example: "Hello {name}, welcome to our VIP program!"
+                group_uuid:
+                  type: string
+                  description: |
+                    UUID of the contact group.  
+                    Use `"all"` to send to all contacts,  
+                    or `"none"` to send to ungrouped contacts.
+                  example: "4f93a3c4-5d52-4ab7-92be-b442d58b1a20"
+                schedule:
+                  type: boolean
+                  description: Set `true` to schedule SMS instead of sending immediately.
+                  default: false
+                  example: true
+                scheduled_for:
+                  type: string
+                  format: date-time
+                  description: Required if `schedule=true`. Must follow `YYYY-MM-DD HH:MM:SS` format.
+                  example: "2025-08-30 15:45:00"
+                schedule_name:
+                  type: string
+                  description: Optional custom name for the schedule.
+                  example: "VIP Promo August"
+      responses:
+        "200":
+          description: SMS sent or scheduled successfully
+          content:
+            application/json:
+              schema:
+                type: object
+                properties:
+                  success:
+                    type: boolean
+                    example: true
+                  message:
+                    type: string
+                    example: "Scheduled SMS to 15 recipients."
+                  errors:
+                    type: array
+                    items:
+                      type: object
+                      properties:
+                        recipient:
+                          type: string
+                          example: "+255712345678"
+                        error:
+                          type: string
+                          example: "Invalid phone number format"
+                  data:
+                    type: object
+                    properties:
+                      schedule_uuid:
+                        type: string
+                        format: uuid
+                        example: "ba3b6ff4-1a27-4b8e-8a38-f1b82b4c5d22"
+                      scheduled_for:
+                        type: string
+                        example: "2025-08-30T15:45:00"
+                      total_recipients:
+                        type: integer
+                        example: 15
+                      failed_recipients:
+                        type: integer
+                        example: 1
+        "400":
+          description: Missing or invalid parameters
+          content:
+            application/json:
+              example:
+                detail: "group_uuid is required"
+        "401":
+          description: Unauthorized - Missing or invalid token
+          content:
+            application/json:
+              example:
+                detail: "Missing authorization. Provide JWT or API token."
+        "403":
+          description: Insufficient SMS balance
+          content:
+            application/json:
+              example:
+                detail: "Insufficient SMS balance or no active subscription"
+        "404":
+          description: Contact group or sender not found
+          content:
+            application/json:
+              example:
+                detail: "Contact group not found"
         "415":
           description: Unsupported Media Type
           content:

@@ -13,7 +13,7 @@ from models.contact_group import ContactGroup
 from models.contact import Contact
 from models.user import User
 from api.deps import get_db
-from api.user_auth import get_current_user
+from api.user_auth import get_current_user, get_current_user_optional
 
 router = APIRouter()
 
@@ -195,7 +195,7 @@ def get_all_contacts_grouped(
 
 @router.get("/groups")
 def list_contact_groups(
-    current_user: User = Depends(get_current_user),
+    current_user: User = Depends(get_current_user_optional),
     db: Session = Depends(get_db)
 ):
     groups = db.query(ContactGroup).filter(ContactGroup.user_id == current_user.id).all()
