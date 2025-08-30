@@ -416,14 +416,11 @@ async def download_sender_id_agreement(
     if not request_obj:
         raise HTTPException(status_code=404, detail="Sender ID request not found or unauthorized")
 
-    # Include student note if applicable
+    # Include student note only if request is a student request
     student_note_html = f"""
     <p><strong>Special student provision</strong></p>
     <div class="note">
-    You have provided a verified student ID and are now signing this Agreement. 
-    By signing, you confirm that you will use the temporary sender ID 
-    <strong>EasyTextAPI</strong> for testing and academic purposes only. 
-    This ID is pre-configured for students and intended solely for project or educational use.
+    You have provided a verified student ID and are now signing this Agreement. By signing, you confirm that you will use the temporary sender ID <strong>EasyTextAPI</strong> for testing and academic purposes only. This ID is pre-configured for students and intended solely for project or educational use.
     </div>
     """ if request_obj.is_student_request else ""
 
@@ -450,12 +447,12 @@ body {{ font-family: Arial, Helvetica, sans-serif; font-size:12px; line-height:1
 .agreement {{ margin:14px 0; text-align:justify; font-size:12px; }}
 .agreement ul {{ margin:8px 0 8px 18px; }}
 .agreement li {{ margin:6px 0; }}
-.sign-table {{ width:100%; border-collapse: collapse; margin-top:25px; }}
-.sign-cell {{ width:50%; padding-top:40px; vertical-align: bottom; text-align:center; font-size:12px; }}
-.sig-line {{ display:block; border-top:1px solid #000; width:85%; margin:0 auto 8px auto; height:1px; }}
-.sig-caption {{ font-size:11px; color:#000; margin-bottom:4px; }}
-.meta {{ font-size:11px; color:#333; }}
+.sign-table {{ width:100%; border-collapse: collapse; margin-top:12px; }}
+.sign-cell {{ width:50%; padding-top:30px; vertical-align: bottom; text-align:center; font-size:12px; }}
+.sig-line {{ display:block; border-top:1px solid #444; width:85%; margin:0 auto 6px auto; height:1px; }}
+.sig-caption {{ font-size:11px; color:#444; }}
 .footer {{ border-top:1px solid #e6e6e6; margin-top:24px; padding-top:8px; font-size:11px; color:#666; text-align:center; }}
+.meta {{ font-size:10px; color:#666; margin-top:6px; }}
 .note {{ background:#fff7e6; border:1px solid #f1d6a7; padding:8px; margin-top:10px; font-size:12px; }}
 </style>
 </head>
@@ -479,45 +476,45 @@ body {{ font-family: Arial, Helvetica, sans-serif; font-size:12px; line-height:1
 
 <div class="title">SENDER ID REQUEST AGREEMENT</div>
 
-<div class="box">
+<div class="box" style="border:none;">
   <div class="heading">Service Provider</div>
-  <table class="dl-table">
+  <table class="dl-table" style="border:none; border-collapse: collapse;">
     <tr>
-      <td class="dl-key">Business Name</td>
-      <td class="dl-val">SEWMR SMS</td>
+      <td class="dl-key" style="border:none;">Business Name</td>
+      <td class="dl-val" style="border:none;">SEWMR SMS</td>
     </tr>
     <tr>
-      <td class="dl-key">Company</td>
-      <td class="dl-val">SEWMR TECHNOLOGIES</td>
+      <td class="dl-key" style="border:none;">Company</td>
+      <td class="dl-val" style="border:none;">SEWMR TECHNOLOGIES</td>
     </tr>
     <tr>
-      <td class="dl-key">Address</td>
-      <td class="dl-val">P.O Box 15961, Nairobi Road, Ngarenaro, Arusha, Tanzania</td>
+      <td class="dl-key" style="border:none;">Address</td>
+      <td class="dl-val" style="border:none;">P.O Box 15961, Nairobi Road, Ngarenaro, Arusha, Tanzania</td>
     </tr>
   </table>
 </div>
 
-<div class="box">
+<div class="box" style="border:none;">
   <div class="heading">Client</div>
-  <table class="dl-table">
+  <table class="dl-table" style="border:none; border-collapse: collapse;">
     <tr>
-      <td class="dl-key">Company / Organization</td>
-      <td class="dl-val">{request_obj.company_name}</td>
+      <td class="dl-key" style="border:none;">Company / Organization</td>
+      <td class="dl-val" style="border:none;">{request_obj.company_name}</td>
     </tr>
     <tr>
-      <td class="dl-key">Requested Sender ID</td>
-      <td class="dl-val">{request_obj.sender_alias}</td>
+      <td class="dl-key" style="border:none;">Requested Sender ID</td>
+      <td class="dl-val" style="border:none;">{request_obj.sender_alias}</td>
     </tr>
     <tr>
-      <td class="dl-key">Sample Message</td>
-      <td class="dl-val">{request_obj.sample_message}</td>
+      <td class="dl-key" style="border:none;">Sample Message</td>
+      <td class="dl-val" style="border:none;">{request_obj.sample_message}</td>
     </tr>
   </table>
 </div>
 
 <div class="agreement">
 <p>This Sender ID Agreement ("Agreement") is entered into by and between 
-<strong>SEWMR TECHNOLOGIES</strong>, the owner and operator of SEWMR SMS ("Provider") 
+<strong>SEWMR TECHNOLOGIES, the owner and operator of SEWMR SMS</strong> ("Provider") 
 and the Client identified above ("Client"). The Provider agrees to assign 
 and enable the requested Sender ID for the Client subject to the terms set out below.</p>
 
@@ -540,12 +537,12 @@ and enable the requested Sender ID for the Client subject to the terms set out b
 <td class="sign-cell">
 <span class="sig-line"></span>
 <div class="sig-caption">For SEWMR TECHNOLOGIES — Authorized Signatory</div>
-<div class="meta">Name: ______________________ &nbsp;&nbsp; Date: ____ / ____ / ______</div>
+<div class="meta">Name: ______________________ &nbsp;&nbsp; Date: __ / __ / ____</div>
 </td>
 <td class="sign-cell">
 <span class="sig-line"></span>
 <div class="sig-caption">For Client — Authorized Signatory</div>
-<div class="meta">Name: ______________________ &nbsp;&nbsp; Date: ____ / ____ / ______</div>
+<div class="meta">Name: ______________________ &nbsp;&nbsp; Date: __ / __ / ____</div>
 </td>
 </tr>
 </table>
