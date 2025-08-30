@@ -13,7 +13,7 @@ import {
 } from '@/components/ui/sidebar';
 import { Collapsible, CollapsibleContent, CollapsibleTrigger } from '@/components/ui/collapsible';
 import { cn } from '@/lib/utils';
-import logo from '@/assets/logo.png';
+
 interface MenuSubItem {
   title: string;
   url: string;
@@ -89,18 +89,16 @@ export const ModernSidebar = () => {
   return (
     <Sidebar className={cn("h-full border-r border-sidebar-border bg-gradient-to-b from-sidebar-background to-sidebar-background/95 backdrop-blur-xl", isCollapsed ? "w-16" : "w-72")}>
       <SidebarHeader className="border-b border-sidebar-border bg-sidebar-background/50 backdrop-blur">
-        <div className="flex flex-col items-center gap-1 px-6 py-4">
-          <img
-            src={logo}
-            alt="Logo"
-            className="h-10 w-auto object-contain"
-          />
+        <div className="flex items-center gap-3 px-6 py-4">
+          <div className="flex h-8 w-8 items-center justify-center rounded-lg bg-primary text-primary-foreground font-bold text-sm">S</div>
           {!isCollapsed && (
-            <span className="text-xs text-sidebar-foreground/60 mt-1">Messaging Console</span>
+            <div className="flex flex-col">
+              <span className="font-semibold text-sidebar-foreground text-sm">SEWMR SMS</span>
+              <span className="text-xs text-sidebar-foreground/60">Messaging Console</span>
+            </div>
           )}
         </div>
       </SidebarHeader>
-
 
       <SidebarContent className="px-2 py-4">
         <SidebarGroup>
