@@ -1,0 +1,211 @@
+openapi: 3.0.3
+info:
+  title: SewmrSMS API
+  description: |
+    This API allows you to send SMS messages and manage sender IDs.
+    It supports immediate sending and scheduling SMS for later delivery.
+    You must authenticate using a valid **Bearer Token** or **API Token**.
+  version: 1.0.0
+  contact:
+    name: SewmrSMS Support
+    email: support@sewmrsms.co.tz
+servers:
+  - url: https://api.sewmrsms.co.tz/api/v1
+    description: Production server
+
+tags:
+  - name: Sender IDs
+    description: Retrieve the sender IDs associated with the current user.
+  - name: SMS
+    description: Send SMS immediately or schedule for later.
+
+paths:
+  /sender-ids:
+    get:
+      summary: Get Sender IDs
+      description: |
+        Retrieves all sender IDs linked to the currently authenticated user.
+      operationId: getSenderIds
+      tags:
+        - Sender IDs
+      security:
+        - bearerAuth: []
+      responses:
+        "200":
+          description: Sender IDs retrieved successfully
+          content:
+            application/json:
+              schema:
+                type: object
+                properties:
+                  success:
+                    type: boolean
+                    example: true
+                  message:
+                    type: string
+                    example: Sender IDs retrieved successfully
+                  data:
+                    type: array
+                    items:
+                      type: object
+                      properties:
+                        uuid:
+                          type: string
+                          format: uuid
+                          example: "9f4b93f6-49ab-4b02-9e6c-88f3f86c7d22"
+                        alias:
+                          type: string
+                          example: "SEWMRSMS"
+                        status:
+                          type: string
+                          example: active
+                        created_at:
+                          type: string
+                          format: date-time
+                          example: "2025-08-28 13:30:00"
+                        updated_at:
+                          type: string
+                          format: date-time
+                          example: "2025-08-28 14:10:00"
+        "401":
+          description: Unauthorized - Missing or invalid token
+          content:
+            application/json:
+              example:
+                detail: Missing authorization. Provide JWT or API token.
+
+  /sms/quick-send:
+    post:
+      summary: Quick Send SMS
+      description: |
+        Send SMS messages to one or more recipients.  
+        You can choose to **send immediately** or **schedule** messages for a future date.
+
+        **Requirements:**
+        - Must have a valid **sender ID** (get it from `/sender-ids` endpoint)
+        - Must provide a valid **JWT or API Token**
+      operationId: quickSendSMS
+      tags:
+        - SMS
+      security:
+        - bearerAuth: []
+      requestBody:
+        required: true
+        content:
+          application/json:
+            schema:
+              type: object
+              required:
+                - sender_id
+                - message
+                - recipients
+              properties:
+                sender_id:
+                  type: string
+                  format: uuid
+                  description: UUID of the sender ID.
+                  example: "9f4b93f6-49ab-4b02-9e6c-88f3f86c7d22"
+                message:
+                  type: string
+                  description: SMS message content.
+                  example: "Hello! Welcome to SewmrSMS API 🚀"
+                recipients:
+                  type: string
+                  description: |
+                    One or multiple phone numbers separated by new lines.
+                    Format must be international (`+255...`).
+                  example: |
+                    +255712345678
+                    +255713987654
+                schedule:
+                  type: boolean
+                  description: Set `true` to schedule SMS instead of sending immediately.
+                  default: false
+                  example: true
+                scheduled_for:
+                  type: string
+                  format: date-time
+                  description: Required if `schedule=true`. Must follow `YYYY-MM-DD HH:MM:SS` format.
+                  example: "2025-08-30 15:45:00"
+                schedule_name:
+                  type: string
+                  description: Optional custom name for the schedule.
+                  example: "Promo Campaign August"
+      responses:
+        "200":
+          description: SMS sent or scheduled successfully
+          content:
+            application/json:
+              schema:
+                type: object
+                properties:
+                  success:
+                    type: boolean
+                    example: true
+                  message:
+                    type: string
+                    example: "Scheduled SMS to 2 recipients."
+                  errors:
+                    type: array
+                    items:
+                      type: object
+                      properties:
+                        recipient:
+                          type: string
+                          example: "+255712345678"
+                        error:
+                          type: string
+                          example: "Invalid phone number format"
+                  data:
+                    type: object
+                    properties:
+                      schedule_uuid:
+                        type: string
+                        format: uuid
+                        example: "ba3b6ff4-1a27-4b8e-8a38-f1b82b4c5d22"
+                      scheduled_for:
+                        type: string
+                        example: "2025-08-30T15:45:00"
+                      total_recipients:
+                        type: integer
+                        example: 2
+                      failed_recipients:
+                        type: integer
+                        example: 0
+        "400":
+          description: Missing or invalid parameters
+          content:
+            application/json:
+              example:
+                detail: "message is required"
+        "401":
+          description: Unauthorized - Missing or invalid token
+          content:
+            application/json:
+              example:
+                detail: "Missing authorization. Provide JWT or API token."
+        "403":
+          description: Insufficient SMS balance
+          content:
+            application/json:
+              example:
+                detail: "Insufficient SMS balance or no active subscription"
+        "415":
+          description: Unsupported Media Type
+          content:
+            application/json:
+              example:
+                detail: "Invalid content type. Expected application/json"
+        "500":
+          description: Internal Server Error
+          content:
+            application/json:
+              example:
+                detail: "Internal server error: Unexpected exception occurred"
+
+components:
+  securitySchemes:
+    bearerAuth:
+      type: http
+      scheme: bearer
+      bearerFormat: JWT

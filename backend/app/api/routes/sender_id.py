@@ -4,7 +4,7 @@ from typing import Optional
 from fastapi import APIRouter, Depends, File, Form, Path, Request, UploadFile, HTTPException
 from sqlalchemy.orm import Session
 from sqlalchemy import or_
-from api.user_auth import get_current_user
+from api.user_auth import get_current_user, get_current_user_optional
 from models.network import Network
 from models.sender_id_propagation import SenderIdPropagation
 from models.sender_id import SenderId
@@ -349,7 +349,7 @@ def get_sender_id_propagation_status(
 
 @router.get("/")
 async def get_user_sender_ids(
-    current_user: User = Depends(get_current_user),
+    current_user: User = Depends(get_current_user_optional),
     db: Session = Depends(get_db),
 ):
     sender_ids = db.query(SenderId).filter(SenderId.user_id == current_user.id).all()
