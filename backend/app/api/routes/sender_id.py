@@ -535,12 +535,12 @@ and enable the requested Sender ID for the Client subject to the terms set out b
 <table class="sign-table">
 <tr>
 <td class="sign-cell">
-<span class="sig-line"></span>
+<span class="sig-line">----------------------------</span>
 <div class="sig-caption">For SEWMR TECHNOLOGIES — Authorized Signatory</div>
 <div class="meta">Name: ______________________ &nbsp;&nbsp; Date: __ / __ / ____</div>
 </td>
 <td class="sign-cell">
-<span class="sig-line"></span>
+<span class="sig-line">----------------------------</span>
 <div class="sig-caption">For Client — Authorized Signatory</div>
 <div class="meta">Name: ______________________ &nbsp;&nbsp; Date: __ / __ / ____</div>
 </td>
