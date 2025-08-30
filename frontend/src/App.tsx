@@ -19,7 +19,6 @@ import { DashboardLayout } from "./components/dashboard/DashboardLayout";
 import Dashboard from "./pages/dashboard/Dashboard";
 import Contacts from "./pages/dashboard/contacts/Contacts";
 import QuickSend from "./pages/dashboard/messages/QuickSend";
-import SenderIds from "./pages/dashboard/sender-ids/SenderIds";
 import RequestSenderID from "./pages/dashboard/sender-ids/RequestSenderID";
 import RequestPasswordResetPage from "./pages/ResetPasswordRequest";
 import ResetPasswordPage from "./pages/ResetPassword";
@@ -39,6 +38,8 @@ import Billing from "./pages/dashboard/billing/Billing";
 import CreateAPIToken from "./pages/dashboard/settings/CreateAPIToken";
 import APITokens from "./pages/dashboard/settings/APITokens";
 import MessageHistory from "./pages/dashboard/messages/MessageHistory";
+import UserSenderIds from "./pages/dashboard/sender-ids/SenderIds";
+import UserSenderRequests from "./pages/dashboard/sender-ids/SenderIdRequests";
 
 const queryClient = new QueryClient();
 
@@ -88,7 +89,8 @@ const App = () => (
             <Route path="billing/mobile-payment-waiting/:orderUuid/:checkoutRequestId" element={<MobilePaymentWaiting />} />
 
             {/* Sender ID routes */}
-            <Route path="sender-ids" element={<SenderIds />} />
+            <Route path="sender-ids" element={<UserSenderIds />} />
+            <Route path="sender-ids/requests" element={<UserSenderRequests />} />
             <Route path="sender-ids/request" element={<RequestSenderID />} />
             <Route path="sender-ids/networks" element={<div>Network Status</div>} />
             <Route path="sender-ids/:uuid/upload-agreement" element={<UploadAgreement />} />

@@ -397,9 +397,9 @@ export default function AddContacts() {
                   value={contactsText}
                   onChange={(e) => setContactsText(e.target.value)}
                   placeholder={`Enter contact information in this format:
-John Doe, +1234567890, john@example.com
-Jane Smith, +0987654321, jane@example.com
-Bob Johnson, +1122334455, bob@example.com`}
+John Doe, 2551234567890, john@example.com
+Jane Smith, 2550987654321, jane@example.com
+Bob Johnson, 2551122334455, bob@example.com`}
                   className="min-h-[200px] font-mono text-sm"
                 />
                 <p className="text-sm text-muted-foreground">

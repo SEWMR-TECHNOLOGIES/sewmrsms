@@ -3,7 +3,8 @@ import {
   LayoutDashboard, Users, MessageSquare, BarChart3, CreditCard, Settings,
   UserPlus, Import, Send, FileText, History, TrendingUp, ShoppingCart, Receipt,
   User, Key, Bell, ChevronDown, ChevronRight, Shield,
-  ClipboardList
+  ClipboardList,
+  MailPlus
 } from 'lucide-react';
 import { NavLink } from 'react-router-dom';
 import { 
@@ -46,10 +47,11 @@ const menuItems: MenuItem[] = [
       { title: 'My Templates', url: '/console/templates', icon: FileText },
       { title: 'Create Template', url: '/console/templates/new', icon: FileText },
     ]
-  },
+  }, 
   { title: 'Sender IDs', icon: Shield, items: [
-      { title: 'My Sender IDs', url: '/console/sender-ids', icon: Shield },
-      { title: 'Request New', url: '/console/sender-ids/request', icon: UserPlus },
+      { title: 'Sender IDs', url: '/console/sender-ids', icon: Shield },
+      { title: 'Request New', url: '/console/sender-ids/request', icon: MailPlus },
+      { title: 'Requests', url: '/console/sender-ids/requests', icon: ClipboardList },
     ]
   },
   { title: 'Billing', icon: CreditCard, items: [
