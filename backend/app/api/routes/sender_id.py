@@ -449,7 +449,7 @@ body {{ font-family: Arial, Helvetica, sans-serif; font-size:12px; line-height:1
 .agreement li {{ margin:6px 0; }}
 .sign-table {{ width:100%; border-collapse: collapse; margin-top:12px; }}
 .sign-cell {{ width:50%; padding-top:30px; vertical-align: bottom; text-align:center; font-size:12px; }}
-.sig-line {{ display:block; border-top:1px solid #444; width:85%; margin:0 auto 6px auto; height:1px; }}
+.sig-line {{ display:block; border-top:1px solid #444; width:85%; margin:0 auto 2px auto; height:1px; }}
 .sig-caption {{ font-size:11px; color:#444; }}
 .footer {{ border-top:1px solid #e6e6e6; margin-top:24px; padding-top:8px; font-size:11px; color:#666; text-align:center; }}
 .meta {{ font-size:10px; color:#666; margin-top:6px; }}
