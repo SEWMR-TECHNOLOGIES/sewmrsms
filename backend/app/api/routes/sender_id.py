@@ -447,9 +447,9 @@ body {{ font-family: Arial, Helvetica, sans-serif; font-size:12px; line-height:1
 .agreement {{ margin:14px 0; text-align:justify; font-size:12px; }}
 .agreement ul {{ margin:8px 0 8px 18px; }}
 .agreement li {{ margin:6px 0; }}
-.sign-table {{ width:100%; border-collapse: collapse; margin-top:12px; }}
-.sign-cell {{ width:50%; padding-top:30px; vertical-align: bottom; text-align:center; font-size:12px; }}
-.sig-line {{ display:block; border-top:1px solid #444; width:85%; margin:0 auto 6px auto; height:1px; }}
+.sign-table {{ width:100%; border-collapse: collapse; margin-top:10px; }}
+.sign-cell {{ width:50%; padding-top:20px; vertical-align: bottom; text-align:center; font-size:12px; }}
+.sig-line {{ display:block; border-top:1px solid #444; width:85%; margin:0 auto 3px auto; height:1px; }}
 .sig-caption {{ font-size:11px; color:#444; }}
 .footer {{ border-top:1px solid #e6e6e6; margin-top:24px; padding-top:8px; font-size:11px; color:#666; text-align:center; }}
 .meta {{ font-size:10px; color:#666; margin-top:6px; }}
@@ -536,13 +536,13 @@ and enable the requested Sender ID for the Client subject to the terms set out b
 <tr>
 <td class="sign-cell">
 <span class="sig-line">------------------------------</span>
-<div class="sig-caption">For SEWMR TECHNOLOGIES — Authorized Signatory</div>
 <div class="meta">Name: ______________________ &nbsp;&nbsp; Date: __ / __ / ____</div>
+<div class="sig-caption">For SEWMR TECHNOLOGIES — Authorized Signatory</div>
 </td>
 <td class="sign-cell">
 <span class="sig-line">------------------------------</span>
-<div class="sig-caption">For Client — Authorized Signatory</div>
 <div class="meta">Name: ______________________ &nbsp;&nbsp; Date: __ / __ / ____</div>
+<div class="sig-caption">For Client — Authorized Signatory</div>
 </td>
 </tr>
 </table>
