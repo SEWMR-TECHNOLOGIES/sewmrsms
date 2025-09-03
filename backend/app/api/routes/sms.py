@@ -247,7 +247,6 @@ async def quick_send_sms(
                     schedule_id=sms_schedule.id,
                     phone_number=phone,
                     message=message,
-                    status=str(MessageStatusEnum.pending.value),
                     created_at=now,
                     updated_at=now
                 )
