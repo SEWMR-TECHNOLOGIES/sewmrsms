@@ -14,7 +14,7 @@ class SmsScheduledMessage(Base):
     schedule_id = Column(Integer, ForeignKey('sms_schedules.id', ondelete='CASCADE'), nullable=False)
     phone_number = Column(String(15), nullable=False)
     message = Column(Text, nullable=False)
-    status = Column(Enum(MessageStatusEnum), default=MessageStatusEnum.pending.value)
+    status = Column(Enum(MessageStatusEnum), default=MessageStatusEnum.pending)
     sent_at = Column(DateTime, nullable=True)
     remarks = Column(Text, nullable=True)
     created_at = Column(DateTime, nullable=False, server_default=func.now())
