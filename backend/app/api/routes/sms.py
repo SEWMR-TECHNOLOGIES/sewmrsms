@@ -235,7 +235,7 @@ async def quick_send_sms(
                 sender_id=sender.id,
                 title=schedule_name,
                 scheduled_for=scheduled_for,
-                status=str(MessageStatusEnum.pending.value),
+                status=ScheduleStatusEnum.pending.value,
                 created_at=now,
                 updated_at=now
             )
@@ -247,7 +247,7 @@ async def quick_send_sms(
                     schedule_id=sms_schedule.id,
                     phone_number=phone,
                     message=message,
-                    status=MessageStatusEnum.pending.value,
+                    status=str(MessageStatusEnum.pending.value),
                     created_at=now,
                     updated_at=now
                 )
