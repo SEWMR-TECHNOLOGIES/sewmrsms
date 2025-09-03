@@ -224,7 +224,7 @@ export default function Dashboard() {
                       <p className="text-sm font-medium leading-none">
                         {message.recipient}
                       </p>
-                      <p className="text-xs text-muted-foreground truncate">
+                      <p className="text-xs text-muted-foreground break-words max-h-20 overflow-auto">
                         {message.message}
                       </p>
                       <div className="flex items-center space-x-2">
