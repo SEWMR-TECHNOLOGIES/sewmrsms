@@ -169,12 +169,17 @@ async def quick_send_sms(
         if not recipients_text or not recipients_text.strip():
             raise HTTPException(status_code=400, detail="recipients is required")
 
-        # Parse and validate sender UUID
+        # Try to parse sender_id as UUID; if it fails, treat it as an alias (do not raise here)
+        sender_uuid = None
+        sender_alias = None
+        is_sender_uuid = False
         try:
             sender_uuid = uuid.UUID(sender_id_uuid)
+            is_sender_uuid = True
         except ValueError as e:
+            # keep the original debug print but continue to allow alias lookup later
             print(f"UUID parsing error: {e}")
-            raise HTTPException(status_code=400, detail="sender_id must be a valid UUID")
+            sender_alias = str(sender_id_uuid).strip()
 
         # Validate schedule if flagged
         now = datetime.now(pytz.timezone("Africa/Nairobi")).replace(tzinfo=None)
@@ -198,13 +203,21 @@ async def quick_send_sms(
             if not user:
                 raise HTTPException(status_code=401, detail="Invalid or expired API token")
 
-        # Lookup sender by UUID and user_id
-        sender = db.query(SenderId).filter(
-            SenderId.uuid == sender_uuid,
-            SenderId.user_id == user.id
-        ).first()
+        # Lookup sender by UUID (if parsed as UUID) OR by alias (if not a UUID) and user_id
+        if is_sender_uuid:
+            sender = db.query(SenderId).filter(
+                SenderId.uuid == sender_uuid,
+                SenderId.user_id == user.id
+            ).first()
+        else:
+            sender = db.query(SenderId).filter(
+                SenderId.alias == sender_alias,
+                SenderId.user_id == user.id
+            ).first()
+
         if not sender:
             raise HTTPException(status_code=404, detail="Sender ID not found or not owned by user")
+
 
         # Parse recipients
         raw_recipients = [line.strip() for line in recipients_text.splitlines() if line.strip()]
