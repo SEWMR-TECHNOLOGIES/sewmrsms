@@ -241,9 +241,9 @@ async def send_outage_notifications(
             if not user:
                 continue
 
-            # Check if last_notified_at exists and avoid sending repeatedly
-            if notif.last_notified_at and (now - notif.last_notified_at).total_seconds() < 3600:
-                continue  # skip if notified within the last hour
+            # Skip if notified within the last 24 hours
+            if notif.last_notified_at and (now - notif.last_notified_at).total_seconds() < 86400:
+                continue
 
             # Get active subscription with remaining SMS
             subscription = db.query(UserSubscription).filter(
@@ -272,19 +272,29 @@ async def send_outage_notifications(
                 total_failed += 1
                 continue
 
-            # Build message in Swahili
-            message = f"Haabari {user.first_name}, meseji zako zinakaribia kuisha. Salio lako ni {subscription.remaining_sms}. Tafadhali nunua meseji za ziada kuepuka kukosekana kwa huduma."
+            # Build preliminary message in Swahili
+            temp_message = f"Habari {user.first_name}, meseji zako zinakaribia kuisha. Salio lako ni {subscription.remaining_sms}. Tafadhali nunua meseji za ziada kuepuka kukosekana kwa huduma."
 
             # Compute SMS parts
-            parts_needed, _, _ = sms_service.get_sms_parts_and_length(message)
+            parts_needed, _, _ = sms_service.get_sms_parts_and_length(temp_message)
             if parts_needed > subscription.remaining_sms:
                 total_failed += 1
                 continue
 
+            # Compute new remaining SMS after this notification
+            remaining_after_send = subscription.remaining_sms - parts_needed
+
+            # Build final message including updated balance
+            message = (
+                f"Habari {user.first_name}, meseji zako zinakaribia kuisha. "
+                f"Salio lako jipya ni {remaining_after_send}. "
+                "Tafadhali nunua meseji za ziada kuepuka kukosekana kwa huduma."
+            )
+
             # Send SMS
             send_result = await sms_service.send_sms_with_parts_check(phone_to_send, message)
             success = send_result.get("success", False)
-            gateway_data = send_result.get("data", {})
+            gateway_data = send_result.get("data", {}) or {}
 
             if success:
                 # Record sent message
@@ -294,7 +304,7 @@ async def send_outage_notifications(
                     phone_number=phone_to_send,
                     number_of_parts=parts_needed,
                     message=message,
-                    message_id=gateway_data.get("message_id"),
+                    message_id=str(gateway_data.get("message_id")) if gateway_data.get("message_id") else None,
                     sent_at=now
                 ))
 
@@ -305,6 +315,7 @@ async def send_outage_notifications(
                 # Update last_notified_at
                 notif.last_notified_at = now
                 db.add(notif)
+
                 total_sent += 1
             else:
                 total_failed += 1
