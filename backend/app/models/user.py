@@ -21,3 +21,4 @@ class User(Base):
     updated_at = Column(DateTime, nullable=False, server_default=func.now(), onupdate=func.now())
 
     sms_jobs = relationship("SMSJob", back_populates="user", cascade="all, delete")
+    outage_notifications = relationship("UserOutageNotification", back_populates="user", cascade="all, delete-orphan")
