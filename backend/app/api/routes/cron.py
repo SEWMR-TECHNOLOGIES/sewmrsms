@@ -314,6 +314,10 @@ async def send_outage_notifications(
 
                 # Update last_notified_at
                 notif.last_notified_at = now
+
+                # Increment notification_count
+                notif.notification_count = (notif.notification_count or 0) + 1
+                
                 db.add(notif)
 
                 total_sent += 1
