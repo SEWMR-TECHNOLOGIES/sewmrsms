@@ -16,6 +16,7 @@ from sqlalchemy import and_, func, or_
 from sqlalchemy.orm import Session
 from api.deps import get_db
 from api.user_auth import get_current_user
+from models.user_outage_notification import UserOutageNotification
 from models.scheduled_message import SmsScheduledMessage
 from models.sms_schedule import SmsSchedule
 from models.contact import Contact
@@ -763,3 +764,107 @@ def recent_messages(
         })
 
     return {"recent_messages": results}
+
+@router.post("/set-outage-notification")
+async def set_outage_notification(
+    request: Request,
+    current_user: User = Depends(get_current_user),
+    db: Session = Depends(get_db)
+):
+    content_type = request.headers.get("content-type", "")
+    if "application/json" not in content_type.lower():
+        raise HTTPException(status_code=400, detail="Invalid content type. Expected application/json")
+
+    data = await request.json()
+
+    # Use provided phone/email or default to user's
+    phone = data.get("phone", "").strip() or current_user.phone
+    email = data.get("email", "").strip() or current_user.email
+    notify_before_messages = data.get("notify_before_messages", 1)
+
+    if not phone or not validate_phone(phone):
+        raise HTTPException(status_code=400, detail="Phone must be in format 255XXXXXXXXX")
+    
+    if not email or not validate_email(email):
+        raise HTTPException(status_code=400, detail="Valid email is required")
+    
+    if not isinstance(notify_before_messages, int) or notify_before_messages < 1:
+        raise HTTPException(status_code=400, detail="notify_before_messages must be a positive integer")
+
+    now = datetime.now(pytz.timezone("Africa/Nairobi")).replace(tzinfo=None)
+
+    # Check if user already has a preference
+    notification = db.query(UserOutageNotification).filter(UserOutageNotification.user_id == current_user.id).first()
+
+    if notification:
+        # Update existing record
+        notification.phone = phone
+        notification.email = email
+        notification.notify_before_messages = notify_before_messages
+        notification.updated_at = now
+    else:
+        # Create new record
+        notification = UserOutageNotification(
+            uuid=uuid4(),
+            user_id=current_user.id,
+            phone=phone,
+            email=email,
+            notify_before_messages=notify_before_messages,
+            created_at=now,
+            updated_at=now
+        )
+        db.add(notification)
+
+    try:
+        db.commit()
+        db.refresh(notification)
+        return {
+            "success": True,
+            "message": "Outage notification preferences saved successfully",
+            "data": {
+                "id": notification.id,
+                "phone": notification.phone,
+                "email": notification.email,
+                "notify_before_messages": notification.notify_before_messages,
+                "created_at": notification.created_at.strftime("%Y-%m-%d %H:%M:%S"),
+                "updated_at": notification.updated_at.strftime("%Y-%m-%d %H:%M:%S")
+            }
+        }
+    except Exception as e:
+        db.rollback()
+        print(f"DB error: {e}")
+        raise HTTPException(status_code=500, detail="Database error while saving preferences")
+
+@router.get("/get-outage-notification")
+async def get_outage_notification(
+    current_user: User = Depends(get_current_user),
+    db: Session = Depends(get_db)
+):
+    # Query the user's notification preferences
+    notification = db.query(UserOutageNotification).filter(
+        UserOutageNotification.user_id == current_user.id
+    ).first()
+
+    if not notification:
+        # Return default values using user's email/phone
+        return {
+            "success": True,
+            "message": "No outage notification preferences found. Using account defaults.",
+            "data": {
+                "phone": current_user.phone or "",
+                "email": current_user.email or "",
+                "notify_before_messages": 1
+            }
+        }
+
+    return {
+        "success": True,
+        "message": "Outage notification preferences retrieved successfully",
+        "data": {
+            "phone": notification.phone,
+            "email": notification.email,
+            "notify_before_messages": notification.notify_before_messages,
+            "last_notified_at": notification.last_notified_at.isoformat() if notification.last_notified_at else None,
+            "notification_count": notification.notification_count
+        }
+    }

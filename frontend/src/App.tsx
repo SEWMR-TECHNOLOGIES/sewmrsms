@@ -40,6 +40,7 @@ import APITokens from "./pages/dashboard/settings/APITokens";
 import MessageHistory from "./pages/dashboard/messages/MessageHistory";
 import UserSenderIds from "./pages/dashboard/sender-ids/SenderIds";
 import UserSenderRequests from "./pages/dashboard/sender-ids/SenderIdRequests";
+import OutageNotificationSettings from "./pages/dashboard/settings/OutageNotification";
 
 const queryClient = new QueryClient();
 
@@ -101,6 +102,7 @@ const App = () => (
             <Route path="settings/api" element={<div>API Settings</div>} />
             <Route path="settings/create-token" element={<CreateAPIToken />} />
             <Route path="settings/api-tokens" element={<APITokens />} />
+            <Route path="settings/outage-notifications" element={<OutageNotificationSettings />} />
             <Route path="settings/notifications" element={<div>Notification Settings</div>} />
           </Route>
 

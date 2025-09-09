@@ -407,3 +407,19 @@ CREATE TABLE sms_jobs (
 CREATE INDEX idx_sms_jobs_status ON sms_jobs(status);
 CREATE INDEX idx_sms_jobs_scheduled_for ON sms_jobs(scheduled_for);
 CREATE INDEX idx_sms_jobs_user_id ON sms_jobs(user_id);
+
+-- User outage notification preferences
+CREATE TABLE user_outage_notifications (
+    id SERIAL PRIMARY KEY,
+    uuid UUID NOT NULL DEFAULT uuid_generate_v4() UNIQUE,
+    user_id INT NOT NULL REFERENCES users(id) ON DELETE CASCADE,
+    phone VARCHAR(15) NOT NULL,
+    email TEXT NOT NULL,
+    notify_before_messages INT NOT NULL DEFAULT 1,
+    last_notified_at TIMESTAMP,
+    notification_count INT NOT NULL DEFAULT 0,
+    created_at TIMESTAMP NOT NULL DEFAULT CURRENT_TIMESTAMP,
+    updated_at TIMESTAMP NOT NULL DEFAULT CURRENT_TIMESTAMP
+);
+
+CREATE INDEX idx_user_outage_notifications_user_id ON user_outage_notifications(user_id);

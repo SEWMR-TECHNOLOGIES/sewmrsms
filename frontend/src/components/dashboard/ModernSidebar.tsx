@@ -71,6 +71,7 @@ const menuItems: MenuItem[] = [
   { title: 'Settings', icon: Settings, items: [
       // { title: 'Profile', url: '/console/settings/profile', icon: User },
       { title: 'API Keys', url: '/console/settings/api-tokens', icon: Key },
+      { title: 'Outage Notifications', url: '/console/settings/outage-notifications', icon: Bell },
       // { title: 'Notifications', url: '/console/settings/notifications', icon: Bell },
       // { title: 'Security', url: '/console/settings/security', icon: Shield },
     ]
