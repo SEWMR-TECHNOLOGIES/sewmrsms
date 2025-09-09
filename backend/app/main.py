@@ -12,6 +12,7 @@ app.add_middleware(
     allow_origins=[
         "http://localhost:8080",          # dev
         "https://app.sewmrsms.co.tz",     # production frontend
+        "https://www.sewmrsms.co.tz",     # production frontend
         "https://sewmrsms.co.tz"          # production frontend
     ],
     allow_credentials=True,
