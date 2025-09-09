@@ -1,8 +1,13 @@
 import { Header } from "@/components/Header";
 import { Features } from "@/components/Features";
 import { Footer } from "@/components/Footer";
+import { useMeta } from "@/hooks/useMeta";
 
 const FeaturesPage = () => {
+   useMeta({
+    title: "Features",
+    description: "Explore SEWMR SMS features: bulk messaging, templates, API integration, and more."
+  });
   return (
     <div className="min-h-screen">
       <Header />

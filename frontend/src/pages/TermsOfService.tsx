@@ -1,7 +1,12 @@
 import { Header } from "@/components/Header";
 import { Footer } from "@/components/Footer";
+import { useMeta } from "@/hooks/useMeta";
 
 const TermsOfService = () => {
+  useMeta({
+    title: "Terms of Service",
+    description: "Read SEWMR SMS terms and conditions for using our messaging platform."
+  });
   return (
     <div className="min-h-screen">
       <Header />

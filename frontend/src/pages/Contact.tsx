@@ -2,8 +2,13 @@ import { Header } from "@/components/Header";
 import { Contact } from "@/components/Contact";
 import { FAQ } from "@/components/FAQ";
 import { Footer } from "@/components/Footer";
+import { useMeta } from "@/hooks/useMeta";
 
 const ContactPage = () => {
+  useMeta({
+    title: "Contact Us",
+    description: "Reach out to SEWMR SMS for support or inquiries about our messaging platform."
+  });
   return (
     <div className="min-h-screen">
       <Header />

@@ -1,7 +1,12 @@
 import { Header } from "@/components/Header";
 import { Footer } from "@/components/Footer";
+import { useMeta } from "@/hooks/useMeta";
 
 const CookiePolicy = () => {
+  useMeta({
+    title: "Cookie Policy",
+    description: "Understand how SEWMR SMS uses cookies to improve your experience."
+  });
   return (
     <div className="min-h-screen">
       <Header />

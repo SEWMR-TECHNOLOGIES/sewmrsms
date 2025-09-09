@@ -5,8 +5,13 @@ import { HowItWorks } from "@/components/HowItWorks";
 import { Testimonials } from "@/components/Testimonials";
 import { Footer } from "@/components/Footer";
 import { CookieConsent } from "@/components/CookieConsent";
+import { useMeta } from "@/hooks/useMeta";
 
 const Index = () => {
+  useMeta({
+    title: "Home",
+    description: "Deliver your message effectively with SEWMR SMS. Send, manage, and track SMS campaigns easily."
+  });
   return (
     <div className="min-h-screen">
       <Header />

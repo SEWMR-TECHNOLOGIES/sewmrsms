@@ -1,8 +1,13 @@
 import { Header } from "@/components/Header";
 import { Pricing } from "@/components/Pricing";
 import { Footer } from "@/components/Footer";
+import { useMeta } from "@/hooks/useMeta";
 
 const PricingPage = () => {
+  useMeta({
+    title: "Pricing",
+    description: "View SEWMR SMS pricing plans and choose the best option for your messaging needs."
+  });
   return (
     <div className="min-h-screen">
       <Header />

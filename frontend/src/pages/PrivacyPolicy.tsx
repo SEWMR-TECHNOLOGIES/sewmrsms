@@ -1,7 +1,12 @@
 import { Header } from "@/components/Header";
 import { Footer } from "@/components/Footer";
+import { useMeta } from "@/hooks/useMeta";
 
 const PrivacyPolicy = () => {
+  useMeta({
+    title: "Privacy Policy",
+    description: "Learn how SEWMR SMS collects, uses, and protects your personal information."
+  });
   return (
     <div className="min-h-screen">
       <Header />

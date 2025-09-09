@@ -9,6 +9,7 @@ import { Card, CardContent, CardDescription, CardHeader, CardTitle } from "@/com
 import { Separator } from "@/components/ui/separator"
 import { useToast } from "@/hooks/use-toast"
 import { Mail, ArrowLeft } from "lucide-react"
+import { useMeta } from "@/hooks/useMeta"
 
 const RequestPasswordResetPage = () => {
   const navigate = useNavigate()
@@ -56,7 +57,11 @@ const RequestPasswordResetPage = () => {
       setLoading(false)
     }
   }
-
+  useMeta({
+    title: "Forgot Password",
+    description: "Request a password reset link to regain access to your SEWMR SMS account."
+  });
+  
   return (
     <div className="min-h-screen">
       <Header />

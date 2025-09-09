@@ -9,6 +9,7 @@ import { Card, CardContent, CardDescription, CardHeader, CardTitle } from "@/com
 import { Separator } from "@/components/ui/separator"
 import { useToast } from "@/hooks/use-toast"
 import { Mail, Lock, User, Phone, ArrowLeft, Check, Eye, EyeOff } from "lucide-react"
+import { useMeta } from "@/hooks/useMeta"
 
 const SignUpPage = () => {
   const navigate = useNavigate()
@@ -93,7 +94,10 @@ const SignUpPage = () => {
       setLoading(false)
     }
   }
-
+  useMeta({
+    title: "Sign Up",
+    description: "Create a SEWMR SMS account to start sending and managing your SMS campaigns."
+  });
   return (
     <div className="min-h-screen">
       <Header />

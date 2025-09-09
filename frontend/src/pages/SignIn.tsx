@@ -9,6 +9,7 @@ import { Card, CardContent, CardDescription, CardHeader, CardTitle } from "@/com
 import { Separator } from "@/components/ui/separator"
 import { useToast } from "@/hooks/use-toast"
 import { Mail, Lock, Eye, EyeOff, ArrowLeft } from "lucide-react"
+import { useMeta } from "@/hooks/useMeta"
 
 const SignInPage = () => {
   const navigate = useNavigate()
@@ -76,7 +77,10 @@ const SignInPage = () => {
       setLoading(false)
     }
   }
-
+  useMeta({
+    title: "Sign In",
+    description: "Log in to your SEWMR SMS account to access messaging and dashboard features."
+  });
   return (
     <div className="min-h-screen">
       <Header />

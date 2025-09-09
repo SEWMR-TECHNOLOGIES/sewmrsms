@@ -1,8 +1,13 @@
 import { Header } from "@/components/Header";
 import { Developers } from "@/components/Developers";
 import { Footer } from "@/components/Footer";
+import { useMeta } from "@/hooks/useMeta";
 
 const DevelopersPage = () => {
+   useMeta({
+    title: "Developers",
+    description: "Integrate SEWMR SMS API into your applications and automate message sending."
+  });
   return (
     <div className="min-h-screen">
       <Header />
