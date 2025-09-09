@@ -10,9 +10,9 @@ app = FastAPI(title="SEWMR SMS API", version="1.0.0")
 app.add_middleware(
     CORSMiddleware,
     allow_origins=[
-        "http://localhost:8080",         # dev
-        "https://app.sewmrsms.co.tz"     # production frontend
-        "https://sewmrsms.co.tz"     # production frontend
+        "http://localhost:8080",          # dev
+        "https://app.sewmrsms.co.tz",     # production frontend
+        "https://sewmrsms.co.tz"          # production frontend
     ],
     allow_credentials=True,
     allow_methods=["*"],
