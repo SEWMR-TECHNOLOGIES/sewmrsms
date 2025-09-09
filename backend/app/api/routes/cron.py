@@ -3,6 +3,7 @@ from sqlalchemy.orm import Session
 from datetime import datetime
 import pytz
 from api.deps import get_db
+from models.user_outage_notification import UserOutageNotification
 from models.user import User
 from core.config import CRON_AUTH_TOKEN, SMS_CALLBACK_URL
 from models.sent_messages import SentMessage
@@ -212,6 +213,112 @@ async def run_scheduled_sends(
         "data": {
             "now": now_str,
             "processed_schedules": processed_schedules,
+            "total_sent": total_sent,
+            "total_failed": total_failed,
+            "errors": errors
+        }
+    }
+
+@router.post("/send-outage-notifications")
+async def send_outage_notifications(
+    db: Session = Depends(get_db),
+    x_cron_auth: str = Header(None)
+):
+    if not CRON_AUTH_TOKEN or x_cron_auth != CRON_AUTH_TOKEN:
+        raise HTTPException(status_code=401, detail="Unauthorized")
+
+    now = datetime.now(pytz.timezone("Africa/Nairobi")).replace(tzinfo=None)
+
+    # Fetch all users with outage notification preferences
+    notifications = db.query(UserOutageNotification).all()
+    total_sent = 0
+    total_failed = 0
+    errors = []
+
+    for notif in notifications:
+        try:
+            user = db.query(User).filter(User.id == notif.user_id).first()
+            if not user:
+                continue
+
+            # Check if last_notified_at exists and avoid sending repeatedly
+            if notif.last_notified_at and (now - notif.last_notified_at).total_seconds() < 3600:
+                continue  # skip if notified within the last hour
+
+            # Get active subscription with remaining SMS
+            subscription = db.query(UserSubscription).filter(
+                UserSubscription.user_id == user.id,
+                UserSubscription.status == "active",
+                UserSubscription.remaining_sms > 0
+            ).first()
+
+            if not subscription:
+                total_failed += 1
+                continue
+
+            # Use any active sender ID
+            sender = db.query(SenderId).filter(
+                SenderId.user_id == user.id,
+                SenderId.status == "active"
+            ).first()
+            if not sender:
+                total_failed += 1
+                continue
+
+            sms_service = SmsGatewayService(sender.alias)
+
+            phone_to_send = notif.phone.strip() or user.phone
+            if not validate_phone(phone_to_send):
+                total_failed += 1
+                continue
+
+            # Build message in Swahili
+            message = f"Haabari {user.first_name}, meseji zako zinakaribia kuisha. Salio lako ni {subscription.remaining_sms}. Tafadhali nunua meseji za ziada kuepuka kukosekana kwa huduma."
+
+            # Compute SMS parts
+            parts_needed, _, _ = sms_service.get_sms_parts_and_length(message)
+            if parts_needed > subscription.remaining_sms:
+                total_failed += 1
+                continue
+
+            # Send SMS
+            send_result = await sms_service.send_sms_with_parts_check(phone_to_send, message)
+            success = send_result.get("success", False)
+            gateway_data = send_result.get("data", {})
+
+            if success:
+                # Record sent message
+                db.add(SentMessage(
+                    sender_alias=sender.alias,
+                    user_id=user.id,
+                    phone_number=phone_to_send,
+                    number_of_parts=parts_needed,
+                    message=message,
+                    message_id=gateway_data.get("message_id"),
+                    sent_at=now
+                ))
+
+                # Deduct SMS from subscription
+                subscription.used_sms = (subscription.used_sms or 0) + parts_needed
+                db.add(subscription)
+
+                # Update last_notified_at
+                notif.last_notified_at = now
+                db.add(notif)
+                total_sent += 1
+            else:
+                total_failed += 1
+
+        except Exception as e:
+            errors.append({"user_id": notif.user_id, "error": str(e)})
+            total_failed += 1
+
+    db.commit()
+
+    return {
+        "success": True,
+        "message": "Outage notification cron completed",
+        "data": {
             "total_sent": total_sent,
             "total_failed": total_failed,
             "errors": errors
