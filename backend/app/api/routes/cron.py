@@ -265,6 +265,19 @@ async def send_outage_notifications(
                 total_failed += 1
                 continue
 
+            # Notify only if balance just went under their threshold
+            if subscription.remaining_sms > notif.notify_before_messages:
+                # Still has enough SMS, skip
+                continue
+
+            if notif.last_notified_at is None and subscription.remaining_sms <= notif.notify_before_messages:
+                # First time crossing the threshold → allow sending
+                pass
+            elif notif.last_notified_at and subscription.remaining_sms <= notif.notify_before_messages:
+                # Already notified before while still under threshold → skip
+                continue
+            
+            # Prepare to send SMS
             sms_service = SmsGatewayService(sender.alias)
 
             phone_to_send = notif.phone.strip() or user.phone
@@ -339,3 +352,4 @@ async def send_outage_notifications(
             "errors": errors
         }
     }
+
