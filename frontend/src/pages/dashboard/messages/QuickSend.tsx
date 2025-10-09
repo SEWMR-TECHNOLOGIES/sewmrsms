@@ -13,6 +13,7 @@ import { Tabs, TabsList, TabsTrigger, TabsContent } from '@/components/ui/tabs';
 import { Alert, AlertDescription } from '@/components/ui/alert';
 import { format } from 'date-fns';
 import { ToggleSwitch } from '@/components/ui/toggle-switch';
+import { useMeta } from '@/hooks/useMeta';
 
 const BASE_URL = 'https://api.sewmrsms.co.tz/api/v1';
 
@@ -279,6 +280,10 @@ export default function QuickSend() {
     ? (selectedGroupObj ? selectedGroupObj.count : 0)
     : manualCount;
   const totalCredits = recipientsCount * partsCount;
+  useMeta({
+    title: 'Quick Send SMS',
+    description: 'Compose and send SMS instantly or schedule them. Manage recipients, preview messages, and estimate costs.'
+  });
 
   return (
     <div className="space-y-6">

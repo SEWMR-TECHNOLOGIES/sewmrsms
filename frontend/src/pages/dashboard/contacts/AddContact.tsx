@@ -12,6 +12,7 @@ import { UserPlus, Upload, FileText, CheckCircle, AlertCircle, Download } from '
 import { useToast } from '@/hooks/use-toast';
 import { SearchableSelect, SearchableSelectOption } from '@/components/ui/searchable-select';
 import { UploadProgress } from '@/components/ui/upload-progress';
+import { useMeta } from '@/hooks/useMeta';
 
 interface ContactGroup {
   uuid: string;
@@ -341,6 +342,11 @@ export default function AddContacts() {
     document.body.removeChild(link);
     window.URL.revokeObjectURL(url);
   };
+
+  useMeta({
+    title: 'Add Contacts',
+    description: 'Add contacts manually or via file upload. Organize them into groups and view upload results with errors highlighted.'
+  });
 
   return (
     <div className="space-y-6">

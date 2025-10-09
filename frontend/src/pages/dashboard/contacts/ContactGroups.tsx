@@ -18,6 +18,7 @@ import {
   AlertDialogHeader,
   AlertDialogTitle,
 } from "@/components/ui/alert-dialog";
+import { useMeta } from "@/hooks/useMeta";
 
 interface ContactGroup {
   id: string;
@@ -174,6 +175,11 @@ export default function ContactGroups() {
       },
     },
   ];
+  
+  useMeta({
+    title: 'Contact Groups',
+    description: 'Manage your contact groups, create, edit, and delete groups, and view statistics for organized messaging.'
+  });
 
   return (
     <div className="space-y-6">

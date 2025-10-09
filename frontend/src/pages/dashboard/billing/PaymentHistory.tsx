@@ -9,6 +9,7 @@ import { useToast } from "@/hooks/use-toast";
 import { format } from "date-fns";
 import type { ColumnDef } from "@tanstack/react-table";
 import { Link } from "react-router-dom";
+import { useMeta } from "@/hooks/useMeta";
 
 interface Transaction {
   id: string;
@@ -195,6 +196,11 @@ export default function PaymentHistory() {
     link.click();
     document.body.removeChild(link);
   };
+
+  useMeta({
+    title: 'Payment History',
+    description: 'View all your payment transactions, track credits purchased, and export your payment history for records.'
+  });
 
   return (
     <div className="space-y-6">

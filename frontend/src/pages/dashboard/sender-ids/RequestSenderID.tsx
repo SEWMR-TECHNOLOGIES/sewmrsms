@@ -9,6 +9,7 @@ import { useToast } from '@/hooks/use-toast';
 import { useNavigate } from 'react-router-dom';
 import { FileUpload } from '@/components/ui/file-upload';
 import { UploadProgress } from '@/components/ui/upload-progress';
+import { useMeta } from '@/hooks/useMeta';
 
 export default function RequestSenderID() {
   const [formData, setFormData] = useState({
@@ -136,7 +137,10 @@ export default function RequestSenderID() {
       setLoading(false);
     }
   };
-
+  useMeta({
+    title: "Request Sender ID",
+    description: "Submit a new sender ID request for approval. Students can use EasyTextAPI for testing purposes."
+  });
   return (
     <div className="space-y-6">
       <div className="flex items-center gap-4">

@@ -9,6 +9,7 @@ import { Separator } from '@/components/ui/separator';
 import { Key, Copy, AlertTriangle } from 'lucide-react';
 import { useToast } from '@/hooks/use-toast';
 import { Link } from 'react-router-dom';
+import { useMeta } from '@/hooks/useMeta';
 
 export default function CreateToken() {
   const [tokenName, setTokenName] = useState('');
@@ -60,6 +61,11 @@ export default function CreateToken() {
     setExpiresAt(null);
     setTokenName('');
   };
+
+  useMeta({
+    title: "Create API Token",
+    description: "Generate a new API token to access your SEWMR SMS account programmatically."
+  });
 
   return (
     <div className="space-y-6">

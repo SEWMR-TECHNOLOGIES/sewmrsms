@@ -9,6 +9,7 @@ import { useToast } from '@/hooks/use-toast';
 import { UploadProgress } from '@/components/ui/upload-progress';
 import { useUpload } from '@/hooks/useUpload';
 import { FileUpload } from '@/components/ui/file-upload';
+import { useMeta } from '@/hooks/useMeta';
 
 type PaymentMethod = 'bank' | 'mobile';
 
@@ -132,6 +133,11 @@ export default function OrderPayment() {
       setLoading(false);
     }
   };
+
+  useMeta({
+    title: 'Complete Payment',
+    description: 'Pay for your SMS order via bank or mobile payment to activate your SMS credits quickly and securely.'
+  });
 
   return (
     <div className="space-y-6">

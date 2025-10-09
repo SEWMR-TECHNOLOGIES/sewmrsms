@@ -24,6 +24,7 @@ import { useToast } from "@/hooks/use-toast";
 import { format } from "date-fns";
 import type { ColumnDef } from "@tanstack/react-table";
 import { Link } from "react-router-dom";
+import { useMeta } from "@/hooks/useMeta";
 
 interface Transaction {
   order_uuid: string;
@@ -259,6 +260,11 @@ export default function Billing() {
     (t) => t.status === "cancelled"
   ).length;
 
+  useMeta({
+    title: 'Billing',
+    description: 'View all your subscription orders, check status, and manage payments for SEWMR SMS.'
+  });
+  
   return (
     <div className="space-y-6">
       {/* Header */}

@@ -7,6 +7,7 @@ import { Label } from '@/components/ui/label';
 import { Textarea } from '@/components/ui/textarea';
 import { useToast } from '@/hooks/use-toast';
 import { useNavigate } from 'react-router-dom';
+import { useMeta } from '@/hooks/useMeta';
 
 export default function CreateTemplate() {
   const [formData, setFormData] = useState({
@@ -58,6 +59,11 @@ export default function CreateTemplate() {
     }
   };
 
+  useMeta({
+    title: 'Create SMS Template',
+    description: 'Define reusable SMS templates with placeholders for dynamic data like {name} or {order_id}.'
+  });
+  
   return (
     <div className="space-y-6">
       {/* Header */}

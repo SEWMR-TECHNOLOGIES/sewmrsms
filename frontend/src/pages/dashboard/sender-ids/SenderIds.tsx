@@ -9,6 +9,7 @@ import { format } from 'date-fns';
 import { useNavigate } from 'react-router-dom';
 import type { ColumnDef } from '@tanstack/react-table';
 import { Loader } from '@/components/ui/loader';
+import { useMeta } from '@/hooks/useMeta';
 
 interface SenderID {
   uuid: string;
@@ -100,6 +101,11 @@ export default function UserSenderIds() {
       ),
     },
   ];
+  
+  useMeta({
+    title: "My Sender IDs",
+    description: "View and manage all your approved, pending, and inactive SMS sender IDs."
+  });
 
   return (
     <div className="space-y-6">

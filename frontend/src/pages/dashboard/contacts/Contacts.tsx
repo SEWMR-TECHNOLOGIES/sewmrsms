@@ -18,6 +18,7 @@ import { ToggleSwitch } from '@/components/ui/toggle-switch';
 import { AlertDialog, AlertDialogAction, AlertDialogCancel, AlertDialogContent, AlertDialogFooter, AlertDialogHeader, AlertDialogTitle } from '@/components/ui/alert-dialog';
 import { Input } from '@/components/ui/input';
 import { SearchableSelect, SearchableSelectOption } from '@/components/ui/searchable-select';
+import { useMeta } from '@/hooks/useMeta';
 
 export type Contact = {
   id: string;
@@ -291,6 +292,11 @@ export default function Contacts() {
       ),
     },
   ];
+
+  useMeta({
+    title: 'Contacts',
+    description: 'Manage your contacts, organize groups, view statuses, and export contact lists as CSV or VCF files.'
+  });
 
   return (
     <div className="space-y-6">

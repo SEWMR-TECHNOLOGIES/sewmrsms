@@ -9,6 +9,7 @@ import { AlertDialog, AlertDialogAction, AlertDialogCancel, AlertDialogContent, 
 import { Key, Plus, Trash2, Ban } from 'lucide-react';
 import { useToast } from '@/hooks/use-toast';
 import { Link } from 'react-router-dom';
+import { useMeta } from '@/hooks/useMeta';
 
 export interface ApiToken {
   id: string;
@@ -140,6 +141,10 @@ export default function ApiTokens() {
     }
   ];
 
+  useMeta({
+    title: "API Tokens",
+    description: "Manage your API tokens for secure programmatic access to your SEWMR SMS account."
+  });
   return (
     <div className="space-y-6">
       <div className="flex items-center justify-between">

@@ -20,6 +20,7 @@ import { UploadProgress } from '@/components/ui/upload-progress';
 import { Link } from 'react-router-dom';
 import { Label } from '@/components/ui/label';
 import { Alert, AlertDescription } from '@/components/ui/alert';
+import { useMeta } from '@/hooks/useMeta';
 
 const BASE_URL = 'https://api.sewmrsms.co.tz/api/v1';
 
@@ -199,6 +200,11 @@ export default function SendFromTemplate() {
     }
   };
 
+  useMeta({
+    title: 'Send SMS from File',
+    description: 'Select a sender and template, type a message, upload recipients file, and send or schedule SMS easily.'
+  });
+  
   return (
     <div className="space-y-6">
       <div>

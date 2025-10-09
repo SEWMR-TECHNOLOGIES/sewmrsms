@@ -20,6 +20,7 @@ import {
 import { SearchableSelect } from "@/components/ui/searchable-select";
 import { ToggleSwitch } from "@/components/ui/toggle-switch";
 import TemplatePreview from "@/components/ui/template-preview";
+import { useMeta } from "@/hooks/useMeta";
 
 interface TemplateColumn {
   id: string;
@@ -264,6 +265,11 @@ export default function TemplatesPage() {
       },
     },
   ];
+
+  useMeta({
+    title: 'SMS Templates',
+    description: 'Manage your SMS templates, edit placeholders, preview messages, and organize columns.'
+  });
 
   return (
     <div className="space-y-6">

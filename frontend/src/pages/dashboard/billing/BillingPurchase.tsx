@@ -4,6 +4,7 @@ import { Button } from '@/components/ui/button';
 import { Card, CardContent, CardDescription, CardHeader, CardTitle } from '@/components/ui/card';
 import { Link } from 'react-router-dom';
 import { cn } from '@/lib/utils';
+import { useMeta } from '@/hooks/useMeta';
 
 export default function BillingPurchase() {
   const [plans, setPlans] = useState([]);
@@ -27,6 +28,11 @@ export default function BillingPurchase() {
     }
     fetchPlans();
   }, []);
+
+  useMeta({
+    title: 'Purchase SMS Credits',
+    description: 'Choose from a variety of SMS credit plans. Secure payments, instant activation, and 24/7 support included.'
+  });
 
   return (
     <div className="space-y-8">

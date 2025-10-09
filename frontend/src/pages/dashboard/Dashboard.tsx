@@ -11,6 +11,7 @@ import {
   ArrowDownRight,
 } from 'lucide-react';
 import { Link } from 'react-router-dom';
+import { useMeta } from '@/hooks/useMeta';
 
 function formatRelative(isoTs: string) {
   try {
@@ -134,6 +135,11 @@ export default function Dashboard() {
     if (s === 'failed' || s === 'undeliverable') return 'destructive';
     return 'secondary';
   };
+
+  useMeta({
+    title: 'Dashboard',
+    description: 'View your SMS analytics, message performance, and recent activity on the SEWMR SMS Dashboard.'
+  });
 
   return (
     <div className="space-y-6">

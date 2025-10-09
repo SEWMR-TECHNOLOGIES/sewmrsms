@@ -33,6 +33,8 @@ async def create_contact_group(
 
     data = await request.json()
     name = data.get("name", "").strip()
+    description = data.get("description").strip()  if data.get("description") else None
+
     if not name:
         return {"success": False, "message": "Contact group name is required", "data": None}
 
@@ -45,7 +47,13 @@ async def create_contact_group(
         return {"success": False, "message": "Contact group with this name already exists", "data": None}
 
     now = datetime.now(pytz.timezone("Africa/Nairobi")).replace(tzinfo=None)
-    new_group = ContactGroup(user_id=current_user.id, name=name, created_at=now, updated_at=now)
+    new_group = ContactGroup(
+        user_id=current_user.id,
+        name=name,
+        description=description,  
+        created_at=now,
+        updated_at=now
+    )
 
     try:
         db.add(new_group)
@@ -61,6 +69,7 @@ async def create_contact_group(
             "id": new_group.id,
             "uuid": str(new_group.uuid),
             "name": new_group.name,
+            "description": new_group.description, 
             "created_at": now.strftime("%Y-%m-%d %H:%M:%S"),
             "updated_at": now.strftime("%Y-%m-%d %H:%M:%S")
         }

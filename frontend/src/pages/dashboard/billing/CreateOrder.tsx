@@ -6,6 +6,7 @@ import { Card, CardContent, CardDescription, CardHeader, CardTitle } from '@/com
 import { Input } from '@/components/ui/input';
 import { Label } from '@/components/ui/label';
 import { useToast } from '@/hooks/use-toast';
+import { useMeta } from '@/hooks/useMeta';
 
 type OrderResponse = {
   success: boolean;
@@ -88,6 +89,10 @@ export default function CreateOrder(): JSX.Element {
       setLoading(false);
     }
   };
+  useMeta({
+    title: 'Purchase SMS Credits',
+    description: 'Top up your SMS credits quickly and securely. Create orders, complete payment, and start sending messages instantly.'
+  });
 
   return (
     <div className="space-y-6">

@@ -3,6 +3,7 @@ import { useNavigate, useParams } from 'react-router-dom';
 import { Card, CardContent, CardHeader, CardTitle, CardDescription } from '@/components/ui/card';
 import { Loader, CreditCard } from 'lucide-react';
 import { useToast } from '@/hooks/use-toast';
+import { useMeta } from '@/hooks/useMeta';
 
 export default function MobilePaymentWaiting() {
   const { orderUuid, checkoutRequestId } = useParams<{ orderUuid: string; checkoutRequestId: string }>();
@@ -55,6 +56,11 @@ export default function MobilePaymentWaiting() {
     };
   }, [checkoutRequestId, orderUuid, navigate, toast]);
 
+  useMeta({
+    title: 'Processing Mobile Payment',
+    description: 'Your mobile payment is being securely processed. Please wait for confirmation before leaving this page.'
+  });
+  
   return (
     <div className="space-y-6">
       <div className="flex items-center gap-4">

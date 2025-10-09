@@ -7,6 +7,7 @@ import { useNavigate, useParams } from "react-router-dom";
 import { UploadProgress } from "@/components/ui/upload-progress";
 import { useUpload } from "@/hooks/useUpload";
 import { FileUpload } from "@/components/ui/file-upload";
+import { useMeta } from "@/hooks/useMeta";
 
 const MAX_FILE_SIZE = 524288; // 0.5 MB
 
@@ -69,6 +70,11 @@ export default function UploadAgreement() {
       resetProgress();
     }
   };
+
+  useMeta({
+    title: "Upload Sender ID Agreement",
+    description: "Upload your signed sender ID agreement (PDF) to complete the verification process."
+  });
 
   return (
     <div className="space-y-6">

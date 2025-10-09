@@ -10,6 +10,7 @@ import { useNavigate, Link } from 'react-router-dom';
 import type { ColumnDef } from '@tanstack/react-table';
 import { Loader } from '@/components/ui/loader';
 import { Input } from '@/components/ui/input';
+import { useMeta } from '@/hooks/useMeta';
 
 interface SenderID {
   uuid: string;
@@ -129,6 +130,10 @@ export default function UserSenderRequests() {
     },
   ];
 
+  useMeta({
+    title: "Sender ID Requests",
+    description: "View, manage, and track all your sender ID requests within your SEWMR SMS account."
+  });
   return (
     <div className="space-y-6">
       {/* Header */}

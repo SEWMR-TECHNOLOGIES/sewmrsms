@@ -8,6 +8,7 @@ import { Separator } from '@/components/ui/separator';
 import { AlertTriangle } from 'lucide-react';
 import { useToast } from '@/hooks/use-toast';
 import { Loader } from '@/components/ui/loader';
+import { useMeta } from '@/hooks/useMeta';
 
 export default function OutageNotificationSettings() {
   const [phone, setPhone] = useState('');
@@ -70,6 +71,11 @@ export default function OutageNotificationSettings() {
       setLoading(false);
     }
   };
+  
+  useMeta({
+    title: "Outage Notification Settings",
+    description: "Configure how and when you want to be notified before your SMS balance runs out."
+  });
 
   return (
     <div className="space-y-6">

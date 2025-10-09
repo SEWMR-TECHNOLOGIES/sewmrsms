@@ -13,6 +13,7 @@ import { cn } from '@/lib/utils';
 import { useToast } from '@/hooks/use-toast';
 import { Loader } from '@/components/ui/loader';
 import { SearchableSelect } from '@/components/ui/searchable-select';
+import { useMeta } from '@/hooks/useMeta';
 
 interface SentMessage {
   id: number;
@@ -219,6 +220,11 @@ export default function MessageHistory() {
 
   // prepare SearchableSelect options
   const statusOptions = STATUS_OPTIONS.map(s => ({ value: s, label: s }));
+
+  useMeta({
+    title: "Message History",
+    description: "View, filter, and export your sent SMS messages. Check delivery status, date, and message details for each message."
+  });
 
   return (
     <div className="space-y-6">

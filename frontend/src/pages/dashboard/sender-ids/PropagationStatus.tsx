@@ -15,6 +15,7 @@ import {
 } from '@/components/ui/table';
 import { RefreshCw, Network, Clock, CheckCircle, XCircle, AlertTriangle } from 'lucide-react';
 import { useToast } from '@/hooks/use-toast';
+import { useMeta } from '@/hooks/useMeta';
 
 interface NetworkStatus {
   network_name: string;
@@ -290,6 +291,11 @@ export default function PropagationStatus() {
       </div>
     );
   }
+
+  useMeta({
+    title: "Sender ID Propagation Status",
+    description: "Monitor the propagation status of your sender ID across all networks. See detailed network status and overall progress."
+  });
 
   return (
     <div className="space-y-6">
