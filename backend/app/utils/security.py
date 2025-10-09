@@ -63,7 +63,27 @@ def verify_api_token(db: Session, raw_token: str) -> User | None:
         token_hash=token_hash,
         revoked=False
     ).first()
+
+    if not token_obj:
+        return None
+
     now = datetime.now(pytz.timezone("Africa/Nairobi")).replace(tzinfo=None)
-    if token_obj and (not token_obj.expires_at or token_obj.expires_at > now):
-        return db.query(User).filter_by(id=token_obj.user_id).first()
-    return None
+
+    # Extend by 1 day if it's a different day than last_used
+    if not token_obj.last_used or token_obj.last_used.date() != now.date():
+        if token_obj.expires_at:
+            token_obj.expires_at += timedelta(days=1)
+        else:
+            token_obj.expires_at = now + timedelta(days=1)
+
+    # Update last_used to now
+    token_obj.last_used = now
+    db.commit()
+    db.refresh(token_obj)
+
+    # Check if token is expired
+    if token_obj.expires_at and token_obj.expires_at <= now:
+        return None
+
+    # Return the user
+    return db.query(User).filter_by(id=token_obj.user_id).first()
