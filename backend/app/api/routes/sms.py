@@ -1116,3 +1116,21 @@ def get_message_history(
             "message": f"Internal Server Error: {str(e)}",
             "data": None
         }
+
+@router.get("/remaining-sms")
+async def get_remaining_sms(
+    current_user: User = Depends(get_current_user_optional),
+    db: Session = Depends(get_db)
+):
+    subscriptions = db.query(UserSubscription).filter(
+        UserSubscription.user_id == current_user.id,
+        UserSubscription.status == "active"
+    ).all()
+
+    if not subscriptions:
+        raise HTTPException(status_code=404, detail="No active subscriptions found")
+
+    total_remaining = sum(sub.remaining_sms for sub in subscriptions)
+
+    return {"remaining_sms": total_remaining}
+
