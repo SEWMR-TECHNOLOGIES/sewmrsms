@@ -1122,18 +1122,28 @@ async def get_remaining_sms(
     current_user: User = Depends(get_current_user_optional),
     db: Session = Depends(get_db)
 ):
+    print("Stage 1: Endpoint called")
+
+    if not current_user:
+        print("Stage 2: current_user is None")
+        raise HTTPException(status_code=401, detail="User not authenticated")
+    print(f"Stage 3: current_user found: {current_user.id}, {current_user.uuid}")
+
     # Fetch all active subscriptions for the current user
     subscriptions = db.query(UserSubscription).filter(
         UserSubscription.user_id == current_user.id,
         UserSubscription.status == "active"
     ).all()
+    print(f"Stage 4: Subscriptions fetched: {subscriptions}")
 
     if not subscriptions:
+        print("Stage 5: No active subscriptions found")
         raise HTTPException(status_code=404, detail="No active subscriptions found")
 
     total_purchased = sum(sub.total_sms for sub in subscriptions)
     total_used = sum(sub.used_sms for sub in subscriptions)
     total_balance = sum(sub.remaining_sms for sub in subscriptions)
+    print(f"Stage 6: Computed totals - purchased: {total_purchased}, used: {total_used}, balance: {total_balance}")
 
     return {
         "success": True,
@@ -1143,3 +1153,4 @@ async def get_remaining_sms(
             "balance": total_balance
         }
     }
+
