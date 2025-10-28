@@ -1122,6 +1122,7 @@ async def get_remaining_sms(
     current_user: User = Depends(get_current_user_optional),
     db: Session = Depends(get_db)
 ):
+    # Fetch all active subscriptions for the current user
     subscriptions = db.query(UserSubscription).filter(
         UserSubscription.user_id == current_user.id,
         UserSubscription.status == "active"
@@ -1130,7 +1131,15 @@ async def get_remaining_sms(
     if not subscriptions:
         raise HTTPException(status_code=404, detail="No active subscriptions found")
 
-    total_remaining = sum(sub.remaining_sms for sub in subscriptions)
+    total_purchased = sum(sub.total_sms for sub in subscriptions)
+    total_used = sum(sub.used_sms for sub in subscriptions)
+    total_balance = sum(sub.remaining_sms for sub in subscriptions)
 
-    return {"remaining_sms": total_remaining}
-
+    return {
+        "success": True,
+        "data": {
+            "total_purchased": total_purchased,
+            "used": total_used,
+            "balance": total_balance
+        }
+    }
