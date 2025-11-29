@@ -96,8 +96,14 @@ class PaymentGateway:
 
             data = resp.json()
             if not data.get("status"):
-                raise HTTPException(status_code=400, detail=data.get("detail", "Payment request failed."))
-            return data
+                raise HTTPException(
+                    status_code=400,
+                    detail={
+                        "message": data.get("detail", "Payment request failed."),
+                        "debug_sasapay_response": data
+                    }
+                )
+
 
     async def check_transaction_status(self, checkout_request_id: str) -> str:
         token = await self._get_auth_token()

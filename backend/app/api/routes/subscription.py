@@ -359,10 +359,22 @@ async def submit_mobile_payment(
         )
     except HTTPException as e:
         db.rollback()
-        raise HTTPException(status_code=e.status_code, detail=f"Gateway error: {e.detail}")
+        print("=== GATEWAY EXCEPTION DETAIL ===")
+        print(e.detail)
+        print("================================")
+        raise HTTPException(status_code=e.status_code, detail=e.detail)
     except Exception as e:
-        db.rollback()
-        raise HTTPException(status_code=500, detail=f"Unexpected gateway error: {str(e)}")
+        print("=== UNEXPECTED GATEWAY EXCEPTION ===")
+        import traceback
+        traceback.print_exc()  # prints full traceback to logs
+        print("====================================")
+        raise HTTPException(
+            status_code=500,
+            detail={
+                "message": "Unexpected gateway error",
+                "error": str(e)
+            }
+        )
 
 
     # Update MobilePayment with gateway response IDs
