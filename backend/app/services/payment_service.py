@@ -86,7 +86,7 @@ class PaymentGateway:
             "CallBackURL": CALLBACK_URL
         }
 
-        async with httpx.AsyncClient() as client:
+        async with httpx.AsyncClient(timeout=30) as client:
             resp = await client.post(self.PAYMENT_REQUEST_URL, json=payload, headers=headers)
              # Print everything for debugging
             print("===== SASAPAY PAYMENT RAW RESPONSE =====")
