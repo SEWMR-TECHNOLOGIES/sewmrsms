@@ -350,12 +350,20 @@ async def submit_mobile_payment(
     db.flush()
 
     # Request payment via the gateway API
-    payment_resp = await gateway.request_payment(
-        phone_number=mobile_number,
-        amount=float(order_payment.amount),
-        description="Subscription payment",
-        merchant_request_id=str(mobile_payment.uuid)
-    )
+    try:
+        payment_resp = await gateway.request_payment(
+            phone_number=mobile_number,
+            amount=float(order_payment.amount),
+            description="Subscription payment",
+            merchant_request_id=str(mobile_payment.uuid)
+        )
+    except HTTPException as e:
+        db.rollback()
+        raise HTTPException(status_code=e.status_code, detail=f"Gateway error: {e.detail}")
+    except Exception as e:
+        db.rollback()
+        raise HTTPException(status_code=500, detail=f"Unexpected gateway error: {str(e)}")
+
 
     # Update MobilePayment with gateway response IDs
     mobile_payment.merchant_request_id = payment_resp.get("MerchantRequestID", "")

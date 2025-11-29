@@ -88,6 +88,12 @@ class PaymentGateway:
 
         async with httpx.AsyncClient() as client:
             resp = await client.post(self.PAYMENT_REQUEST_URL, json=payload, headers=headers)
+             # Print everything for debugging
+            print("===== SASAPAY PAYMENT RAW RESPONSE =====")
+            print("Status code:", resp.status_code)
+            print("Text:", resp.text)
+            print("========================================")
+
             data = resp.json()
             if not data.get("status"):
                 raise HTTPException(status_code=400, detail=data.get("detail", "Payment request failed."))
