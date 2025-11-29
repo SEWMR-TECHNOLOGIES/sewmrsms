@@ -60,11 +60,60 @@ class PaymentGateway:
             "account_number": account_number
         }
 
-        async with httpx.AsyncClient() as client:
-            resp = await client.post(self.ACCOUNT_VALIDATION_URL, json=payload, headers=headers)
-            if resp.status_code != 200:
-                raise HTTPException(status_code=400, detail="Account validation failed with Sasapay.")
-            return resp.json()
+    async def _validate_account(self, channel_code: str, account_number: str):
+        token = await self._get_auth_token()
+        headers = {"Authorization": f"Bearer {token}", "Content-Type": "application/json"}
+        payload = {
+            "merchant_code": self.merchant_code,
+            "channel_code": channel_code,
+            "account_number": account_number
+        }
+
+        try:
+            async with httpx.AsyncClient(timeout=30) as client:
+                resp = await client.post(self.ACCOUNT_VALIDATION_URL, json=payload, headers=headers)
+
+                # Print raw response for debugging
+                print("=== ACCOUNT VALIDATION RAW RESPONSE ===")
+                print("Status code:", resp.status_code)
+                print("Text:", resp.text)
+                print("=====================================")
+
+                if resp.status_code != 200:
+                    raise HTTPException(
+                        status_code=400,
+                        detail=f"Account validation failed with Sasapay: {resp.text}"
+                    )
+
+                return resp.json()
+
+        except httpx.TimeoutException as e:
+            print("=== ACCOUNT VALIDATION TIMEOUT ===")
+            print(str(e))
+            print("=================================")
+            raise HTTPException(
+                status_code=504,
+                detail={"message": "Account validation timed out", "error": str(e)}
+            )
+
+        except httpx.RequestError as e:
+            print("=== ACCOUNT VALIDATION REQUEST ERROR ===")
+            print(str(e))
+            print("=======================================")
+            raise HTTPException(
+                status_code=502,
+                detail={"message": "Account validation request failed", "error": str(e)}
+            )
+
+        except Exception as e:
+            import traceback
+            print("=== ACCOUNT VALIDATION UNEXPECTED ERROR ===")
+            traceback.print_exc()
+            print("==========================================")
+            raise HTTPException(
+                status_code=500,
+                detail={"message": "Unexpected error during account validation", "error": str(e)}
+            )
 
     async def request_payment(self, phone_number: str, amount: float, description: str, merchant_request_id: str) -> Dict[str, Any]:
         network_code = self._identify_network(phone_number)
