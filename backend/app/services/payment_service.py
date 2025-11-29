@@ -60,60 +60,11 @@ class PaymentGateway:
             "account_number": account_number
         }
 
-    async def _validate_account(self, channel_code: str, account_number: str):
-        token = await self._get_auth_token()
-        headers = {"Authorization": f"Bearer {token}", "Content-Type": "application/json"}
-        payload = {
-            "merchant_code": self.merchant_code,
-            "channel_code": channel_code,
-            "account_number": account_number
-        }
-
-        try:
-            async with httpx.AsyncClient(timeout=30) as client:
-                resp = await client.post(self.ACCOUNT_VALIDATION_URL, json=payload, headers=headers)
-
-                # Print raw response for debugging
-                print("=== ACCOUNT VALIDATION RAW RESPONSE ===")
-                print("Status code:", resp.status_code)
-                print("Text:", resp.text)
-                print("=====================================")
-
-                if resp.status_code != 200:
-                    raise HTTPException(
-                        status_code=400,
-                        detail=f"Account validation failed with Sasapay: {resp.text}"
-                    )
-
-                return resp.json()
-
-        except httpx.TimeoutException as e:
-            print("=== ACCOUNT VALIDATION TIMEOUT ===")
-            print(str(e))
-            print("=================================")
-            raise HTTPException(
-                status_code=504,
-                detail={"message": "Account validation timed out", "error": str(e)}
-            )
-
-        except httpx.RequestError as e:
-            print("=== ACCOUNT VALIDATION REQUEST ERROR ===")
-            print(str(e))
-            print("=======================================")
-            raise HTTPException(
-                status_code=502,
-                detail={"message": "Account validation request failed", "error": str(e)}
-            )
-
-        except Exception as e:
-            import traceback
-            print("=== ACCOUNT VALIDATION UNEXPECTED ERROR ===")
-            traceback.print_exc()
-            print("==========================================")
-            raise HTTPException(
-                status_code=500,
-                detail={"message": "Unexpected error during account validation", "error": str(e)}
-            )
+        async with httpx.AsyncClient() as client:
+            resp = await client.post(self.ACCOUNT_VALIDATION_URL, json=payload, headers=headers)
+            if resp.status_code != 200:
+                raise HTTPException(status_code=400, detail="Account validation failed with Sasapay.")
+            return resp.json()
 
     async def request_payment(self, phone_number: str, amount: float, description: str, merchant_request_id: str) -> Dict[str, Any]:
         network_code = self._identify_network(phone_number)
@@ -135,24 +86,12 @@ class PaymentGateway:
             "CallBackURL": CALLBACK_URL
         }
 
-        async with httpx.AsyncClient(timeout=30) as client:
+        async with httpx.AsyncClient() as client:
             resp = await client.post(self.PAYMENT_REQUEST_URL, json=payload, headers=headers)
-             # Print everything for debugging
-            print("===== SASAPAY PAYMENT RAW RESPONSE =====")
-            print("Status code:", resp.status_code)
-            print("Text:", resp.text)
-            print("========================================")
-
             data = resp.json()
             if not data.get("status"):
-                raise HTTPException(
-                    status_code=400,
-                    detail={
-                        "message": data.get("detail", "Payment request failed."),
-                        "debug_sasapay_response": data
-                    }
-                )
-
+                raise HTTPException(status_code=400, detail=data.get("detail", "Payment request failed."))
+            return data
 
     async def check_transaction_status(self, checkout_request_id: str) -> str:
         token = await self._get_auth_token()
