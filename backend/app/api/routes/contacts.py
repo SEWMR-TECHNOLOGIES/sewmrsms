@@ -689,10 +689,11 @@ async def edit_contact(
         Contact.id != contact.id,
         or_(
             Contact.phone == phone,
-            and_(email != "", Contact.email == email)
+            and_(email not in (None, ""), Contact.email == email)
         ),
         Contact.group_id == (group.id if group else None)
     ).first()
+
     if duplicate:
         return {"success": False, "message": "Another contact with same phone/email exists in the group", "data": None}
 
