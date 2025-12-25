@@ -370,7 +370,7 @@ async def create_contacts(
                     Contact.user_id == current_user.id,
                     or_(
                         Contact.phone == phone,
-                        and_(email != "", Contact.email == email)
+                        and_(email not in (None, ""), Contact.email == email)
                     )
                 ).first()
 
