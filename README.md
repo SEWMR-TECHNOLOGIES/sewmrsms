@@ -11,7 +11,7 @@
 API tokens are generated from the **SEWMR SMS Dashboard**, not via API.
 
 **Steps to get your API token:**
-1. Log in to [SEWMR SMS Dashboard](https://app.sewmrsms.co.tz)
+1. Log in to [SEWMR SMS Dashboard](https://sewmrsms.co.tz/app)
 2. Navigate to **Settings → API Tokens**
 3. Click **"Generate New Token"**
 4. Give your token a name (e.g., "My App Integration")
