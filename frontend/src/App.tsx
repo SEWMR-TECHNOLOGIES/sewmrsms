@@ -7,6 +7,7 @@ import Index from "./pages/Index";
 import FeaturesPage from "./pages/Features";
 import PricingPage from "./pages/Pricing";
 import DevelopersPage from "./pages/Developers";
+import DeveloperDocs from "./pages/DeveloperDocs";
 import ContactPage from "./pages/Contact";
 import SignInPage from "./pages/SignIn";
 import SignUpPage from "./pages/SignUp";
@@ -56,6 +57,7 @@ const App = () => (
           <Route path="/features" element={<FeaturesPage />} />
           <Route path="/pricing" element={<PricingPage />} />
           <Route path="/developers" element={<DevelopersPage />} />
+          <Route path="/developers/docs" element={<DeveloperDocs />} />
           <Route path="/contact" element={<ContactPage />} />
           <Route path="/signin" element={<SignInPage />} />
           <Route path="/signup" element={<SignUpPage />} />

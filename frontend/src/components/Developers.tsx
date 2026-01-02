@@ -1,5 +1,6 @@
 import { Button } from "@/components/ui/button";
 import { Code, BookOpen, Zap, Users, FileText, Rocket } from "lucide-react";
+import { Link } from "react-router-dom";
 
 export const Developers = () => {
   return (
@@ -127,9 +128,11 @@ export const Developers = () => {
               Get started with our comprehensive API documentation
             </p>
           </div>
-          <Button variant="default" size="lg">
-            <BookOpen className="mr-2" />
-            View API Docs
+          <Button variant="default" size="lg" asChild>
+            <Link to="/developers/docs">
+              <BookOpen className="mr-2" />
+              View API Docs
+            </Link>
           </Button>
         </div>
       </div>
