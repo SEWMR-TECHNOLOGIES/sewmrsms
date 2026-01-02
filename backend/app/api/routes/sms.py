@@ -606,10 +606,19 @@ async def quick_send_group_sms(
     if not group_uuid_str:
         raise HTTPException(status_code=400, detail="group_uuid is required")
 
+    # Parse sender_id: UUID OR alias
+    sender_uuid = None
+    sender_alias = None
+    is_sender_uuid = False
+
     try:
-        sender_uuid = uuid.UUID(sender_id_uuid)
-    except ValueError:
-        raise HTTPException(status_code=400, detail="sender_id must be a valid UUID")
+        sender_uuid = uuid.UUID(str(sender_id_uuid))
+        is_sender_uuid = True
+    except ValueError as e:
+        print(f"UUID parsing error: {e}")
+        sender_alias = str(sender_id_uuid).strip()
+        if not sender_alias:
+            raise HTTPException(status_code=400, detail="sender_id alias cannot be empty")
 
     now = datetime.now(pytz.timezone("Africa/Nairobi")).replace(tzinfo=None)
     scheduled_for = None
@@ -631,11 +640,18 @@ async def quick_send_group_sms(
         if not user:
             raise HTTPException(status_code=401, detail="Invalid or expired API token")
 
-    # Verify sender
-    sender = db.query(SenderId).filter(
-        SenderId.uuid == sender_uuid,
-        SenderId.user_id == user.id
-    ).first()
+    # Verify sender (by UUID or alias) + ownership
+    if is_sender_uuid:
+        sender = db.query(SenderId).filter(
+            SenderId.uuid == sender_uuid,
+            SenderId.user_id == user.id
+        ).first()
+    else:
+        sender = db.query(SenderId).filter(
+            SenderId.alias == sender_alias,
+            SenderId.user_id == user.id
+        ).first()
+
     if not sender:
         raise HTTPException(status_code=404, detail="Sender ID not found or not owned by user")
 
@@ -810,19 +826,34 @@ async def quick_send_sms(
             if not user:
                 raise HTTPException(status_code=401, detail="Invalid or expired API token")
 
-        # Validate sender
-        try:
-            sender_uuid = uuid.UUID(sender_id)
-        except ValueError:
-            raise HTTPException(status_code=400, detail="Invalid sender_id UUID")
+        # Validate sender: accept UUID OR alias
+        sender_uuid = None
+        sender_alias = None
+        is_sender_uuid = False
 
-        sender = db.query(SenderId).filter(
-            SenderId.uuid == sender_uuid,
-            SenderId.user_id == user.id
-        ).first()
+        try:
+            sender_uuid = uuid.UUID(str(sender_id))
+            is_sender_uuid = True
+        except ValueError as e:
+            print(f"UUID parsing error: {e}")
+            sender_alias = str(sender_id).strip()
+            if not sender_alias:
+                raise HTTPException(status_code=400, detail="sender_id alias cannot be empty")
+
+        # Lookup sender by UUID (if UUID) OR by alias (if not UUID), and enforce ownership
+        if is_sender_uuid:
+            sender = db.query(SenderId).filter(
+                SenderId.uuid == sender_uuid,
+                SenderId.user_id == user.id
+            ).first()
+        else:
+            sender = db.query(SenderId).filter(
+                SenderId.alias == sender_alias,
+                SenderId.user_id == user.id
+            ).first()
+
         if not sender:
             raise HTTPException(status_code=404, detail="Sender ID not found or unauthorized")
-
         # Validate template
         try:
             tmpl_uuid = uuid.UUID(template_uuid)
