@@ -136,7 +136,7 @@ const AuthenticationSection = () => (
         API tokens are generated from the <strong>SEWMR SMS Dashboard</strong>, not via API.
       </p>
       <ol className="list-decimal list-inside space-y-2 text-muted-foreground">
-        <li>Log in to <a href="https://app.sewmrsms.co.tz" className="text-primary hover:underline">SEWMR SMS Dashboard</a></li>
+        <li>Log in to <a href="https://sewmrsms.co.tz/console" className="text-primary hover:underline">SEWMR SMS Dashboard</a></li>
         <li>Navigate to <strong>Settings → API Tokens</strong></li>
         <li>Click <strong>"Generate New Token"</strong></li>
         <li>Give your token a name (e.g., "My App Integration")</li>
