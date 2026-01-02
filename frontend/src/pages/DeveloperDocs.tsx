@@ -42,13 +42,13 @@ const CodeBlock = ({ code, language = "json" }: { code: string; language?: strin
 
   return (
     <div className="relative group">
-      <pre className="bg-foreground/5 border border-border rounded-lg p-4 overflow-x-auto text-sm">
-        <code className="text-foreground/80">{code}</code>
+      <pre className="bg-foreground/5 border border-border rounded-lg p-3 sm:p-4 overflow-x-auto text-xs sm:text-sm max-w-full">
+        <code className="text-foreground/80 break-all whitespace-pre-wrap sm:whitespace-pre">{code}</code>
       </pre>
       <Button
         variant="ghost"
         size="sm"
-        className="absolute top-2 right-2 opacity-0 group-hover:opacity-100 transition-opacity"
+        className="absolute top-2 right-2 opacity-100 sm:opacity-0 sm:group-hover:opacity-100 transition-opacity"
         onClick={handleCopy}
       >
         {copied ? <Check className="h-4 w-4 text-success" /> : <Copy className="h-4 w-4" />}
@@ -78,12 +78,12 @@ const Endpoint = ({ method, path, title, description, headers, requestBody, resp
     <div className="border border-border rounded-lg overflow-hidden bg-card">
       <button
         onClick={() => setIsOpen(!isOpen)}
-        className="w-full p-4 flex items-center gap-4 hover:bg-muted/50 transition-colors text-left"
+        className="w-full p-3 sm:p-4 flex items-center gap-2 sm:gap-4 hover:bg-muted/50 transition-colors text-left"
       >
         <MethodBadge method={method} />
-        <code className="text-sm font-mono text-muted-foreground flex-1">{path}</code>
-        <span className="text-foreground font-medium hidden sm:block">{title}</span>
-        {isOpen ? <ChevronDown className="h-5 w-5 text-muted-foreground" /> : <ChevronRight className="h-5 w-5 text-muted-foreground" />}
+        <code className="text-xs sm:text-sm font-mono text-muted-foreground flex-1 truncate">{path}</code>
+        <span className="text-foreground font-medium hidden lg:block">{title}</span>
+        {isOpen ? <ChevronDown className="h-4 w-4 sm:h-5 sm:w-5 text-muted-foreground flex-shrink-0" /> : <ChevronRight className="h-4 sm:h-5 sm:w-5 text-muted-foreground flex-shrink-0" />}
       </button>
       
       {isOpen && (
@@ -173,25 +173,25 @@ const SenderIdSection = () => (
       The <code className="bg-muted px-1.5 py-0.5 rounded text-sm">sender_id</code> field accepts <strong>either</strong>:
     </p>
     
-    <div className="overflow-x-auto">
-      <table className="w-full text-sm">
+    <div className="overflow-x-auto -mx-4 sm:mx-0">
+      <table className="w-full text-xs sm:text-sm min-w-[400px]">
         <thead>
           <tr className="border-b border-border">
-            <th className="text-left py-3 px-4 font-semibold text-foreground">Format</th>
-            <th className="text-left py-3 px-4 font-semibold text-foreground">Example</th>
-            <th className="text-left py-3 px-4 font-semibold text-foreground">Description</th>
+            <th className="text-left py-2 sm:py-3 px-3 sm:px-4 font-semibold text-foreground">Format</th>
+            <th className="text-left py-2 sm:py-3 px-3 sm:px-4 font-semibold text-foreground">Example</th>
+            <th className="text-left py-2 sm:py-3 px-3 sm:px-4 font-semibold text-foreground hidden sm:table-cell">Description</th>
           </tr>
         </thead>
         <tbody>
           <tr className="border-b border-border">
-            <td className="py-3 px-4 font-medium">Alias (Name)</td>
-            <td className="py-3 px-4"><code className="bg-muted px-1.5 py-0.5 rounded">SEWMR SMS</code></td>
-            <td className="py-3 px-4 text-muted-foreground">Your registered sender name/alias</td>
+            <td className="py-2 sm:py-3 px-3 sm:px-4 font-medium">Alias</td>
+            <td className="py-2 sm:py-3 px-3 sm:px-4"><code className="bg-muted px-1 sm:px-1.5 py-0.5 rounded text-xs">SEWMR SMS</code></td>
+            <td className="py-2 sm:py-3 px-3 sm:px-4 text-muted-foreground hidden sm:table-cell">Your registered sender name/alias</td>
           </tr>
           <tr>
-            <td className="py-3 px-4 font-medium">UUID</td>
-            <td className="py-3 px-4"><code className="bg-muted px-1.5 py-0.5 rounded text-xs">550e8400-e29b-41d4-...</code></td>
-            <td className="py-3 px-4 text-muted-foreground">Unique identifier from dashboard</td>
+            <td className="py-2 sm:py-3 px-3 sm:px-4 font-medium">UUID</td>
+            <td className="py-2 sm:py-3 px-3 sm:px-4"><code className="bg-muted px-1 sm:px-1.5 py-0.5 rounded text-xs">550e8400...</code></td>
+            <td className="py-2 sm:py-3 px-3 sm:px-4 text-muted-foreground hidden sm:table-cell">Unique identifier from dashboard</td>
           </tr>
         </tbody>
       </table>
@@ -378,52 +378,52 @@ const BulkSmsSection = () => (
       </div>
 
       <h4 className="font-semibold text-sm text-foreground mb-3">Form Data Fields</h4>
-      <div className="overflow-x-auto mb-6">
-        <table className="w-full text-sm">
+      <div className="overflow-x-auto -mx-4 sm:mx-0 mb-6">
+        <table className="w-full text-xs sm:text-sm min-w-[500px]">
           <thead>
             <tr className="border-b border-border">
-              <th className="text-left py-2 px-3 font-semibold text-foreground">Field</th>
-              <th className="text-left py-2 px-3 font-semibold text-foreground">Type</th>
-              <th className="text-left py-2 px-3 font-semibold text-foreground">Required</th>
-              <th className="text-left py-2 px-3 font-semibold text-foreground">Description</th>
+              <th className="text-left py-2 px-2 sm:px-3 font-semibold text-foreground">Field</th>
+              <th className="text-left py-2 px-2 sm:px-3 font-semibold text-foreground">Type</th>
+              <th className="text-left py-2 px-2 sm:px-3 font-semibold text-foreground">Req</th>
+              <th className="text-left py-2 px-2 sm:px-3 font-semibold text-foreground hidden sm:table-cell">Description</th>
             </tr>
           </thead>
           <tbody className="text-muted-foreground">
             <tr className="border-b border-border">
-              <td className="py-2 px-3"><code className="bg-muted px-1 rounded">sender_id</code></td>
-              <td className="py-2 px-3">string</td>
-              <td className="py-2 px-3">✅</td>
-              <td className="py-2 px-3">Sender alias or UUID</td>
+              <td className="py-2 px-2 sm:px-3"><code className="bg-muted px-1 rounded text-xs">sender_id</code></td>
+              <td className="py-2 px-2 sm:px-3">string</td>
+              <td className="py-2 px-2 sm:px-3">✅</td>
+              <td className="py-2 px-2 sm:px-3 hidden sm:table-cell">Sender alias or UUID</td>
             </tr>
             <tr className="border-b border-border">
-              <td className="py-2 px-3"><code className="bg-muted px-1 rounded">message_template</code></td>
-              <td className="py-2 px-3">string</td>
-              <td className="py-2 px-3">✅</td>
-              <td className="py-2 px-3">Message with placeholders</td>
+              <td className="py-2 px-2 sm:px-3"><code className="bg-muted px-1 rounded text-xs">message_template</code></td>
+              <td className="py-2 px-2 sm:px-3">string</td>
+              <td className="py-2 px-2 sm:px-3">✅</td>
+              <td className="py-2 px-2 sm:px-3 hidden sm:table-cell">Message with placeholders</td>
             </tr>
             <tr className="border-b border-border">
-              <td className="py-2 px-3"><code className="bg-muted px-1 rounded">template_uuid</code></td>
-              <td className="py-2 px-3">string</td>
-              <td className="py-2 px-3">✅</td>
-              <td className="py-2 px-3">Template UUID from dashboard</td>
+              <td className="py-2 px-2 sm:px-3"><code className="bg-muted px-1 rounded text-xs">template_uuid</code></td>
+              <td className="py-2 px-2 sm:px-3">string</td>
+              <td className="py-2 px-2 sm:px-3">✅</td>
+              <td className="py-2 px-2 sm:px-3 hidden sm:table-cell">Template UUID from dashboard</td>
             </tr>
             <tr className="border-b border-border">
-              <td className="py-2 px-3"><code className="bg-muted px-1 rounded">file</code></td>
-              <td className="py-2 px-3">file</td>
-              <td className="py-2 px-3">✅</td>
-              <td className="py-2 px-3">Excel (.xlsx) or CSV file</td>
+              <td className="py-2 px-2 sm:px-3"><code className="bg-muted px-1 rounded text-xs">file</code></td>
+              <td className="py-2 px-2 sm:px-3">file</td>
+              <td className="py-2 px-2 sm:px-3">✅</td>
+              <td className="py-2 px-2 sm:px-3 hidden sm:table-cell">Excel (.xlsx) or CSV</td>
             </tr>
             <tr className="border-b border-border">
-              <td className="py-2 px-3"><code className="bg-muted px-1 rounded">schedule_flag</code></td>
-              <td className="py-2 px-3">boolean</td>
-              <td className="py-2 px-3">❌</td>
-              <td className="py-2 px-3">Enable scheduling (default: false)</td>
+              <td className="py-2 px-2 sm:px-3"><code className="bg-muted px-1 rounded text-xs">schedule_flag</code></td>
+              <td className="py-2 px-2 sm:px-3">boolean</td>
+              <td className="py-2 px-2 sm:px-3">❌</td>
+              <td className="py-2 px-2 sm:px-3 hidden sm:table-cell">Enable scheduling</td>
             </tr>
             <tr>
-              <td className="py-2 px-3"><code className="bg-muted px-1 rounded">scheduled_for</code></td>
-              <td className="py-2 px-3">string</td>
-              <td className="py-2 px-3">❌</td>
-              <td className="py-2 px-3">Schedule datetime (if scheduling)</td>
+              <td className="py-2 px-2 sm:px-3"><code className="bg-muted px-1 rounded text-xs">scheduled_for</code></td>
+              <td className="py-2 px-2 sm:px-3">string</td>
+              <td className="py-2 px-2 sm:px-3">❌</td>
+              <td className="py-2 px-2 sm:px-3 hidden sm:table-cell">Schedule datetime</td>
             </tr>
           </tbody>
         </table>
@@ -463,56 +463,56 @@ const BulkSmsSection = () => (
 
 const ErrorsSection = () => (
   <div className="bg-card border border-border rounded-lg overflow-hidden">
-    <div className="overflow-x-auto">
-      <table className="w-full text-sm">
+    <div className="overflow-x-auto -mx-4 sm:mx-0">
+      <table className="w-full text-xs sm:text-sm min-w-[400px]">
         <thead>
           <tr className="border-b border-border bg-muted/50">
-            <th className="text-left py-3 px-4 font-semibold text-foreground">Status</th>
-            <th className="text-left py-3 px-4 font-semibold text-foreground">Message</th>
-            <th className="text-left py-3 px-4 font-semibold text-foreground">Cause</th>
+            <th className="text-left py-2 sm:py-3 px-2 sm:px-4 font-semibold text-foreground">Status</th>
+            <th className="text-left py-2 sm:py-3 px-2 sm:px-4 font-semibold text-foreground">Message</th>
+            <th className="text-left py-2 sm:py-3 px-2 sm:px-4 font-semibold text-foreground hidden sm:table-cell">Cause</th>
           </tr>
         </thead>
         <tbody className="text-muted-foreground">
           <tr className="border-b border-border">
-            <td className="py-3 px-4"><Badge variant="outline">400</Badge></td>
-            <td className="py-3 px-4"><code className="text-xs">"sender_id is required"</code></td>
-            <td className="py-3 px-4">Missing sender_id field</td>
+            <td className="py-2 sm:py-3 px-2 sm:px-4"><Badge variant="outline">400</Badge></td>
+            <td className="py-2 sm:py-3 px-2 sm:px-4"><code className="text-xs">"sender_id is required"</code></td>
+            <td className="py-2 sm:py-3 px-2 sm:px-4 hidden sm:table-cell">Missing sender_id field</td>
           </tr>
           <tr className="border-b border-border">
-            <td className="py-3 px-4"><Badge variant="outline">400</Badge></td>
-            <td className="py-3 px-4"><code className="text-xs">"message is required"</code></td>
-            <td className="py-3 px-4">Missing message field</td>
+            <td className="py-2 sm:py-3 px-2 sm:px-4"><Badge variant="outline">400</Badge></td>
+            <td className="py-2 sm:py-3 px-2 sm:px-4"><code className="text-xs">"message is required"</code></td>
+            <td className="py-2 sm:py-3 px-2 sm:px-4 hidden sm:table-cell">Missing message field</td>
           </tr>
           <tr className="border-b border-border">
-            <td className="py-3 px-4"><Badge variant="outline">400</Badge></td>
-            <td className="py-3 px-4"><code className="text-xs">"recipients is required"</code></td>
-            <td className="py-3 px-4">Missing recipients field</td>
+            <td className="py-2 sm:py-3 px-2 sm:px-4"><Badge variant="outline">400</Badge></td>
+            <td className="py-2 sm:py-3 px-2 sm:px-4"><code className="text-xs">"recipients is required"</code></td>
+            <td className="py-2 sm:py-3 px-2 sm:px-4 hidden sm:table-cell">Missing recipients field</td>
           </tr>
           <tr className="border-b border-border">
-            <td className="py-3 px-4"><Badge variant="outline" className="bg-destructive/10 text-destructive border-destructive/20">401</Badge></td>
-            <td className="py-3 px-4"><code className="text-xs">"Invalid or expired API token"</code></td>
-            <td className="py-3 px-4">Token is invalid, expired, or revoked</td>
+            <td className="py-2 sm:py-3 px-2 sm:px-4"><Badge variant="outline" className="bg-destructive/10 text-destructive border-destructive/20">401</Badge></td>
+            <td className="py-2 sm:py-3 px-2 sm:px-4"><code className="text-xs">"Invalid or expired token"</code></td>
+            <td className="py-2 sm:py-3 px-2 sm:px-4 hidden sm:table-cell">Token is invalid, expired, or revoked</td>
           </tr>
           <tr className="border-b border-border">
-            <td className="py-3 px-4"><Badge variant="outline" className="bg-destructive/10 text-destructive border-destructive/20">403</Badge></td>
-            <td className="py-3 px-4"><code className="text-xs">"Insufficient SMS balance..."</code></td>
-            <td className="py-3 px-4">No SMS credits remaining</td>
+            <td className="py-2 sm:py-3 px-2 sm:px-4"><Badge variant="outline" className="bg-destructive/10 text-destructive border-destructive/20">403</Badge></td>
+            <td className="py-2 sm:py-3 px-2 sm:px-4"><code className="text-xs">"Insufficient SMS balance"</code></td>
+            <td className="py-2 sm:py-3 px-2 sm:px-4 hidden sm:table-cell">No SMS credits remaining</td>
           </tr>
           <tr className="border-b border-border">
-            <td className="py-3 px-4"><Badge variant="outline">404</Badge></td>
-            <td className="py-3 px-4"><code className="text-xs">"Sender ID not found..."</code></td>
-            <td className="py-3 px-4">Invalid sender_id</td>
+            <td className="py-2 sm:py-3 px-2 sm:px-4"><Badge variant="outline">404</Badge></td>
+            <td className="py-2 sm:py-3 px-2 sm:px-4"><code className="text-xs">"Sender ID not found"</code></td>
+            <td className="py-2 sm:py-3 px-2 sm:px-4 hidden sm:table-cell">Invalid sender_id</td>
           </tr>
           <tr>
-            <td className="py-3 px-4"><Badge variant="outline">415</Badge></td>
-            <td className="py-3 px-4"><code className="text-xs">"Invalid content type..."</code></td>
-            <td className="py-3 px-4">Wrong Content-Type header</td>
+            <td className="py-2 sm:py-3 px-2 sm:px-4"><Badge variant="outline">415</Badge></td>
+            <td className="py-2 sm:py-3 px-2 sm:px-4"><code className="text-xs">"Invalid content type"</code></td>
+            <td className="py-2 sm:py-3 px-2 sm:px-4 hidden sm:table-cell">Wrong Content-Type header</td>
           </tr>
         </tbody>
       </table>
     </div>
 
-    <div className="p-4 border-t border-border">
+    <div className="p-3 sm:p-4 border-t border-border">
       <h4 className="font-semibold text-sm text-foreground mb-3">Error Response Format</h4>
       <CodeBlock 
         code={`{
@@ -527,50 +527,50 @@ const ErrorsSection = () => (
 
 const QuickReferenceSection = () => (
   <div className="bg-card border border-border rounded-lg overflow-hidden">
-    <div className="overflow-x-auto">
-      <table className="w-full text-sm">
+    <div className="overflow-x-auto -mx-4 sm:mx-0">
+      <table className="w-full text-xs sm:text-sm min-w-[400px]">
         <thead>
           <tr className="border-b border-border bg-muted/50">
-            <th className="text-left py-3 px-4 font-semibold text-foreground">Endpoint</th>
-            <th className="text-left py-3 px-4 font-semibold text-foreground">Method</th>
-            <th className="text-left py-3 px-4 font-semibold text-foreground">Description</th>
+            <th className="text-left py-2 sm:py-3 px-2 sm:px-4 font-semibold text-foreground">Endpoint</th>
+            <th className="text-left py-2 sm:py-3 px-2 sm:px-4 font-semibold text-foreground">Method</th>
+            <th className="text-left py-2 sm:py-3 px-2 sm:px-4 font-semibold text-foreground hidden sm:table-cell">Description</th>
           </tr>
         </thead>
         <tbody className="text-muted-foreground">
           <tr className="border-b border-border hover:bg-muted/30 transition-colors">
-            <td className="py-3 px-4"><code className="text-xs">/auth/me</code></td>
-            <td className="py-3 px-4"><MethodBadge method="GET" /></td>
-            <td className="py-3 px-4">Get current user info</td>
+            <td className="py-2 sm:py-3 px-2 sm:px-4"><code className="text-xs">/auth/me</code></td>
+            <td className="py-2 sm:py-3 px-2 sm:px-4"><MethodBadge method="GET" /></td>
+            <td className="py-2 sm:py-3 px-2 sm:px-4 hidden sm:table-cell">Get current user info</td>
           </tr>
           <tr className="border-b border-border hover:bg-muted/30 transition-colors">
-            <td className="py-3 px-4"><code className="text-xs">/auth/api-tokens</code></td>
-            <td className="py-3 px-4"><MethodBadge method="GET" /></td>
-            <td className="py-3 px-4">List all API tokens</td>
+            <td className="py-2 sm:py-3 px-2 sm:px-4"><code className="text-xs">/auth/api-tokens</code></td>
+            <td className="py-2 sm:py-3 px-2 sm:px-4"><MethodBadge method="GET" /></td>
+            <td className="py-2 sm:py-3 px-2 sm:px-4 hidden sm:table-cell">List all API tokens</td>
           </tr>
           <tr className="border-b border-border hover:bg-muted/30 transition-colors">
-            <td className="py-3 px-4"><code className="text-xs">/auth/api-tokens/{'{id}'}/revoke</code></td>
-            <td className="py-3 px-4"><MethodBadge method="POST" /></td>
-            <td className="py-3 px-4">Revoke a token</td>
+            <td className="py-2 sm:py-3 px-2 sm:px-4"><code className="text-xs">/auth/api-tokens/{'{id}'}/revoke</code></td>
+            <td className="py-2 sm:py-3 px-2 sm:px-4"><MethodBadge method="POST" /></td>
+            <td className="py-2 sm:py-3 px-2 sm:px-4 hidden sm:table-cell">Revoke a token</td>
           </tr>
           <tr className="border-b border-border hover:bg-muted/30 transition-colors">
-            <td className="py-3 px-4"><code className="text-xs">/auth/api-tokens/{'{id}'}</code></td>
-            <td className="py-3 px-4"><MethodBadge method="DELETE" /></td>
-            <td className="py-3 px-4">Delete a token</td>
+            <td className="py-2 sm:py-3 px-2 sm:px-4"><code className="text-xs">/auth/api-tokens/{'{id}'}</code></td>
+            <td className="py-2 sm:py-3 px-2 sm:px-4"><MethodBadge method="DELETE" /></td>
+            <td className="py-2 sm:py-3 px-2 sm:px-4 hidden sm:table-cell">Delete a token</td>
           </tr>
           <tr className="border-b border-border hover:bg-muted/30 transition-colors">
-            <td className="py-3 px-4"><code className="text-xs">/sms/quick-send</code></td>
-            <td className="py-3 px-4"><MethodBadge method="POST" /></td>
-            <td className="py-3 px-4">Send SMS to multiple recipients</td>
+            <td className="py-2 sm:py-3 px-2 sm:px-4"><code className="text-xs">/sms/quick-send</code></td>
+            <td className="py-2 sm:py-3 px-2 sm:px-4"><MethodBadge method="POST" /></td>
+            <td className="py-2 sm:py-3 px-2 sm:px-4 hidden sm:table-cell">Send SMS to recipients</td>
           </tr>
           <tr className="border-b border-border hover:bg-muted/30 transition-colors">
-            <td className="py-3 px-4"><code className="text-xs">/sms/quick-send/group</code></td>
-            <td className="py-3 px-4"><MethodBadge method="POST" /></td>
-            <td className="py-3 px-4">Send personalized SMS to contact group</td>
+            <td className="py-2 sm:py-3 px-2 sm:px-4"><code className="text-xs">/sms/quick-send/group</code></td>
+            <td className="py-2 sm:py-3 px-2 sm:px-4"><MethodBadge method="POST" /></td>
+            <td className="py-2 sm:py-3 px-2 sm:px-4 hidden sm:table-cell">Send SMS to group</td>
           </tr>
           <tr className="hover:bg-muted/30 transition-colors">
-            <td className="py-3 px-4"><code className="text-xs">/sms/send-from-file</code></td>
-            <td className="py-3 px-4"><MethodBadge method="POST" /></td>
-            <td className="py-3 px-4">Bulk SMS from Excel/CSV file</td>
+            <td className="py-2 sm:py-3 px-2 sm:px-4"><code className="text-xs">/sms/send-from-file</code></td>
+            <td className="py-2 sm:py-3 px-2 sm:px-4"><MethodBadge method="POST" /></td>
+            <td className="py-2 sm:py-3 px-2 sm:px-4 hidden sm:table-cell">Bulk SMS from file</td>
           </tr>
         </tbody>
       </table>
@@ -598,34 +598,77 @@ const DeveloperDocs = () => {
   const [activeSection, setActiveSection] = useState("authentication");
   const ActiveIcon = sections.find(s => s.id === activeSection)?.icon || Key;
 
+  const [mobileMenuOpen, setMobileMenuOpen] = useState(false);
+
   return (
-    <div className="min-h-screen bg-background">
+    <div className="min-h-screen bg-background overflow-x-hidden">
       <Header />
       <main className="pt-20">
         {/* Hero */}
-        <div className="bg-gradient-to-b from-primary/5 to-background py-16">
+        <div className="bg-gradient-to-b from-primary/5 to-background py-8 sm:py-16">
           <div className="container mx-auto px-4">
             <div className="max-w-3xl">
               <Badge variant="secondary" className="mb-4">API Documentation</Badge>
-              <h1 className="text-4xl md:text-5xl font-bold text-foreground mb-4">
+              <h1 className="text-2xl sm:text-4xl md:text-5xl font-bold text-foreground mb-4">
                 SEWMR SMS API
               </h1>
-              <p className="text-xl text-muted-foreground mb-6">
+              <p className="text-base sm:text-xl text-muted-foreground mb-6">
                 Everything you need to integrate SMS functionality into your applications.
               </p>
-              <div className="flex items-center gap-2 p-3 bg-card border border-border rounded-lg w-fit">
+              <div className="flex flex-col sm:flex-row sm:items-center gap-2 p-3 bg-card border border-border rounded-lg w-full sm:w-fit">
                 <span className="text-sm text-muted-foreground">Base URL:</span>
-                <code className="text-sm font-mono text-primary">https://api.sewmrsms.co.tz/api/v1</code>
+                <code className="text-xs sm:text-sm font-mono text-primary break-all">https://api.sewmrsms.co.tz/api/v1</code>
               </div>
             </div>
           </div>
         </div>
 
         {/* Content */}
-        <div className="container mx-auto px-4 py-12">
+        <div className="container mx-auto px-4 py-6 sm:py-12">
+          {/* Mobile Navigation Toggle */}
+          <div className="lg:hidden mb-6">
+            <Button
+              variant="outline"
+              onClick={() => setMobileMenuOpen(!mobileMenuOpen)}
+              className="w-full flex items-center justify-between"
+            >
+              <span className="flex items-center gap-2">
+                <ActiveIcon className="h-4 w-4" />
+                {sectionContent[activeSection]?.title}
+              </span>
+              {mobileMenuOpen ? <ChevronDown className="h-4 w-4" /> : <ChevronRight className="h-4 w-4" />}
+            </Button>
+            
+            {mobileMenuOpen && (
+              <nav className="mt-2 p-2 bg-card border border-border rounded-lg space-y-1">
+                {sections.map((section) => {
+                  const Icon = section.icon;
+                  return (
+                    <button
+                      key={section.id}
+                      onClick={() => {
+                        setActiveSection(section.id);
+                        setMobileMenuOpen(false);
+                      }}
+                      className={cn(
+                        "w-full flex items-center gap-3 px-3 py-2.5 text-sm rounded-lg transition-all duration-200 text-left",
+                        activeSection === section.id
+                          ? "bg-primary text-primary-foreground font-medium"
+                          : "text-muted-foreground hover:text-foreground hover:bg-muted"
+                      )}
+                    >
+                      <Icon className="h-4 w-4 flex-shrink-0" />
+                      {section.title}
+                    </button>
+                  );
+                })}
+              </nav>
+            )}
+          </div>
+
           <div className="grid lg:grid-cols-[280px_1fr] gap-8">
-            {/* Sidebar Navigation */}
-            <nav className="lg:sticky lg:top-24 lg:self-start space-y-1">
+            {/* Sidebar Navigation - Desktop Only */}
+            <nav className="hidden lg:block lg:sticky lg:top-24 lg:self-start space-y-1">
               <h3 className="font-semibold text-foreground mb-4 px-3">Contents</h3>
               {sections.map((section) => {
                 const Icon = section.icon;
@@ -648,10 +691,10 @@ const DeveloperDocs = () => {
             </nav>
 
             {/* Main Content */}
-            <div className="min-h-[600px]">
-              <div className="mb-6">
-                <h2 className="text-2xl font-bold text-foreground flex items-center gap-3">
-                  <ActiveIcon className="h-6 w-6 text-primary" />
+            <div className="min-h-[400px] lg:min-h-[600px] min-w-0">
+              <div className="mb-6 hidden lg:block">
+                <h2 className="text-xl sm:text-2xl font-bold text-foreground flex items-center gap-3">
+                  <ActiveIcon className="h-5 w-5 sm:h-6 sm:w-6 text-primary" />
                   {sectionContent[activeSection]?.title}
                 </h2>
               </div>
