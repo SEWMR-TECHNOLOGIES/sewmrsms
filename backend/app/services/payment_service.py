@@ -72,7 +72,7 @@ class PaymentGateway:
             raise HTTPException(status_code=400, detail="Unsupported phone number network.")
 
         token = await self._get_auth_token()
-        await self._validate_account(network_code, phone_number)
+        # await self._validate_account(network_code, phone_number)
 
         headers = {"Authorization": f"Bearer {token}", "Content-Type": "application/json"}
         payload = {
