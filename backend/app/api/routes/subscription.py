@@ -33,9 +33,9 @@ router = APIRouter()
 gateway = PaymentGateway()
 
 
-@router.post("/purchase-sms")
+@router.post("/purchase-sms", summary="Purchase SMS credits")
 async def purchase_subscription(
-    request: Request,
+    payload: PurchaseSmsRequest,
     current_user: User = Depends(get_current_user),
     db: Session = Depends(get_db),
 ):
@@ -45,14 +45,6 @@ async def purchase_subscription(
     ).first()
     if not active_sender:
         return fail("You must have at least one active sender ID to purchase SMS")
-
-    try:
-        data = await request.json()
-        payload = PurchaseSmsRequest(**data)
-    except ValidationError as e:
-        return fail(e.errors()[0]["msg"])
-    except Exception:
-        return fail("Invalid JSON")
 
     package = get_package_by_sms_count(db, payload.number_of_messages)
     if not package:
