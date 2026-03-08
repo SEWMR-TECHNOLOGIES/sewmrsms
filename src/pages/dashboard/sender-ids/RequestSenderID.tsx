@@ -1,5 +1,5 @@
 import React, { useState } from 'react';
-import { ArrowLeft, Shield, Send } from 'lucide-react';
+import { ChevronLeft, Shield, Send } from 'lucide-react';
 import { Button } from '@/components/ui/button';
 import { Card, CardContent, CardDescription, CardHeader, CardTitle } from '@/components/ui/card';
 import { Input } from '@/components/ui/input';
@@ -145,7 +145,7 @@ export default function RequestSenderID() {
     <div className="space-y-6">
       <div className="flex items-center gap-4">
         <Button variant="ghost" size="icon" onClick={() => navigate('/console/sender-ids')}>
-          <ArrowLeft className="h-4 w-4" />
+          <ChevronLeft className="h-4 w-4" />
         </Button>
         <div className="space-y-1">
           <h1 className="text-3xl font-bold tracking-tight">Request Sender ID</h1>

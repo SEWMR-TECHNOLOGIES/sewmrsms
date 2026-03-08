@@ -134,30 +134,31 @@
   }
 }
 
-/* Thin modern scrollbar for sidebars */
-.admin-sidebar-scroll,
-.modern-sidebar-scroll {
+/* Global: hide scrollbar, show on hover, thin style */
+* {
+  scrollbar-width: none;
+}
+*::-webkit-scrollbar {
+  width: 0;
+  height: 0;
+}
+
+/* Show thin scrollbar on hover for scrollable containers */
+*:hover {
   scrollbar-width: thin;
-  scrollbar-color: hsl(var(--sidebar-border)) transparent;
+  scrollbar-color: hsl(var(--muted-foreground) / 0.2) transparent;
 }
-
-.admin-sidebar-scroll::-webkit-scrollbar,
-.modern-sidebar-scroll::-webkit-scrollbar {
+*:hover::-webkit-scrollbar {
   width: 4px;
+  height: 4px;
 }
-
-.admin-sidebar-scroll::-webkit-scrollbar-track,
-.modern-sidebar-scroll::-webkit-scrollbar-track {
+*:hover::-webkit-scrollbar-track {
   background: transparent;
 }
-
-.admin-sidebar-scroll::-webkit-scrollbar-thumb,
-.modern-sidebar-scroll::-webkit-scrollbar-thumb {
-  background-color: hsl(var(--sidebar-border));
+*:hover::-webkit-scrollbar-thumb {
+  background-color: hsl(var(--muted-foreground) / 0.2);
   border-radius: 9999px;
 }
-
-.admin-sidebar-scroll::-webkit-scrollbar-thumb:hover,
-.modern-sidebar-scroll::-webkit-scrollbar-thumb:hover {
+*:hover::-webkit-scrollbar-thumb:hover {
   background-color: hsl(var(--muted-foreground) / 0.4);
 }

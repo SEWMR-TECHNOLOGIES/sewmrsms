@@ -1,5 +1,5 @@
 import { Button } from "@/components/ui/button";
-import { ArrowRight, MessageCircle } from "lucide-react";
+import { ChevronRight, MessageCircle } from "lucide-react";
 import { Link } from "react-router-dom";
 import welcomeImage from "@/assets/welcome.png";
 
@@ -26,7 +26,7 @@ export const Hero = () => {
               <Button variant="hero" className="group" asChild>
                 <Link to="/signup">
                   Start Sending SMS
-                  <ArrowRight className="group-hover:translate-x-1 transition-transform" />
+                  <ChevronRight className="group-hover:translate-x-1 transition-transform" />
                 </Link>
               </Button>
               <Button variant="outline-hero" asChild>

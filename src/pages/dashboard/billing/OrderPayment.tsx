@@ -1,5 +1,5 @@
 import React, { useState, useEffect } from 'react';
-import { ArrowLeft, CreditCard, Loader } from 'lucide-react';
+import { ChevronLeft, CreditCard, Loader } from 'lucide-react';
 import { useNavigate, useParams, useLocation } from 'react-router-dom';
 import { Button } from '@/components/ui/button';
 import { Card, CardContent, CardDescription, CardHeader, CardTitle } from '@/components/ui/card';
@@ -143,7 +143,7 @@ export default function OrderPayment() {
     <div className="space-y-6">
       <div className="flex items-center gap-4">
         <Button variant="ghost" size="icon" onClick={() => navigate('/console/billing')}>
-          <ArrowLeft className="h-4 w-4" />
+          <ChevronLeft className="h-4 w-4" />
         </Button>
         <div className="space-y-1">
           <h1 className="text-3xl font-bold tracking-tight">Complete Payment</h1>

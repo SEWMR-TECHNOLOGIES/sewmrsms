@@ -8,7 +8,7 @@ import { Label } from "@/components/ui/label"
 import { Card, CardContent, CardDescription, CardHeader, CardTitle } from "@/components/ui/card"
 import { Separator } from "@/components/ui/separator"
 import { useToast } from "@/hooks/use-toast"
-import { Mail, Lock, User, Phone, ArrowLeft, Check, Eye, EyeOff } from "lucide-react"
+import { Mail, Lock, User, Phone, ChevronLeft, Check, Eye, EyeOff } from "lucide-react"
 import { useMeta } from "@/hooks/useMeta"
 
 const SignUpPage = () => {
@@ -106,7 +106,7 @@ const SignUpPage = () => {
           <div className="max-w-md mx-auto">
             <div className="text-center mb-8">
               <Link to="/" className="inline-flex items-center text-muted-foreground hover:text-primary transition-colors mb-6">
-                <ArrowLeft className="mr-2 h-4 w-4" />
+                <ChevronLeft className="mr-2 h-4 w-4" />
                 Back to Home
               </Link>
               <h1 className="text-3xl font-bold text-foreground mb-2">Get Started</h1>
