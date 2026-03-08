@@ -1085,43 +1085,89 @@ async def sms_callback(request: Request, db: Session = Depends(get_db)):
 @router.get("/history")
 def get_message_history(
     current_user: User = Depends(get_current_user),
-    db: Session = Depends(get_db)
+    db: Session = Depends(get_db),
+    page: int = Query(1, ge=1),
+    limit: int = Query(50, ge=1, le=200),
+    status: Optional[str] = Query(None),
+    start_date: Optional[str] = Query(None),
+    end_date: Optional[str] = Query(None),
 ):
     """
-    Returns SMS message history for the logged-in user.
-    Includes the most recent delivery status per message.
+    Returns paginated SMS message history with server-side filtering.
+    Uses a LEFT JOIN subquery instead of N+1 queries.
     """
-
     try:
-        sent_messages = (
-            db.query(SentMessage)
+        # Subquery: latest callback status per message_id
+        latest_cb = (
+            db.query(
+                SmsCallback.message_id,
+                func.max(SmsCallback.received_at).label("max_received")
+            )
+            .filter(SmsCallback.user_id == current_user.id)
+            .group_by(SmsCallback.message_id)
+            .subquery()
+        )
+
+        # Main query with LEFT JOIN
+        query = (
+            db.query(SentMessage, SmsCallback.status)
+            .outerjoin(
+                latest_cb,
+                SentMessage.message_id == latest_cb.c.message_id
+            )
+            .outerjoin(
+                SmsCallback,
+                and_(
+                    SmsCallback.message_id == latest_cb.c.message_id,
+                    SmsCallback.received_at == latest_cb.c.max_received,
+                    SmsCallback.user_id == current_user.id
+                )
+            )
             .filter(SentMessage.user_id == current_user.id)
-            .order_by(SentMessage.sent_at.desc())
+        )
+
+        # Server-side date filters
+        if start_date:
+            try:
+                sd = datetime.fromisoformat(start_date)
+                query = query.filter(SentMessage.sent_at >= sd)
+            except ValueError:
+                pass
+
+        if end_date:
+            try:
+                ed = datetime.fromisoformat(end_date)
+                query = query.filter(SentMessage.sent_at <= ed)
+            except ValueError:
+                pass
+
+        # Server-side status filter
+        if status:
+            query = query.filter(
+                func.coalesce(
+                    SmsCallback.status,
+                    SmsDeliveryStatusEnum.pending
+                ) == status.lower()
+            )
+
+        # Get total count before pagination
+        total_count = query.count()
+        total_pages = max(1, (total_count + limit - 1) // limit)
+
+        # Apply ordering and pagination
+        results = (
+            query.order_by(desc(SentMessage.sent_at))
+            .offset((page - 1) * limit)
+            .limit(limit)
             .all()
         )
 
         history = []
-
-        for msg in sent_messages:
-            latest_callback = (
-                db.query(SmsCallback)
-                .filter(
-                    and_(
-                        SmsCallback.message_id == msg.message_id,
-                        SmsCallback.user_id == current_user.id
-                    )
-                )
-                .order_by(SmsCallback.received_at.desc())
-                .first()
-            )
-
-            # Make sure status is UPPERCASE in response
+        for msg, cb_status in results:
             status_value = (
-                latest_callback.status.value.upper()
-                if latest_callback
+                cb_status.value.upper() if cb_status
                 else SmsDeliveryStatusEnum.pending.value.upper()
             )
-
             history.append({
                 "id": msg.id,
                 "sender_alias": msg.sender_alias,
@@ -1131,13 +1177,19 @@ def get_message_history(
                 "remarks": msg.remarks,
                 "number_of_parts": msg.number_of_parts,
                 "status": status_value,
-                 "sent_at": msg.sent_at.isoformat() 
+                "sent_at": msg.sent_at.isoformat()
             })
 
         return {
             "success": True,
             "message": f"Fetched {len(history)} messages",
-            "data": history
+            "data": history,
+            "pagination": {
+                "page": page,
+                "limit": limit,
+                "total_count": total_count,
+                "total_pages": total_pages
+            }
         }
 
     except Exception as e:
