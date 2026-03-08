@@ -45,15 +45,8 @@ from utils.validation import validate_email, validate_phone
 router = APIRouter()
 
 
-@router.post("/signup")
-async def signup_user(request: Request, db: Session = Depends(get_db)):
-    try:
-        data = await request.json()
-        payload = SignupRequest(**data)
-    except ValidationError as e:
-        return fail(e.errors()[0]["msg"])
-    except Exception:
-        return fail("Invalid JSON")
+@router.post("/signup", summary="Create a new user account")
+async def signup_user(payload: SignupRequest, db: Session = Depends(get_db)):
 
     # Check duplicates in a single query
     dup = db.query(User).filter(
