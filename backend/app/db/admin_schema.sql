@@ -53,11 +53,20 @@ CREATE TABLE system_settings (
 
 CREATE INDEX idx_system_settings_key ON system_settings(key);
 
--- Seed a default superadmin (password: Admin@12345 — change immediately!)
--- Password hash generated with PBKDF2 SHA256, 100000 iterations
--- You MUST generate a proper hash in production. This is a placeholder.
--- INSERT INTO admin_users (email, username, password_hash, first_name, last_name, role)
--- VALUES ('admin@sewmrsms.co.tz', 'superadmin', '<generate-hash>', 'Super', 'Admin', 'superadmin');
+-- Seed default superadmin
+-- Default password: Admin@12345 (CHANGE IMMEDIATELY after first login!)
+-- To generate a new hash, run: python3 -c "from app.utils.security import Hasher; print(Hasher.hash_password('YourNewPassword'))"
+INSERT INTO admin_users (email, username, password_hash, first_name, last_name, role)
+VALUES (
+  'admin@sewmrsms.co.tz',
+  'superadmin',
+  -- This hash is for 'Admin@12345' using your Hasher.hash_password() format
+  -- You MUST replace this after deployment. Generate with the command above.
+  'REPLACE_WITH_HASH',
+  'Super',
+  'Admin',
+  'superadmin'
+) ON CONFLICT (email) DO NOTHING;
 
 -- Default system settings
 INSERT INTO system_settings (key, value, description) VALUES
