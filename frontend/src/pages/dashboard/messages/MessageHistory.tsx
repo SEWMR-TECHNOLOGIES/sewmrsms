@@ -7,7 +7,7 @@ import { Calendar } from '@/components/ui/calendar';
 import { Popover, PopoverContent, PopoverTrigger } from '@/components/ui/popover';
 import { DataTable } from '@/components/ui/data-table';
 import { ColumnDef } from '@tanstack/react-table';
-import { CalendarIcon, Download, MessageSquare, Filter, ChevronLeft, ChevronRight } from 'lucide-react';
+import { CalendarIcon, Download, MessageSquare, Filter } from 'lucide-react';
 import { format, startOfDay, endOfDay, isValid } from 'date-fns';
 import { cn } from '@/lib/utils';
 import { useToast } from '@/hooks/use-toast';
