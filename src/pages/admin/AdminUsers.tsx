@@ -90,7 +90,7 @@ export default function AdminUsers() {
                     <TableCell className="font-medium">{u.first_name} {u.last_name}</TableCell>
                     <TableCell>{u.email}</TableCell>
                     <TableCell>{u.username}</TableCell>
-                    <TableCell>{u.phone || "—"}</TableCell>
+                    <TableCell>{u.phone || "N/A"}</TableCell>
                     <TableCell>{new Date(u.created_at).toLocaleDateString()}</TableCell>
                     <TableCell className="text-right space-x-1">
                       <Button size="sm" variant="ghost" onClick={() => viewUser(u.uuid)}><Eye className="h-4 w-4" /></Button>
