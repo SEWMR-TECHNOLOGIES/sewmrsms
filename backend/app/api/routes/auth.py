@@ -198,22 +198,14 @@ async def accept_reset(token: str, db: Session = Depends(get_db)):
     return redirect
 
 
-@router.post("/reset-password")
+@router.post("/reset-password", summary="Reset password using token cookie")
 async def reset_password(
-    request: Request,
+    payload: ResetPasswordSchema,
     reset_token: Optional[str] = Cookie(None),
     db: Session = Depends(get_db),
 ):
     if not reset_token:
         raise HTTPException(status_code=400, detail="Reset token cookie missing")
-
-    try:
-        data = await request.json()
-        payload = ResetPasswordSchema(**data)
-    except ValidationError as e:
-        return fail(e.errors()[0]["msg"])
-    except Exception:
-        return fail("Invalid JSON")
 
     token_hash = hashlib.sha256(reset_token.encode("utf-8")).hexdigest()
     now = datetime.utcnow()
