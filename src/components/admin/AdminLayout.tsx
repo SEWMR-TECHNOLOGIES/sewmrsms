@@ -10,7 +10,7 @@ function AdminLayoutInner() {
 
   return (
     <SidebarProvider>
-      <div className="min-h-screen flex w-full">
+      <div className="min-h-screen flex w-full admin-no-scrollbar">
         <AdminSidebar />
         <div className="flex-1 flex flex-col">
           <header className="h-14 flex items-center justify-between border-b px-4 bg-card">
