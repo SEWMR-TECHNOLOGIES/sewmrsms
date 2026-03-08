@@ -8,7 +8,7 @@ import { Label } from "@/components/ui/label"
 import { Card, CardContent, CardDescription, CardHeader, CardTitle } from "@/components/ui/card"
 import { Separator } from "@/components/ui/separator"
 import { useToast } from "@/hooks/use-toast"
-import { Mail, ArrowLeft } from "lucide-react"
+import { Mail, ChevronLeft } from "lucide-react"
 import { useMeta } from "@/hooks/useMeta"
 
 const RequestPasswordResetPage = () => {
