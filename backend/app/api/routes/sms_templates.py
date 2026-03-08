@@ -1,433 +1,288 @@
 # backend/app/api/sms_templates.py
+"""SMS template routes with Pydantic validation and N+1 query fixes."""
+
 import uuid
 from fastapi import APIRouter, Path, Request, Depends
-from sqlalchemy.orm import Session
+from pydantic import ValidationError
+from sqlalchemy.orm import Session, joinedload
 from sqlalchemy import func
-from datetime import datetime
-import pytz
-from models.template_column import TemplateColumn
-from models.sms_template import SmsTemplate
-from models.user import User
+
 from api.deps import get_db
 from api.user_auth import get_current_user
+from models.sms_template import SmsTemplate
+from models.template_column import TemplateColumn
+from models.user import User
+from schemas.templates import AddColumnRequest, CreateTemplateRequest, EditTemplateRequest
+from utils.responses import fail, ok
+from utils.timezone import now_eat
 
 router = APIRouter()
+
+
+def _serialize_column(c: TemplateColumn) -> dict:
+    return {
+        "id": c.id,
+        "uuid": str(c.uuid),
+        "name": c.name,
+        "position": c.position,
+        "is_phone_column": c.is_phone_column,
+        "created_at": c.created_at.strftime("%Y-%m-%d %H:%M:%S"),
+        "updated_at": c.updated_at.strftime("%Y-%m-%d %H:%M:%S"),
+    }
+
+
+def _serialize_template(t: SmsTemplate, columns: list) -> dict:
+    is_complete = len(columns) == t.column_count
+    return {
+        "id": t.id,
+        "uuid": str(t.uuid),
+        "name": t.name,
+        "sample_message": t.sample_message,
+        "column_count": t.column_count,
+        "created_at": t.created_at.strftime("%Y-%m-%d %H:%M:%S"),
+        "updated_at": t.updated_at.strftime("%Y-%m-%d %H:%M:%S"),
+        "is_complete": is_complete,
+        "columns": [_serialize_column(c) for c in columns] if is_complete else [],
+    }
+
 
 @router.post("/create")
 async def create_sms_template(
     request: Request,
     current_user: User = Depends(get_current_user),
-    db: Session = Depends(get_db)
+    db: Session = Depends(get_db),
 ):
-    content_type = request.headers.get("content-type", "")
-    if "application/json" not in content_type.lower():
-        return {
-            "success": False,
-            "message": "Invalid content type. Expected application/json",
-            "data": None
-        }
-
     try:
         data = await request.json()
+        payload = CreateTemplateRequest(**data)
+    except ValidationError as e:
+        return fail(e.errors()[0]["msg"])
     except Exception:
-        return {"success": False, "message": "Invalid JSON", "data": None}
+        return fail("Invalid JSON")
 
-    name = data.get("name", "").strip()
-    sample_message = data.get("sample_message", "").strip()
-    column_count = data.get("column_count")
-
-    # Validate required fields
-    if not name:
-        return {"success": False, "message": "Template name is required", "data": None}
-    if not sample_message:
-        return {"success": False, "message": "Sample message is required", "data": None}
-    if not column_count or not isinstance(column_count, int):
-        return {"success": False, "message": "Column count is required and must be an integer", "data": None}
-
-    # Check for duplicate name per user (case-insensitive)
-    existing_template = db.query(SmsTemplate).filter(
+    existing = db.query(SmsTemplate).filter(
         SmsTemplate.user_id == current_user.id,
-        func.lower(SmsTemplate.name) == func.lower(name)
+        func.lower(SmsTemplate.name) == func.lower(payload.name),
     ).first()
+    if existing:
+        return fail("Template name already exists")
 
-    if existing_template:
-        return {"success": False, "message": "Template name already exists", "data": None}
-
-    now = datetime.now(pytz.timezone("Africa/Nairobi")).replace(tzinfo=None)
-
+    now = now_eat()
     new_template = SmsTemplate(
         user_id=current_user.id,
-        name=name,
-        sample_message=sample_message,
-        column_count=column_count,
+        name=payload.name,
+        sample_message=payload.sample_message,
+        column_count=payload.column_count,
         created_at=now,
-        updated_at=now
+        updated_at=now,
     )
+    db.add(new_template)
+    db.commit()
+    db.refresh(new_template)
 
-    try:
-        db.add(new_template)
-        db.commit()
-        db.refresh(new_template)
-    except Exception as e:
-        print(f"DB error on SMS template creation: {e}")
-        return {"success": False, "message": "Database error", "data": None}
+    return ok("SMS template created successfully", {
+        "id": new_template.id,
+        "uuid": str(new_template.uuid),
+        "name": new_template.name,
+        "sample_message": new_template.sample_message,
+        "column_count": new_template.column_count,
+        "created_at": now.strftime("%Y-%m-%d %H:%M:%S"),
+        "updated_at": now.strftime("%Y-%m-%d %H:%M:%S"),
+    })
 
-    return {
-        "success": True,
-        "message": "SMS template created successfully",
-        "data": {
-            "id": new_template.id,
-            "uuid": str(new_template.uuid),
-            "name": new_template.name,
-            "sample_message": new_template.sample_message,
-            "column_count": new_template.column_count,
-            "created_at": now.strftime("%Y-%m-%d %H:%M:%S"),
-            "updated_at": now.strftime("%Y-%m-%d %H:%M:%S")
-        }
-    }
 
 @router.put("/edit/{template_uuid}")
 async def edit_sms_template(
     template_uuid: uuid.UUID,
     request: Request,
     current_user: User = Depends(get_current_user),
-    db: Session = Depends(get_db)
+    db: Session = Depends(get_db),
 ):
-    content_type = request.headers.get("content-type", "")
-    if "application/json" not in content_type.lower():
-        return {"success": False, "message": "Invalid content type. Expected application/json", "data": None}
-
     try:
         data = await request.json()
+        payload = EditTemplateRequest(**data)
+    except ValidationError as e:
+        return fail(e.errors()[0]["msg"])
     except Exception:
-        return {"success": False, "message": "Invalid JSON", "data": None}
-
-    name = data.get("name", "").strip()
-    sample_message = data.get("sample_message", "").strip()
-    column_count = data.get("column_count")
-
-    if not name or not sample_message:
-        return {"success": False, "message": "Both name and sample_message are required", "data": None}
-
-    if column_count is None or not isinstance(column_count, int) or column_count < 1:
-        return {"success": False, "message": "column_count is required and must be a positive integer", "data": None}
+        return fail("Invalid JSON")
 
     template = db.query(SmsTemplate).filter(
         SmsTemplate.uuid == template_uuid,
-        SmsTemplate.user_id == current_user.id
-    ).first()
-
-    if not template:
-        return {"success": False, "message": "Template not found or no permission", "data": None}
-
-    # Check for duplicate name per user
-    duplicate = db.query(SmsTemplate).filter(
         SmsTemplate.user_id == current_user.id,
-        func.lower(SmsTemplate.name) == func.lower(name),
-        SmsTemplate.uuid != template_uuid
     ).first()
-    if duplicate:
-        return {"success": False, "message": "Another template with this name exists", "data": None}
+    if not template:
+        return fail("Template not found or no permission")
 
-    template.name = name
-    template.sample_message = sample_message
-    template.column_count = column_count
-    template.updated_at = datetime.now(pytz.timezone("Africa/Nairobi")).replace(tzinfo=None)
+    dup = db.query(SmsTemplate).filter(
+        SmsTemplate.user_id == current_user.id,
+        func.lower(SmsTemplate.name) == func.lower(payload.name),
+        SmsTemplate.uuid != template_uuid,
+    ).first()
+    if dup:
+        return fail("Another template with this name exists")
 
-    try:
-        db.commit()
-        db.refresh(template)
-    except Exception as e:
-        return {"success": False, "message": f"Database error: {str(e)}", "data": None}
-    
-    # After db.commit() and db.refresh(template)
+    template.name = payload.name
+    template.sample_message = payload.sample_message
+    template.column_count = payload.column_count
+    template.updated_at = now_eat()
+    db.commit()
+    db.refresh(template)
+
     columns = db.query(TemplateColumn).filter(
         TemplateColumn.template_id == template.id
     ).order_by(TemplateColumn.position.asc()).all()
 
-    is_complete = len(columns) == template.column_count
+    return ok("Template updated successfully", _serialize_template(template, columns))
 
-    if is_complete:
-        column_data = [
-            {
-                "id": c.id,
-                "uuid": str(c.uuid),
-                "name": c.name,
-                "position": c.position,
-                "is_phone_column": c.is_phone_column,
-                "created_at": c.created_at.strftime("%Y-%m-%d %H:%M:%S"),
-                "updated_at": c.updated_at.strftime("%Y-%m-%d %H:%M:%S")
-            }
-            for c in columns
-        ]
-    else:
-        column_data = []
-
-    return {
-        "success": True,
-        "message": "Template updated successfully",
-        "data": {
-            "id": template.id,
-            "uuid": str(template.uuid),
-            "name": template.name,
-            "sample_message": template.sample_message,
-            "column_count": template.column_count,
-            "created_at": template.created_at.strftime("%Y-%m-%d %H:%M:%S"),
-            "updated_at": template.updated_at.strftime("%Y-%m-%d %H:%M:%S"),
-            "is_complete": is_complete,
-            "columns": column_data
-        }
-    }
 
 @router.get("/")
 def list_sms_templates(
     current_user: User = Depends(get_current_user),
-    db: Session = Depends(get_db)
+    db: Session = Depends(get_db),
 ):
-    templates = db.query(SmsTemplate).filter(
-        SmsTemplate.user_id == current_user.id
-    ).order_by(SmsTemplate.created_at.desc()).all()
+    # Eager load columns to avoid N+1
+    templates = (
+        db.query(SmsTemplate)
+        .options(joinedload(SmsTemplate.columns))
+        .filter(SmsTemplate.user_id == current_user.id)
+        .order_by(SmsTemplate.created_at.desc())
+        .all()
+    )
 
     result = []
     for t in templates:
-        # fetch columns for each template
-        columns = db.query(TemplateColumn).filter(
-            TemplateColumn.template_id == t.id
-        ).order_by(TemplateColumn.position.asc()).all()
+        sorted_cols = sorted(t.columns, key=lambda c: c.position)
+        result.append(_serialize_template(t, sorted_cols))
 
-        # check completeness
-        is_complete = len(columns) == t.column_count
+    return ok(f"Found {len(templates)} SMS template(s)", result)
 
-        if is_complete:
-            column_data = [
-                {
-                    "id": c.id,
-                    "uuid": str(c.uuid),
-                    "name": c.name,
-                    "position": c.position,
-                    "is_phone_column": c.is_phone_column,
-                    "created_at": c.created_at.strftime("%Y-%m-%d %H:%M:%S"),
-                    "updated_at": c.updated_at.strftime("%Y-%m-%d %H:%M:%S")
-                }
-                for c in columns
-            ]
-        else:
-            column_data = []
-
-        result.append({
-            "id": t.id,
-            "uuid": str(t.uuid),
-            "name": t.name,
-            "sample_message": t.sample_message,
-            "column_count": t.column_count,
-            "created_at": t.created_at.strftime("%Y-%m-%d %H:%M:%S"),
-            "updated_at": t.updated_at.strftime("%Y-%m-%d %H:%M:%S"),
-            "is_complete": is_complete,
-            "columns": column_data
-        })
-
-    return {
-        "success": True,
-        "message": f"Found {len(templates)} SMS template(s)",
-        "data": result
-    }
 
 @router.post("/{template_uuid}/columns/add")
 async def add_template_column(
     request: Request,
     template_uuid: uuid.UUID = Path(...),
     current_user: User = Depends(get_current_user),
-    db: Session = Depends(get_db)
+    db: Session = Depends(get_db),
 ):
-    content_type = request.headers.get("content-type", "")
-    if "application/json" not in content_type.lower():
-        return {"success": False, "message": "Invalid content type. Expected application/json", "data": None}
-
     try:
         data = await request.json()
+        payload = AddColumnRequest(**data)
+    except ValidationError as e:
+        return fail(e.errors()[0]["msg"])
     except Exception:
-        return {"success": False, "message": "Invalid JSON", "data": None}
+        return fail("Invalid JSON")
 
-    column_name = data.get("name", "").strip()
-    column_position = data.get("position")
-    is_phone_column = data.get("is_phone_column", False)
-
-    # Validate required fields
-    if not column_name:
-        return {"success": False, "message": "Column name is required", "data": None}
-    if column_position is None or not isinstance(column_position, int):
-        return {"success": False, "message": "Column position is required and must be an integer", "data": None}
-
-    # Ensure template exists and belongs to the user
     template = db.query(SmsTemplate).filter(
         SmsTemplate.uuid == template_uuid,
-        SmsTemplate.user_id == current_user.id
+        SmsTemplate.user_id == current_user.id,
     ).first()
-
     if not template:
-        return {"success": False, "message": "Template not found or you do not have permission", "data": None}
+        return fail("Template not found or you do not have permission")
 
-    # Ensure unique column name within this template (case-insensitive)
     name_exists = db.query(TemplateColumn).filter(
         TemplateColumn.template_id == template.id,
-        func.lower(TemplateColumn.name) == func.lower(column_name)
+        func.lower(TemplateColumn.name) == func.lower(payload.name),
     ).first()
     if name_exists:
-        return {"success": False, "message": "Column name already exists in this template", "data": None}
+        return fail("Column name already exists in this template")
 
-    # Ensure unique column position within this template
     position_exists = db.query(TemplateColumn).filter(
         TemplateColumn.template_id == template.id,
-        TemplateColumn.position == column_position
+        TemplateColumn.position == payload.position,
     ).first()
     if position_exists:
-        return {"success": False, "message": "Column position already exists in this template", "data": None}
+        return fail("Column position already exists in this template")
 
-    # If this is the phone column, revoke any existing phone column for this template
-    if is_phone_column:
+    if payload.is_phone_column:
         db.query(TemplateColumn).filter(
             TemplateColumn.template_id == template.id,
-            TemplateColumn.is_phone_column == True
+            TemplateColumn.is_phone_column == True,
         ).update({"is_phone_column": False})
 
-    now = datetime.now(pytz.timezone("Africa/Nairobi")).replace(tzinfo=None)
-
+    now = now_eat()
     new_column = TemplateColumn(
         template_id=template.id,
-        name=column_name,
-        position=column_position,
-        is_phone_column=is_phone_column,
+        name=payload.name,
+        position=payload.position,
+        is_phone_column=payload.is_phone_column,
         created_at=now,
-        updated_at=now
+        updated_at=now,
     )
+    db.add(new_column)
+    db.commit()
+    db.refresh(new_column)
 
-    try:
-        db.add(new_column)
-        db.commit()
-        db.refresh(new_column)
-    except Exception as e:
-        print(f"DB error on template column creation: {e}")
-        return {"success": False, "message": "Database error", "data": None}
+    return ok("Column added to template successfully", {
+        "id": new_column.id,
+        "uuid": str(new_column.uuid),
+        "template_uuid": str(template_uuid),
+        "name": new_column.name,
+        "position": new_column.position,
+        "is_phone_column": new_column.is_phone_column,
+        "created_at": now.strftime("%Y-%m-%d %H:%M:%S"),
+    })
 
-    return {
-        "success": True,
-        "message": "Column added to template successfully",
-        "data": {
-            "id": new_column.id,
-            "uuid": str(new_column.uuid),
-            "template_uuid": template_uuid,
-            "name": new_column.name,
-            "position": new_column.position,
-            "is_phone_column": new_column.is_phone_column,
-            "created_at": now.strftime("%Y-%m-%d %H:%M:%S")
-        }
-    }
 
 @router.get("/{template_uuid}")
 def get_sms_template(
     template_uuid: str,
     current_user: User = Depends(get_current_user),
-    db: Session = Depends(get_db)
+    db: Session = Depends(get_db),
 ):
-    # Fetch template with matching UUID and belonging to current user
     template = db.query(SmsTemplate).filter(
         SmsTemplate.uuid == template_uuid,
-        SmsTemplate.user_id == current_user.id
+        SmsTemplate.user_id == current_user.id,
     ).first()
-
     if not template:
-        return {
-            "success": False,
-            "message": "Template not found or you do not have permission",
-            "data": None
-        }
+        return fail("Template not found or you do not have permission")
 
-    # Fetch template columns
     columns = db.query(TemplateColumn).filter(
         TemplateColumn.template_id == template.id
     ).order_by(TemplateColumn.position.asc()).all()
 
-    return {
-        "success": True,
-        "message": "Template details retrieved successfully",
-        "data": {
-            "id": template.id,
-            "uuid": str(template.uuid),
-            "name": template.name,
-            "sample_message": template.sample_message,
-            "column_count": template.column_count,
-            "created_at": template.created_at.strftime("%Y-%m-%d %H:%M:%S"),
-            "updated_at": template.updated_at.strftime("%Y-%m-%d %H:%M:%S"),
-            "columns": [
-                {
-                    "id": c.id,
-                    "uuid": str(c.uuid),
-                    "name": c.name,
-                    "position": c.position,
-                    "is_phone_column": c.is_phone_column,
-                    "created_at": c.created_at.strftime("%Y-%m-%d %H:%M:%S"),
-                    "updated_at": c.updated_at.strftime("%Y-%m-%d %H:%M:%S")
-                }
-                for c in columns
-            ]
-        }
-    }
+    return ok("Template details retrieved successfully", {
+        "id": template.id,
+        "uuid": str(template.uuid),
+        "name": template.name,
+        "sample_message": template.sample_message,
+        "column_count": template.column_count,
+        "created_at": template.created_at.strftime("%Y-%m-%d %H:%M:%S"),
+        "updated_at": template.updated_at.strftime("%Y-%m-%d %H:%M:%S"),
+        "columns": [_serialize_column(c) for c in columns],
+    })
+
 
 @router.delete("/{template_uuid}")
 def delete_sms_template(
     template_uuid: str,
     current_user: User = Depends(get_current_user),
-    db: Session = Depends(get_db)
+    db: Session = Depends(get_db),
 ):
-    """
-    Delete an SMS template by UUID. Requires template to belong to current user.
-    """
     template = db.query(SmsTemplate).filter(
         SmsTemplate.uuid == template_uuid,
-        SmsTemplate.user_id == current_user.id
+        SmsTemplate.user_id == current_user.id,
     ).first()
-
     if not template:
-        return {"success": False, "message": "Template not found or no permission", "data": None}
+        return fail("Template not found or no permission")
 
-    try:
-        db.delete(template)
-        db.commit()
-    except Exception as e:
-        return {"success": False, "message": f"Database error: {str(e)}", "data": None}
-
-    return {
-        "success": True,
-        "message": "SMS template deleted successfully",
-        "data": {"uuid": template_uuid}
-    }
+    db.delete(template)
+    db.commit()
+    return ok("SMS template deleted successfully", {"uuid": template_uuid})
 
 
 @router.delete("/columns/{column_uuid}")
 def delete_template_column(
     column_uuid: str,
     current_user: User = Depends(get_current_user),
-    db: Session = Depends(get_db)
+    db: Session = Depends(get_db),
 ):
-    """
-    Delete a template column by UUID. Ensures column belongs to a template owned by current user.
-    """
     column = db.query(TemplateColumn).join(SmsTemplate).filter(
         TemplateColumn.uuid == column_uuid,
-        SmsTemplate.user_id == current_user.id
+        SmsTemplate.user_id == current_user.id,
     ).first()
-
     if not column:
-        return {"success": False, "message": "Template column not found or no permission", "data": None}
+        return fail("Template column not found or no permission")
 
-    try:
-        db.delete(column)
-        db.commit()
-    except Exception as e:
-        return {"success": False, "message": f"Database error: {str(e)}", "data": None}
-
-    return {
-        "success": True,
-        "message": "Template column deleted successfully",
-        "data": {"uuid": column_uuid}
-    }
+    db.delete(column)
+    db.commit()
+    return ok("Template column deleted successfully", {"uuid": column_uuid})

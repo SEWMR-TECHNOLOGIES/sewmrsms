@@ -1,292 +1,193 @@
 # backend/app/api/auth.py
-
+"""Auth routes with Pydantic validation for cleaner, more efficient request handling."""
 
 from datetime import datetime, timedelta
 import hashlib
-import json
 import secrets
-from sqlite3 import IntegrityError
 from typing import Optional
 from urllib.parse import urlencode
+
 from fastapi import APIRouter, Cookie, Depends, HTTPException, Request, Response, status
 from fastapi.responses import JSONResponse, RedirectResponse
-import pytz
-from uuid import uuid4
-from sqlalchemy import and_, func, or_
+from pydantic import ValidationError
+from sqlalchemy import func, or_
 from sqlalchemy.orm import Session
+from uuid import uuid4
+
 from api.deps import get_db
 from api.user_auth import get_current_user
-from models.user_outage_notification import UserOutageNotification
-from models.scheduled_message import SmsScheduledMessage
-from models.sms_schedule import SmsSchedule
+from core.config import COOKIE_DOMAIN, IS_PRODUCTION, MAX_COOKIE_AGE
+from models.api_access_tokens import ApiAccessToken
 from models.contact import Contact
-from models.enums import MessageStatusEnum, SmsDeliveryStatusEnum
+from models.enums import SmsDeliveryStatusEnum
+from models.password_reset_tokens import PasswordResetToken
+from models.scheduled_message import SmsScheduledMessage
 from models.sent_messages import SentMessage
 from models.sms_callback import SmsCallback
-from models.user_subscription import UserSubscription
-from models.api_access_tokens import ApiAccessToken
-from models.password_reset_tokens import PasswordResetToken
+from models.sms_schedule import SmsSchedule
 from models.user import User
-from utils import send_password_reset_email
-from sqlalchemy.exc import SQLAlchemyError
-from utils.validation import (
-    validate_email, validate_name, validate_phone,
-    validate_password_confirmation, validate_password_strength, validate_sender_alias
+from models.user_outage_notification import UserOutageNotification
+from models.user_subscription import UserSubscription
+from schemas.auth import (
+    GenerateApiTokenRequest,
+    OutageNotificationRequest,
+    PasswordResetRequestSchema,
+    ResetPasswordSchema,
+    SigninRequest,
+    SignupRequest,
 )
+from utils.responses import fail, ok
 from utils.security import Hasher, create_access_token, verify_access_token
-from utils.validation import validate_password_strength
 from utils.send_password_reset_email import send_password_reset_email
-from core.config import COOKIE_DOMAIN, IS_PRODUCTION, MAX_COOKIE_AGE
+from utils.timezone import now_eat
+from utils.validation import validate_email, validate_phone
 
 router = APIRouter()
 
+
 @router.post("/signup")
 async def signup_user(request: Request, db: Session = Depends(get_db)):
-    content_type = request.headers.get("content-type", "")
-    if "application/json" not in content_type.lower():
-        return {
-            "success": False,
-            "message": "Invalid content type. Expected application/json",
-            "data": None
-        }
-
     try:
         data = await request.json()
-    except json.JSONDecodeError:
-        return {"success": False, "message": "Invalid JSON", "data": None}
+        payload = SignupRequest(**data)
+    except ValidationError as e:
+        return fail(e.errors()[0]["msg"])
+    except Exception:
+        return fail("Invalid JSON")
 
-    # extract and normalize username early (do not use data[...] directly)
-    username = data.get("username", "").strip()
-    if not username:
-        return {"success": False, "message": "Username is required", "data": None}
-
-    email = data.get("email", "").strip()
-    if not email or not validate_email(email):
-        return {"success": False, "message": "Valid email required", "data": None}
-
-    phone = data.get("phone", "").strip()
-    if not phone:
-        return {
-            "success": False,
-            "message": "Phone number is required",
-            "data": None
-        }
-    if phone and not validate_phone(phone):
-        return {
-            "success": False,
-            "message": "Phone must be in format 255XXXXXXXXX (start with 255 then 6 or 7, then 8 digits)",
-            "data": None
-        }
-
-    password = data.get("password", "")
-    confirm_password = data.get("confirm_password", "")
-    if not password or not validate_password_confirmation(password, confirm_password):
-        return {"success": False, "message": "Passwords do not match", "data": None}
-
-    if not validate_password_strength(password):
-        return {
-            "success": False,
-            "message": "Password must be at least 8 characters, include uppercase, lowercase, digit, and special character.",
-            "data": None
-        }
-
-    first_name = data.get("first_name", "").strip()
-    last_name = data.get("last_name", "").strip()
-    if not first_name or not last_name:
-        return {"success": False, "message": "First name and last name are required", "data": None}
-    # Validate names using your new function
-    if not validate_name(first_name):
-        return {"success": False, "message": "First name is invalid", "data": None}
-
-    if not validate_name(last_name):
-        return {"success": False, "message": "Last name is invalid", "data": None}
-    try:
-        # check email or username duplicates
-        if db.query(User).filter((User.email == email) | (User.username == username)).first():
-            return {"success": False, "message": "Email or username already registered", "data": None}
-
-        # check phone duplicate separately (if provided)
-        if phone and db.query(User).filter(User.phone == phone).first():
-            return {"success": False, "message": "Phone number already registered", "data": None}
-
-        password_hash = Hasher.hash_password(password)
-        now = datetime.now(pytz.timezone("Africa/Nairobi")).replace(tzinfo=None)
-
-        new_user = User(
-            uuid=uuid4(),
-            email=email,
-            username=username,
-            first_name=first_name,
-            last_name=last_name,
-            phone=phone if phone else None,
-            password_hash=password_hash,
-            created_at=now,
-            updated_at=now
+    # Check duplicates in a single query
+    dup = db.query(User).filter(
+        or_(
+            User.email == payload.email,
+            User.username == payload.username,
+            User.phone == payload.phone,
         )
-        db.add(new_user)
-        db.commit()
-        db.refresh(new_user)
+    ).first()
+    if dup:
+        if dup.email == payload.email:
+            return fail("Email already registered")
+        if dup.username == payload.username:
+            return fail("Username already registered")
+        return fail("Phone number already registered")
 
-        return {
-            "success": True,
-            "message": f"Dear {first_name}, your account has been created successfully. Welcome to SEWMR SMS! To proceed, please log in.",
-            "data": {
-                "id": new_user.id,
-                "uuid": str(new_user.uuid),
-                "email": new_user.email,
-                "username": new_user.username,
-                "first_name": new_user.first_name,
-                "last_name": new_user.last_name,
-                "phone": new_user.phone,
-                "created_at": now.strftime("%Y-%m-%d %H:%M:%S"),
-            }
-        }
-    except SQLAlchemyError as e:
-        print(f"DB error: {e}")
-        return {"success": False, "message": "Database error", "data": None}
-    except Exception as e:
-        print(f"Unexpected error: {e}")
-        return {"success": False, "message": "Internal server error", "data": None}
+    now = now_eat()
+    new_user = User(
+        uuid=uuid4(),
+        email=payload.email,
+        username=payload.username,
+        first_name=payload.first_name,
+        last_name=payload.last_name,
+        phone=payload.phone,
+        password_hash=Hasher.hash_password(payload.password),
+        created_at=now,
+        updated_at=now,
+    )
+    db.add(new_user)
+    db.commit()
+    db.refresh(new_user)
+
+    return ok(
+        f"Dear {payload.first_name}, your account has been created successfully. Welcome to SEWMR SMS! To proceed, please log in.",
+        {
+            "id": new_user.id,
+            "uuid": str(new_user.uuid),
+            "email": new_user.email,
+            "username": new_user.username,
+            "first_name": new_user.first_name,
+            "last_name": new_user.last_name,
+            "phone": new_user.phone,
+            "created_at": now.strftime("%Y-%m-%d %H:%M:%S"),
+        },
+    )
+
 
 @router.post("/signin")
 async def signin_user(request: Request, db: Session = Depends(get_db)):
-    content_type = request.headers.get("content-type", "")
-    if "application/json" not in content_type.lower():
-        return {
-            "success": False,
-            "message": "Invalid content type. Expected application/json",
-            "data": None
-        }
-    
     try:
         data = await request.json()
-    except json.JSONDecodeError:
-        return {"success": False, "message": "Invalid JSON", "data": None}
-
-    identifier = data.get("identifier", "").strip()
-    password = data.get("password", "")
-
-    if not identifier:
-        return {"success": False, "message": "Username, email, or phone is required", "data": None}
-    if not password:
-        return {"success": False, "message": "Password is required", "data": None}
-
-    try:
-        user = db.query(User).filter(
-            or_(
-                User.email == identifier,
-                User.username == identifier,
-                User.phone == identifier
-            )
-        ).first()
-
-        if not user or not Hasher.verify_password(password, user.password_hash):
-            return {"success": False, "message": "Invalid credentials", "data": None}
-
-        access_token = create_access_token({"sub": str(user.uuid)})
-
-        response = JSONResponse({
-            "success": True,
-            "message": "Signed in successfully",
-            "data": {
-                "id": user.id,
-                "uuid": str(user.uuid),
-                "email": user.email,
-                "username": user.username,
-                "first_name": user.first_name,
-                "last_name": user.last_name,
-                "phone": user.phone
-            }
-        })
-
-        response.set_cookie(
-            key="session_token",
-            value=access_token,
-            domain=COOKIE_DOMAIN,  
-            httponly=True,
-            secure=IS_PRODUCTION,              
-            samesite="lax",         
-            max_age=MAX_COOKIE_AGE    
-        )
-
-        return response
-
-    except SQLAlchemyError as e:
-        print(f"DB error: {e}")
-        return {"success": False, "message": "Database error", "data": None}
-    except Exception as e:
-        print(f"Unexpected error: {e}")
-        return {"success": False, "message": "Internal server error", "data": None}
-    
-@router.post("/request-password-reset")
-async def password_reset_request(request: Request, db: Session = Depends(get_db)):
-    content_type = request.headers.get("content-type", "")
-    if "application/json" not in content_type.lower():
-        return {
-            "success": False,
-            "message": "Invalid content type. Expected application/json",
-            "data": None
-        }
-
-    try:
-        data = await request.json()
+        payload = SigninRequest(**data)
+    except ValidationError as e:
+        return fail(e.errors()[0]["msg"])
     except Exception:
-        return {"success": False, "message": "Invalid JSON", "data": None}
+        return fail("Invalid JSON")
 
-    identifier = data.get("identifier", "").strip()
-    if not identifier:
-        return {"success": False, "message": "Identifier (email, username, or phone) is required", "data": None}
-
-    # Lookup user by email, username, or phone
     user = db.query(User).filter(
         or_(
-            User.email == identifier,
-            User.username == identifier,
-            User.phone == identifier
+            User.email == payload.identifier,
+            User.username == payload.identifier,
+            User.phone == payload.identifier,
         )
     ).first()
 
-    if not user or not user.email:
-        # Security: do not reveal if user exists or email present
-        return {
-            "success": True,
-            "message": "If the identifier exists, a reset link has been sent to the associated email",
-            "data": None
-        }
+    if not user or not Hasher.verify_password(payload.password, user.password_hash):
+        return fail("Invalid credentials")
 
-    # Generate secure token and hash it
+    access_token = create_access_token({"sub": str(user.uuid)})
+
+    response = JSONResponse(ok("Signed in successfully", {
+        "id": user.id,
+        "uuid": str(user.uuid),
+        "email": user.email,
+        "username": user.username,
+        "first_name": user.first_name,
+        "last_name": user.last_name,
+        "phone": user.phone,
+    }))
+    response.set_cookie(
+        key="session_token",
+        value=access_token,
+        domain=COOKIE_DOMAIN,
+        httponly=True,
+        secure=IS_PRODUCTION,
+        samesite="lax",
+        max_age=MAX_COOKIE_AGE,
+    )
+    return response
+
+
+@router.post("/request-password-reset")
+async def password_reset_request(request: Request, db: Session = Depends(get_db)):
+    try:
+        data = await request.json()
+        payload = PasswordResetRequestSchema(**data)
+    except Exception:
+        return fail("Invalid JSON")
+
+    user = db.query(User).filter(
+        or_(
+            User.email == payload.identifier,
+            User.username == payload.identifier,
+            User.phone == payload.identifier,
+        )
+    ).first()
+
+    # Security: always return success to avoid user enumeration
+    if not user or not user.email:
+        return ok("If the identifier exists, a reset link has been sent to the associated email")
+
     raw_token = secrets.token_urlsafe(48)
     token_hash = hashlib.sha256(raw_token.encode("utf-8")).hexdigest()
-
-    now = datetime.now(pytz.timezone("Africa/Nairobi")).replace(tzinfo=None)
+    now = now_eat()
     expires_at = now + timedelta(minutes=15)
 
-    # Save token in DB
-    reset_token = PasswordResetToken(
+    db.add(PasswordResetToken(
         user_id=user.id,
         token_hash=token_hash,
         created_at=now,
         expires_at=expires_at,
-        used=False
-    )
-    db.add(reset_token)
+        used=False,
+    ))
     db.commit()
 
-    # Build backend reset acceptance link
-    params = urlencode({"token": raw_token})
     backend_host = f"{request.url.scheme}://{request.url.hostname}"
     if request.url.port:
         backend_host += f":{request.url.port}"
-    reset_link = f"{backend_host}/api/v1/auth/accept-reset?{params}"
+    reset_link = f"{backend_host}/api/v1/auth/accept-reset?{urlencode({'token': raw_token})}"
 
-    # Send password reset email
     send_password_reset_email(user.email, reset_link, user.first_name)
 
-    return {
-        "success": True,
-        "message": "If the identifier exists, a reset link has been sent to the associated email",
-        "data": None
-    }
+    return ok("If the identifier exists, a reset link has been sent to the associated email")
+
 
 @router.get("/accept-reset")
 async def accept_reset(token: str, db: Session = Depends(get_db)):
@@ -296,59 +197,42 @@ async def accept_reset(token: str, db: Session = Depends(get_db)):
     reset_token = db.query(PasswordResetToken).filter(
         PasswordResetToken.token_hash == token_hash,
         PasswordResetToken.used == False,
-        PasswordResetToken.expires_at > now
+        PasswordResetToken.expires_at > now,
     ).first()
 
     if not reset_token:
-        return JSONResponse({"success": False, "message": "Invalid or expired reset token"}, status_code=400)
+        return JSONResponse(fail("Invalid or expired reset token"), status_code=400)
 
-    frontend_password_reset_url = "https://app.sewmrsms.co.tz/reset-password"
-
-    # create RedirectResponse and set cookie on it (not on the unrelated `response` param)
-    redirect = RedirectResponse(frontend_password_reset_url)
-
+    redirect = RedirectResponse("https://app.sewmrsms.co.tz/reset-password")
     redirect.set_cookie(
         key="reset_token",
         value=token,
         domain=COOKIE_DOMAIN,
-        path="/", 
+        path="/",
         httponly=True,
         secure=IS_PRODUCTION,
         samesite="lax",
-        max_age=15 * 60
+        max_age=15 * 60,
     )
-
     return redirect
 
-@router.post("/reset-password")
-async def reset_password(request: Request, reset_token: Optional[str] = Cookie(None), db: Session = Depends(get_db)):
-    content_type = request.headers.get("content-type", "")
-    if "application/json" not in content_type.lower():
-        return {"success": False, "message": "Invalid content type. Expected application/json", "data": None}
 
+@router.post("/reset-password")
+async def reset_password(
+    request: Request,
+    reset_token: Optional[str] = Cookie(None),
+    db: Session = Depends(get_db),
+):
     if not reset_token:
         raise HTTPException(status_code=400, detail="Reset token cookie missing")
 
     try:
         data = await request.json()
+        payload = ResetPasswordSchema(**data)
+    except ValidationError as e:
+        return fail(e.errors()[0]["msg"])
     except Exception:
-        return {"success": False, "message": "Invalid JSON", "data": None}
-
-    new_password = data.get("new_password", "")
-    confirm_password = data.get("confirm_password", "")
-
-    if not new_password or not confirm_password:
-        return {"success": False, "message": "New password and confirmation are required", "data": None}
-
-    if new_password != confirm_password:
-        return {"success": False, "message": "Passwords do not match", "data": None}
-
-    if not validate_password_strength(new_password):
-        return {
-            "success": False,
-            "message": "Password must be at least 8 characters, include uppercase, lowercase, digit, and special character.",
-            "data": None
-        }
+        return fail("Invalid JSON")
 
     token_hash = hashlib.sha256(reset_token.encode("utf-8")).hexdigest()
     now = datetime.utcnow()
@@ -356,30 +240,29 @@ async def reset_password(request: Request, reset_token: Optional[str] = Cookie(N
     reset_token_obj = db.query(PasswordResetToken).filter(
         PasswordResetToken.token_hash == token_hash,
         PasswordResetToken.used == False,
-        PasswordResetToken.expires_at > now
+        PasswordResetToken.expires_at > now,
     ).first()
 
     if not reset_token_obj:
-        return {"success": False, "message": "Invalid or expired reset token", "data": None}
+        return fail("Invalid or expired reset token")
 
     user = db.query(User).filter(User.id == reset_token_obj.user_id).first()
     if not user:
-        return {"success": False, "message": "User not found", "data": None}
+        return fail("User not found")
 
-    new_password_hash = Hasher.hash_password(new_password)
-    user.password_hash = new_password_hash
+    user.password_hash = Hasher.hash_password(payload.new_password)
     reset_token_obj.used = True
-
     db.commit()
 
-    return {"success": True, "message": "Password reset successfully", "data": None}
+    return ok("Password reset successfully")
+
 
 @router.get("/validate-token")
 async def validate_token(session_token: str = Cookie(None), db: Session = Depends(get_db)):
     if not session_token:
         return JSONResponse(
             status_code=status.HTTP_401_UNAUTHORIZED,
-            content={"success": False, "message": "No session token", "data": None}
+            content=fail("No session token"),
         )
 
     try:
@@ -388,335 +271,260 @@ async def validate_token(session_token: str = Cookie(None), db: Session = Depend
         if not user_uuid:
             return JSONResponse(
                 status_code=status.HTTP_401_UNAUTHORIZED,
-                content={"success": False, "message": "Invalid token payload", "data": None}
+                content=fail("Invalid token payload"),
             )
 
         user = db.query(User).filter(User.uuid == user_uuid).first()
         if not user:
             return JSONResponse(
                 status_code=status.HTTP_401_UNAUTHORIZED,
-                content={"success": False, "message": "User not found", "data": None}
+                content=fail("User not found"),
             )
 
-        return {
-            "success": True,
-            "message": "Token is valid",
-            "data": {
-                "user": {
-                    "uuid": str(user.uuid),
-                    "email": user.email,
-                    "username": user.username,
-                    "first_name": user.first_name,
-                    "phone": user.phone
-                }
+        return ok("Token is valid", {
+            "user": {
+                "uuid": str(user.uuid),
+                "email": user.email,
+                "username": user.username,
+                "first_name": user.first_name,
+                "phone": user.phone,
             }
-        }
+        })
     except Exception as e:
         return JSONResponse(
             status_code=status.HTTP_401_UNAUTHORIZED,
-            content={"success": False, "message": str(e), "data": None}
+            content=fail(str(e)),
         )
+
 
 @router.post("/logout")
 async def logout(response: Response):
-    response.delete_cookie(
-        "session_token",
-        domain=COOKIE_DOMAIN,
-        path="/"                  
-    )
-    return {
-        "success": True,
-        "message": "Logged out successfully",
-        "data": None
-    }
+    response.delete_cookie("session_token", domain=COOKIE_DOMAIN, path="/")
+    return ok("Logged out successfully")
+
 
 @router.post("/generate-api-token")
 async def generate_api_token(
     request: Request,
     current_user: User = Depends(get_current_user),
-    db: Session = Depends(get_db)
+    db: Session = Depends(get_db),
 ):
-    body = await request.json()
-    token_name = body.get("name", "").strip()
+    try:
+        body = await request.json()
+        payload = GenerateApiTokenRequest(**body)
+    except ValidationError as e:
+        raise HTTPException(status_code=400, detail=e.errors()[0]["msg"])
+    except Exception:
+        raise HTTPException(status_code=400, detail="Invalid JSON")
 
-    if not token_name:
-        raise HTTPException(status_code=400, detail="Token name is required")
+    # Check duplicate name
+    if db.query(ApiAccessToken).filter(
+        ApiAccessToken.user_id == current_user.id,
+        ApiAccessToken.name == payload.name,
+    ).first():
+        raise HTTPException(status_code=400, detail=f"Token name '{payload.name}' already exists.")
 
-    # ensure unique token name for this user
-    existing = db.query(ApiAccessToken).filter(
-        and_(
-            ApiAccessToken.user_id == current_user.id,
-            ApiAccessToken.name == token_name
-        )
-    ).first()
-
-    if existing:
-        raise HTTPException(
-            status_code=400,
-            detail=f"Token name '{token_name}' already exists. Please use a different name."
-        )
-
-    now = datetime.now(pytz.timezone("Africa/Nairobi")).replace(tzinfo=None)
+    now = now_eat()
     expires_at = now + timedelta(days=30)
 
-    max_attempts = 5
-    for attempt in range(max_attempts):
+    for _ in range(5):
         raw_token = secrets.token_urlsafe(40)
         token_hash = hashlib.sha256(raw_token.encode("utf-8")).hexdigest()
 
-        access_token = ApiAccessToken(
+        db.add(ApiAccessToken(
             user_id=current_user.id,
-            name=token_name,
+            name=payload.name,
             token_hash=token_hash,
             created_at=now,
             expires_at=expires_at,
-            revoked=False
-        )
-
-        db.add(access_token)
+            revoked=False,
+        ))
         try:
             db.commit()
-            db.refresh(access_token)
-            return {
-                "success": True,
-                "message": "API access token generated successfully",
-                "data": {
-                    "access_token": raw_token,
-                    "expires_at": expires_at.isoformat(),
-                    "name": access_token.name
-                }
-            }
-        except IntegrityError as e:
+            return ok("API access token generated successfully", {
+                "access_token": raw_token,
+                "expires_at": expires_at.isoformat(),
+                "name": payload.name,
+            })
+        except Exception:
             db.rollback()
-            # retry if hash collision occurs
-            if "unique" in str(e).lower():
-                continue
-            raise HTTPException(status_code=500, detail="Database error while creating API token")
+            continue
 
     raise HTTPException(status_code=500, detail="Could not generate a unique API token. Try again later.")
 
+
 @router.get("/me")
 async def get_current_user_endpoint(current_user: User = Depends(get_current_user), db: Session = Depends(get_db)):
-    """
-    Returns the authenticated user's information based on session cookie or Bearer token.
-    """
-    # Sum remaining_sms across all subscriptions
     total_remaining_sms = db.query(
         func.coalesce(func.sum(UserSubscription.remaining_sms), 0)
     ).filter(UserSubscription.user_id == current_user.id).scalar()
 
-    return {
-        "success": True,
-        "message": "User authenticated",
-        "data": {
-            "id": current_user.id,
-            "uuid": str(current_user.uuid),
-            "email": current_user.email,
-            "username": current_user.username,
-            "first_name": current_user.first_name,
-            "last_name": current_user.last_name,
-            "phone": current_user.phone,
-            "remaining_sms": total_remaining_sms
-        }
-    }
+    return ok("User authenticated", {
+        "id": current_user.id,
+        "uuid": str(current_user.uuid),
+        "email": current_user.email,
+        "username": current_user.username,
+        "first_name": current_user.first_name,
+        "last_name": current_user.last_name,
+        "phone": current_user.phone,
+        "remaining_sms": total_remaining_sms,
+    })
+
 
 @router.get("/api-tokens")
 async def get_api_tokens(
     current_user: User = Depends(get_current_user),
-    db: Session = Depends(get_db)
+    db: Session = Depends(get_db),
 ):
     tokens = db.query(ApiAccessToken).filter(ApiAccessToken.user_id == current_user.id).all()
+    token_list = [
+        {
+            "id": str(t.id),
+            "name": getattr(t, "name", f"Token {t.id}"),
+            "token_masked": f"****-****-****-{t.token_hash[-6:]}",
+            "created_at": t.created_at.isoformat() if t.created_at else None,
+            "expires_at": t.expires_at.isoformat() if t.expires_at else None,
+            "status": "revoked" if t.revoked else "active",
+            "last_used": t.last_used.isoformat() if t.last_used else None,
+        }
+        for t in tokens
+    ]
+    return ok("API tokens retrieved", token_list)
 
-    token_list = []
-    for token in tokens:
-        masked = f"****-****-****-{token.token_hash[-6:]}"
-        token_list.append({
-            "id": str(token.id),
-            "name": getattr(token, "name", f"Token {token.id}"),
-            "token_masked": masked,
-            "created_at": token.created_at.isoformat() if token.created_at else None,
-            "expires_at": token.expires_at.isoformat() if token.expires_at else None,
-            "status": "revoked" if token.revoked else "active",
-            "last_used": token.last_used.isoformat() if token.last_used else None
-        })
-
-    return {"success": True, "data": token_list}
 
 @router.post("/api-tokens/{token_id}/revoke")
 async def revoke_api_token(
     token_id: str,
     current_user: User = Depends(get_current_user),
-    db: Session = Depends(get_db)
+    db: Session = Depends(get_db),
 ):
-    """
-    Revoke an API token. Sets `revoked=True` in DB.
-    """
     token = db.query(ApiAccessToken).filter(
         ApiAccessToken.id == token_id,
-        ApiAccessToken.user_id == current_user.id
+        ApiAccessToken.user_id == current_user.id,
     ).first()
-
     if not token:
-        return JSONResponse(
-            status_code=404,
-            content={"success": False, "message": "Token not found", "data": None}
-        )
-
+        return JSONResponse(status_code=404, content=fail("Token not found"))
     if token.revoked:
-        return {"success": True, "message": "Token is already revoked", "data": None}
+        return ok("Token is already revoked")
 
     token.revoked = True
     db.commit()
-    return {"success": True, "message": "Token revoked successfully", "data": None}
+    return ok("Token revoked successfully")
 
 
 @router.delete("/api-tokens/{token_id}")
 async def delete_api_token(
     token_id: str,
     current_user: User = Depends(get_current_user),
-    db: Session = Depends(get_db)
+    db: Session = Depends(get_db),
 ):
-    """
-    Delete an API token permanently.
-    """
     token = db.query(ApiAccessToken).filter(
         ApiAccessToken.id == token_id,
-        ApiAccessToken.user_id == current_user.id
+        ApiAccessToken.user_id == current_user.id,
     ).first()
-
     if not token:
-        return JSONResponse(
-            status_code=404,
-            content={"success": False, "message": "Token not found", "data": None}
-        )
+        return JSONResponse(status_code=404, content=fail("Token not found"))
 
     db.delete(token)
     db.commit()
-    return {"success": True, "message": "Token deleted successfully", "data": None}
+    return ok("Token deleted successfully")
 
 
+# Constants for delivery status checks
 DELIVERED_STATUSES = [
     SmsDeliveryStatusEnum.delivered.value,
     SmsDeliveryStatusEnum.acknowledged.value,
-    SmsDeliveryStatusEnum.accepted.value
+    SmsDeliveryStatusEnum.accepted.value,
 ]
 
-def compute_percent_change(current: float, previous: float) -> float:
+
+def _percent_change(current: float, previous: float) -> float:
     if previous == 0:
         return 100.0 if current > 0 else 0.0
     return round(((current - previous) / previous) * 100, 2)
 
+
 @router.get("/dashboard/stats")
 def dashboard_stats(
     db: Session = Depends(get_db),
-    current_user: User = Depends(get_current_user)
+    current_user: User = Depends(get_current_user),
 ):
-    now = datetime.now(pytz.timezone("Africa/Nairobi")).replace(tzinfo=None)
+    now = now_eat()
     today_start = now.replace(hour=0, minute=0, second=0, microsecond=0)
     yesterday_start = today_start - timedelta(days=1)
     yesterday_end = today_start - timedelta(seconds=1)
 
-    # -----------------------
     # Messages Sent
-    # -----------------------
-    messages_today = db.query(func.count(SentMessage.id))\
-        .filter(SentMessage.user_id == current_user.id)\
-        .filter(SentMessage.sent_at >= today_start).scalar() or 0
+    messages_today = db.query(func.count(SentMessage.id)).filter(
+        SentMessage.user_id == current_user.id,
+        SentMessage.sent_at >= today_start,
+    ).scalar() or 0
+    messages_yesterday = db.query(func.count(SentMessage.id)).filter(
+        SentMessage.user_id == current_user.id,
+        SentMessage.sent_at.between(yesterday_start, yesterday_end),
+    ).scalar() or 0
+    messages_change = _percent_change(messages_today, messages_yesterday)
 
-    messages_yesterday = db.query(func.count(SentMessage.id))\
-        .filter(SentMessage.user_id == current_user.id)\
-        .filter(SentMessage.sent_at.between(yesterday_start, yesterday_end)).scalar() or 0
-
-    messages_change = compute_percent_change(messages_today, messages_yesterday)
-
-    # -----------------------
     # Delivery Rate
-    # -----------------------
-    delivered_today = db.query(func.count(SmsCallback.id))\
-        .filter(SmsCallback.user_id == current_user.id)\
-        .filter(SmsCallback.received_at >= today_start)\
-        .filter(SmsCallback.status.in_(DELIVERED_STATUSES)).scalar() or 0
-
-    total_callbacks_today = db.query(func.count(SmsCallback.id))\
-        .filter(SmsCallback.user_id == current_user.id)\
-        .filter(SmsCallback.received_at >= today_start).scalar() or 0
-
+    delivered_today = db.query(func.count(SmsCallback.id)).filter(
+        SmsCallback.user_id == current_user.id,
+        SmsCallback.received_at >= today_start,
+        SmsCallback.status.in_(DELIVERED_STATUSES),
+    ).scalar() or 0
+    total_callbacks_today = db.query(func.count(SmsCallback.id)).filter(
+        SmsCallback.user_id == current_user.id,
+        SmsCallback.received_at >= today_start,
+    ).scalar() or 0
     delivery_rate_today = round((delivered_today / max(total_callbacks_today, 1)) * 100, 2)
 
-    delivered_yesterday = db.query(func.count(SmsCallback.id))\
-        .filter(SmsCallback.user_id == current_user.id)\
-        .filter(SmsCallback.received_at.between(yesterday_start, yesterday_end))\
-        .filter(SmsCallback.status.in_(DELIVERED_STATUSES)).scalar() or 0
-
-    total_callbacks_yesterday = db.query(func.count(SmsCallback.id))\
-        .filter(SmsCallback.user_id == current_user.id)\
-        .filter(SmsCallback.received_at.between(yesterday_start, yesterday_end)).scalar() or 0
-
+    delivered_yesterday = db.query(func.count(SmsCallback.id)).filter(
+        SmsCallback.user_id == current_user.id,
+        SmsCallback.received_at.between(yesterday_start, yesterday_end),
+        SmsCallback.status.in_(DELIVERED_STATUSES),
+    ).scalar() or 0
+    total_callbacks_yesterday = db.query(func.count(SmsCallback.id)).filter(
+        SmsCallback.user_id == current_user.id,
+        SmsCallback.received_at.between(yesterday_start, yesterday_end),
+    ).scalar() or 0
     delivery_rate_yesterday = round((delivered_yesterday / max(total_callbacks_yesterday, 1)) * 100, 2)
-    delivery_change = compute_percent_change(delivery_rate_today, delivery_rate_yesterday)
+    delivery_change = _percent_change(delivery_rate_today, delivery_rate_yesterday)
 
-    # -----------------------
     # Contacts
-    # -----------------------
-    total_contacts = db.query(func.count(Contact.id))\
-        .filter(Contact.user_id == current_user.id).scalar() or 0
+    total_contacts = db.query(func.count(Contact.id)).filter(Contact.user_id == current_user.id).scalar() or 0
+    contacts_yesterday = db.query(func.count(Contact.id)).filter(
+        Contact.user_id == current_user.id,
+        Contact.created_at < today_start,
+    ).scalar() or 0
+    contacts_change = _percent_change(total_contacts, contacts_yesterday)
 
-    contacts_yesterday = db.query(func.count(Contact.id))\
-        .filter(Contact.user_id == current_user.id)\
-        .filter(Contact.created_at < today_start).scalar() or 0
-
-    contacts_change = compute_percent_change(total_contacts, contacts_yesterday)
-
-    # -----------------------
     # Credits Remaining
-    # -----------------------
-    credits_today = db.query(func.coalesce(func.sum(UserSubscription.remaining_sms), 0))\
-        .filter(UserSubscription.user_id == current_user.id).scalar() or 0
-
-    used_since_yesterday = db.query(func.coalesce(func.sum(SentMessage.number_of_parts), 0))\
-        .filter(SentMessage.user_id == current_user.id)\
-        .filter(SentMessage.sent_at >= yesterday_start).scalar() or 0
-
+    credits_today = db.query(func.coalesce(func.sum(UserSubscription.remaining_sms), 0)).filter(
+        UserSubscription.user_id == current_user.id
+    ).scalar() or 0
+    used_since_yesterday = db.query(func.coalesce(func.sum(SentMessage.number_of_parts), 0)).filter(
+        SentMessage.user_id == current_user.id,
+        SentMessage.sent_at >= yesterday_start,
+    ).scalar() or 0
     credits_yesterday = credits_today + used_since_yesterday
-    credits_change = compute_percent_change(credits_today, credits_yesterday)
+    credits_change = _percent_change(credits_today, credits_yesterday)
 
-    # -----------------------
-    # Response
-    # -----------------------
     return {
         "timestamp": now.isoformat(),
         "metrics": {
-            "messages_sent_today": {
-                "value": messages_today,
-                "change": messages_change,
-                "trend": "up" if messages_change >= 0 else "down"
-            },
-            "delivery_rate": {
-                "value": delivery_rate_today,
-                "change": delivery_change,
-                "trend": "up" if delivery_change >= 0 else "down"
-            },
-            "total_contacts": {
-                "value": total_contacts,
-                "change": contacts_change,
-                "trend": "up" if contacts_change >= 0 else "down"
-            },
-            "credits_remaining": {
-                "value": credits_today,
-                "change": credits_change,
-                "trend": "up" if credits_change >= 0 else "down"
-            }
-        }
+            "messages_sent_today": {"value": messages_today, "change": messages_change, "trend": "up" if messages_change >= 0 else "down"},
+            "delivery_rate": {"value": delivery_rate_today, "change": delivery_change, "trend": "up" if delivery_change >= 0 else "down"},
+            "total_contacts": {"value": total_contacts, "change": contacts_change, "trend": "up" if contacts_change >= 0 else "down"},
+            "credits_remaining": {"value": credits_today, "change": credits_change, "trend": "up" if credits_change >= 0 else "down"},
+        },
     }
+
+
 @router.get("/dashboard/recent-messages")
 def recent_messages(
     db: Session = Depends(get_db),
     current_user: User = Depends(get_current_user),
-    limit: int = 5
+    limit: int = 5,
 ):
-    now = datetime.now(pytz.timezone("Africa/Nairobi")).replace(tzinfo=None)
-
-    # Fetch the most recent schedules for this user
     schedules = (
         db.query(SmsSchedule)
         .filter(SmsSchedule.user_id == current_user.id)
@@ -727,144 +535,107 @@ def recent_messages(
 
     results = []
     for schedule in schedules:
-        # Count total messages in this schedule
-        total_messages = (
-            db.query(func.count(SmsScheduledMessage.id))
-            .filter(SmsScheduledMessage.schedule_id == schedule.id)
-            .scalar()
-        ) or 0
+        total_messages = db.query(func.count(SmsScheduledMessage.id)).filter(
+            SmsScheduledMessage.schedule_id == schedule.id
+        ).scalar() or 0
 
-        # Status comes directly from SmsSchedule
-        status = schedule.status.value if schedule.status else "pending"
+        preview_msg = db.query(SmsScheduledMessage.message).filter(
+            SmsScheduledMessage.schedule_id == schedule.id
+        ).order_by(SmsScheduledMessage.created_at.asc()).first()
 
-        # Use the first message as a preview
-        preview_msg = (
-            db.query(SmsScheduledMessage.message)
-            .filter(SmsScheduledMessage.schedule_id == schedule.id)
-            .order_by(SmsScheduledMessage.created_at.asc())
-            .first()
-        )
-        preview_text = preview_msg[0] if preview_msg else ""
-
-        # Timestamp: use latest sent_at, fallback to schedule created_at
-        latest_sent = (
-            db.query(func.max(SmsScheduledMessage.sent_at))
-            .filter(SmsScheduledMessage.schedule_id == schedule.id)
-            .scalar()
-        )
-        timestamp = latest_sent or schedule.created_at
+        latest_sent = db.query(func.max(SmsScheduledMessage.sent_at)).filter(
+            SmsScheduledMessage.schedule_id == schedule.id
+        ).scalar()
 
         results.append({
             "id": schedule.id,
             "recipient": schedule.title,
-            "message": preview_text,
-            "status": status,
-            "timestamp": timestamp.isoformat(),
-            "count": total_messages
+            "message": preview_msg[0] if preview_msg else "",
+            "status": schedule.status.value if schedule.status else "pending",
+            "timestamp": (latest_sent or schedule.created_at).isoformat(),
+            "count": total_messages,
         })
 
     return {"recent_messages": results}
+
 
 @router.post("/set-outage-notification")
 async def set_outage_notification(
     request: Request,
     current_user: User = Depends(get_current_user),
-    db: Session = Depends(get_db)
+    db: Session = Depends(get_db),
 ):
-    content_type = request.headers.get("content-type", "")
-    if "application/json" not in content_type.lower():
-        raise HTTPException(status_code=400, detail="Invalid content type. Expected application/json")
+    try:
+        data = await request.json()
+        payload = OutageNotificationRequest(**data)
+    except ValidationError as e:
+        raise HTTPException(status_code=400, detail=e.errors()[0]["msg"])
+    except Exception:
+        raise HTTPException(status_code=400, detail="Invalid JSON")
 
-    data = await request.json()
-
-    # Use provided phone/email or default to user's
-    phone = data.get("phone", "").strip() or current_user.phone
-    email = data.get("email", "").strip() or current_user.email
-    notify_before_messages = data.get("notify_before_messages", 1)
+    phone = payload.phone or current_user.phone
+    email = payload.email or current_user.email
 
     if not phone or not validate_phone(phone):
         raise HTTPException(status_code=400, detail="Phone must be in format 255XXXXXXXXX")
-    
     if not email or not validate_email(email):
         raise HTTPException(status_code=400, detail="Valid email is required")
-    
-    if not isinstance(notify_before_messages, int) or notify_before_messages < 1:
-        raise HTTPException(status_code=400, detail="notify_before_messages must be a positive integer")
 
-    now = datetime.now(pytz.timezone("Africa/Nairobi")).replace(tzinfo=None)
-
-    # Check if user already has a preference
-    notification = db.query(UserOutageNotification).filter(UserOutageNotification.user_id == current_user.id).first()
+    now = now_eat()
+    notification = db.query(UserOutageNotification).filter(
+        UserOutageNotification.user_id == current_user.id
+    ).first()
 
     if notification:
-        # Update existing record
         notification.phone = phone
         notification.email = email
-        notification.notify_before_messages = notify_before_messages
+        notification.notify_before_messages = payload.notify_before_messages
         notification.updated_at = now
     else:
-        # Create new record
         notification = UserOutageNotification(
             uuid=uuid4(),
             user_id=current_user.id,
             phone=phone,
             email=email,
-            notify_before_messages=notify_before_messages,
+            notify_before_messages=payload.notify_before_messages,
             created_at=now,
-            updated_at=now
+            updated_at=now,
         )
         db.add(notification)
 
-    try:
-        db.commit()
-        db.refresh(notification)
-        return {
-            "success": True,
-            "message": "Outage notification preferences saved successfully",
-            "data": {
-                "id": notification.id,
-                "phone": notification.phone,
-                "email": notification.email,
-                "notify_before_messages": notification.notify_before_messages,
-                "created_at": notification.created_at.strftime("%Y-%m-%d %H:%M:%S"),
-                "updated_at": notification.updated_at.strftime("%Y-%m-%d %H:%M:%S")
-            }
-        }
-    except Exception as e:
-        db.rollback()
-        print(f"DB error: {e}")
-        raise HTTPException(status_code=500, detail="Database error while saving preferences")
+    db.commit()
+    db.refresh(notification)
+
+    return ok("Outage notification preferences saved successfully", {
+        "id": notification.id,
+        "phone": notification.phone,
+        "email": notification.email,
+        "notify_before_messages": notification.notify_before_messages,
+        "created_at": notification.created_at.strftime("%Y-%m-%d %H:%M:%S"),
+        "updated_at": notification.updated_at.strftime("%Y-%m-%d %H:%M:%S"),
+    })
+
 
 @router.get("/get-outage-notification")
 async def get_outage_notification(
     current_user: User = Depends(get_current_user),
-    db: Session = Depends(get_db)
+    db: Session = Depends(get_db),
 ):
-    # Query the user's notification preferences
     notification = db.query(UserOutageNotification).filter(
         UserOutageNotification.user_id == current_user.id
     ).first()
 
     if not notification:
-        # Return default values using user's email/phone
-        return {
-            "success": True,
-            "message": "No outage notification preferences found. Using account defaults.",
-            "data": {
-                "phone": current_user.phone or "",
-                "email": current_user.email or "",
-                "notify_before_messages": 1
-            }
-        }
+        return ok("No outage notification preferences found. Using account defaults.", {
+            "phone": current_user.phone or "",
+            "email": current_user.email or "",
+            "notify_before_messages": 1,
+        })
 
-    return {
-        "success": True,
-        "message": "Outage notification preferences retrieved successfully",
-        "data": {
-            "phone": notification.phone,
-            "email": notification.email,
-            "notify_before_messages": notification.notify_before_messages,
-            "last_notified_at": notification.last_notified_at.isoformat() if notification.last_notified_at else None,
-            "notification_count": notification.notification_count
-        }
-    }
+    return ok("Outage notification preferences retrieved successfully", {
+        "phone": notification.phone,
+        "email": notification.email,
+        "notify_before_messages": notification.notify_before_messages,
+        "last_notified_at": notification.last_notified_at.isoformat() if notification.last_notified_at else None,
+        "notification_count": notification.notification_count,
+    })
