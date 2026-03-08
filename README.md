@@ -17,7 +17,7 @@ API tokens are generated from the **SEWMR SMS Dashboard**, not via API.
 4. Give your token a name (e.g., "My App Integration")
 5. Copy and securely store the token (it will only be shown once)
 
-### Using the Token
+### Using the API Token
 
 Include your token in all API requests:
 
