@@ -3,6 +3,8 @@ from fastapi.exceptions import RequestValidationError
 from fastapi.responses import JSONResponse
 from fastapi.middleware.cors import CORSMiddleware
 from api.routes import subscription, sms_templates, sms, contacts, sender_id, cron, auth, plans, payments
+from api.routes import admin_auth as admin_auth_routes
+from api.routes import admin as admin_routes
 
 app = FastAPI(title="SEWMR SMS API", version="1.0.0")
 
