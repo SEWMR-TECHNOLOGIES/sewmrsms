@@ -1,0 +1,12 @@
+User-agent: *
+Allow: /
+
+# Disallow private dashboard & sensitive routes
+Disallow: /console
+Disallow: /billing
+Disallow: /sender-ids
+Disallow: /contacts
+Disallow: /settings
+
+# Sitemap location
+Sitemap: https://sewmrsms.co.tz/sitemap.xml
