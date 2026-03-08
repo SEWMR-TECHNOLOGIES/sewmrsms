@@ -102,7 +102,7 @@ export default function AdminSenderRequests() {
                   <TableRow key={r.uuid}>
                     <TableCell className="font-medium">{r.sender_alias}</TableCell>
                     <TableCell>{r.user?.email}</TableCell>
-                    <TableCell>{r.company_name || "—"}</TableCell>
+                    <TableCell>{r.company_name || "N/A"}</TableCell>
                     <TableCell>{r.is_student_request ? <Badge variant="secondary">Student</Badge> : "Business"}</TableCell>
                     <TableCell><Badge variant={statusColor(r.status) as any}>{r.status}</Badge></TableCell>
                     <TableCell>{new Date(r.created_at).toLocaleDateString()}</TableCell>
