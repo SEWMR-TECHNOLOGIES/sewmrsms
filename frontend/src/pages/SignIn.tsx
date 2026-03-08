@@ -45,6 +45,7 @@ const SignInPage = () => {
         body: JSON.stringify({
           identifier: form.identifier,
           password: form.password,
+          remember: form.remember,
         }),
         credentials: "include",
       })
