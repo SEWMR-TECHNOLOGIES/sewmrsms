@@ -102,7 +102,7 @@ export default function AdminSenderRequests() {
                   <TableRow key={r.uuid}>
                     <TableCell className="font-medium">{r.sender_alias}</TableCell>
                     <TableCell>{r.user?.email}</TableCell>
-                    <TableCell>{r.company_name || "—"}</TableCell>
+                    <TableCell>{r.company_name || "N/A"}</TableCell>
                     <TableCell>{r.is_student_request ? <Badge variant="secondary">Student</Badge> : "Business"}</TableCell>
                     <TableCell><Badge variant={statusColor(r.status) as any}>{r.status}</Badge></TableCell>
                     <TableCell>{new Date(r.created_at).toLocaleDateString()}</TableCell>
@@ -153,7 +153,7 @@ export default function AdminSenderRequests() {
       <Dialog open={!!actionDialog} onOpenChange={() => { setActionDialog(null); setRemarks(""); }}>
         <DialogContent>
           <DialogHeader>
-            <DialogTitle className="capitalize">{actionDialog?.action?.replace(/-/g, " ")} — {actionDialog?.request?.sender_alias}</DialogTitle>
+            <DialogTitle className="capitalize">{actionDialog?.action?.replace(/-/g, " ")} - {actionDialog?.request?.sender_alias}</DialogTitle>
           </DialogHeader>
           <div className="space-y-4">
             {actionDialog?.action !== "set-in-review" && (

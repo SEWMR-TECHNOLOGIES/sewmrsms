@@ -68,8 +68,8 @@ export default function AdminActivityLogs() {
                     <TableCell>{l.admin?.username}</TableCell>
                     <TableCell><Badge variant={actionColor(l.action) as any}>{l.action}</Badge></TableCell>
                     <TableCell className="text-muted-foreground">{l.entity_type} #{l.entity_id}</TableCell>
-                    <TableCell className="max-w-[200px] truncate text-xs">{l.details ? JSON.stringify(l.details) : "—"}</TableCell>
-                    <TableCell className="text-xs">{l.ip_address || "—"}</TableCell>
+                    <TableCell className="max-w-[200px] truncate text-xs">{l.details ? JSON.stringify(l.details) : "N/A"}</TableCell>
+                    <TableCell className="text-xs">{l.ip_address || "N/A"}</TableCell>
                     <TableCell>{new Date(l.created_at).toLocaleString()}</TableCell>
                   </TableRow>
                 ))}

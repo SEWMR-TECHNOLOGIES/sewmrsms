@@ -96,7 +96,7 @@ export default function UserSenderIds() {
       header: 'Created',
       cell: ({ row }) => (
         <span className="text-sm">
-          {row.getValue('created_at') ? format(new Date(row.getValue('created_at')), 'MMM dd, yyyy') : '—'}
+          {row.getValue('created_at') ? format(new Date(row.getValue('created_at')), 'MMM dd, yyyy') : 'N/A'}
         </span>
       ),
     },

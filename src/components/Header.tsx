@@ -67,7 +67,7 @@ export const Header = () => {
               />
             </Link>
 
-            {/* Center Nav — pill-shaped container */}
+            {/* Center Nav */}
             <nav className="flex items-center bg-muted/50 backdrop-blur-sm rounded-full px-1.5 py-1 border border-border/30">
               {navItems.map((item) => {
                 const active = location.pathname === item.href;
