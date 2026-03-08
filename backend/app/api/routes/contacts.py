@@ -24,19 +24,12 @@ from utils.validation import validate_email, validate_phone
 router = APIRouter()
 
 
-@router.post("/groups/create")
+@router.post("/groups/create", summary="Create a new contact group")
 async def create_contact_group(
-    request: Request,
+    payload: CreateGroupRequest,
     current_user: User = Depends(get_current_user),
     db: Session = Depends(get_db),
 ):
-    try:
-        data = await request.json()
-        payload = CreateGroupRequest(**data)
-    except ValidationError as e:
-        return fail(e.errors()[0]["msg"])
-    except Exception:
-        return fail("Invalid JSON")
 
     exists = db.query(ContactGroup).filter(
         ContactGroup.user_id == current_user.id,
