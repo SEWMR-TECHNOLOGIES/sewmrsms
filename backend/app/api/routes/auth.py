@@ -94,15 +94,8 @@ async def signup_user(payload: SignupRequest, db: Session = Depends(get_db)):
     )
 
 
-@router.post("/signin")
-async def signin_user(request: Request, db: Session = Depends(get_db)):
-    try:
-        data = await request.json()
-        payload = SigninRequest(**data)
-    except ValidationError as e:
-        return fail(e.errors()[0]["msg"])
-    except Exception:
-        return fail("Invalid JSON")
+@router.post("/signin", summary="Sign in with email/username/phone + password")
+async def signin_user(payload: SigninRequest, db: Session = Depends(get_db)):
 
     user = db.query(User).filter(
         or_(
