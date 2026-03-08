@@ -175,3 +175,18 @@
 .admin-sidebar-scroll::-webkit-scrollbar {
   display: none;
 }
+
+/* Admin area: hide ALL scrollbars but keep scrolling */
+.admin-no-scrollbar,
+.admin-no-scrollbar *,
+.admin-no-scrollbar *:hover {
+  scrollbar-width: none !important;
+  -ms-overflow-style: none !important;
+}
+.admin-no-scrollbar::-webkit-scrollbar,
+.admin-no-scrollbar *::-webkit-scrollbar,
+.admin-no-scrollbar *:hover::-webkit-scrollbar {
+  display: none !important;
+  width: 0 !important;
+  height: 0 !important;
+}
