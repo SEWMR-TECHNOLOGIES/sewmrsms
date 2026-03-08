@@ -276,19 +276,12 @@ async def logout(response: Response):
     return ok("Logged out successfully")
 
 
-@router.post("/generate-api-token")
+@router.post("/generate-api-token", summary="Generate a new API access token")
 async def generate_api_token(
-    request: Request,
+    payload: GenerateApiTokenRequest,
     current_user: User = Depends(get_current_user),
     db: Session = Depends(get_db),
 ):
-    try:
-        body = await request.json()
-        payload = GenerateApiTokenRequest(**body)
-    except ValidationError as e:
-        raise HTTPException(status_code=400, detail=e.errors()[0]["msg"])
-    except Exception:
-        raise HTTPException(status_code=400, detail="Invalid JSON")
 
     # Check duplicate name
     if db.query(ApiAccessToken).filter(
