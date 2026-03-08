@@ -1,6 +1,8 @@
-import { Facebook, Twitter, Mail, Phone } from "lucide-react";
+import { Mail, Phone } from "lucide-react";
 import { Link } from "react-router-dom";
 import logo from "@/assets/logo.png";
+import facebookIcon from "@/assets/facebook.png";
+import twitterIcon from "@/assets/twitter.png";
 
 const navigationLinks = [
   { label: "Home", href: "/" },
@@ -17,8 +19,8 @@ const legalLinks = [
 ];
 
 const socialLinks = [
-  { icon: Facebook, href: "#", label: "Facebook" },
-  { icon: Twitter, href: "#", label: "Twitter" },
+  { icon: facebookIcon, href: "#", label: "Facebook" },
+  { icon: twitterIcon, href: "#", label: "X (Twitter)" },
 ];
 
 export const Footer = () => {
