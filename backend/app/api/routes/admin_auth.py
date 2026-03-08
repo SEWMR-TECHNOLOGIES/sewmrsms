@@ -101,8 +101,9 @@ async def admin_logout():
     return response
 
 
-@router.post("/create-admin")
+@router.post("/create-admin", summary="Create a new admin user (superadmin only)")
 async def create_admin(
+    payload: CreateAdminRequest,
     request: Request,
     admin: AdminUser = Depends(get_current_admin),
     db: Session = Depends(get_db)
@@ -111,13 +112,12 @@ async def create_admin(
     if admin.role != AdminRoleEnum.superadmin:
         raise HTTPException(status_code=403, detail="Only superadmins can create admin accounts")
 
-    body = await request.json()
-    email = body.get("email", "").strip().lower()
-    username = body.get("username", "").strip().lower()
-    password = body.get("password", "")
-    first_name = body.get("first_name", "").strip()
-    last_name = body.get("last_name", "").strip()
-    role = body.get("role", "admin")
+    email = payload.email
+    username = payload.username
+    password = payload.password
+    first_name = payload.first_name.strip()
+    last_name = payload.last_name.strip()
+    role = payload.role
 
     if not email or not username or not password:
         raise HTTPException(status_code=400, detail="Email, username, and password are required")
