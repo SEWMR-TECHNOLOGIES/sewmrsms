@@ -123,7 +123,24 @@ const App = () => (
             <Route path="settings/notifications" element={<div>Notification Settings</div>} />
           </Route>
 
-          
+          {/* Admin Routes - Hidden from main UI */}
+          <Route path="/admin/login" element={<AdminLogin />} />
+          <Route path="/admin" element={<AdminLayout />}>
+            <Route index element={<AdminDashboard />} />
+            <Route path="users" element={<AdminUsers />} />
+            <Route path="sender-requests" element={<AdminSenderRequests />} />
+            <Route path="sender-ids" element={<AdminSenderIds />} />
+            <Route path="propagations" element={<AdminPropagations />} />
+            <Route path="subscriptions" element={<AdminSubscriptions />} />
+            <Route path="orders" element={<AdminOrders />} />
+            <Route path="sms-logs" element={<AdminSmsLogs />} />
+            <Route path="networks" element={<AdminNetworks />} />
+            <Route path="packages" element={<AdminPackages />} />
+            <Route path="settings" element={<AdminSystemSettings />} />
+            <Route path="activity-logs" element={<AdminActivityLogs />} />
+            <Route path="admins" element={<AdminAccounts />} />
+          </Route>
+
           {/* ADD ALL CUSTOM ROUTES ABOVE THE CATCH-ALL "*" ROUTE */}
           <Route path="*" element={<NotFound />} />
         </Routes>
