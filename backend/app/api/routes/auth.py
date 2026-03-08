@@ -525,19 +525,12 @@ def recent_messages(
     return {"recent_messages": results}
 
 
-@router.post("/set-outage-notification")
+@router.post("/set-outage-notification", summary="Set SMS outage notification preferences")
 async def set_outage_notification(
-    request: Request,
+    payload: OutageNotificationRequest,
     current_user: User = Depends(get_current_user),
     db: Session = Depends(get_db),
 ):
-    try:
-        data = await request.json()
-        payload = OutageNotificationRequest(**data)
-    except ValidationError as e:
-        raise HTTPException(status_code=400, detail=e.errors()[0]["msg"])
-    except Exception:
-        raise HTTPException(status_code=400, detail="Invalid JSON")
 
     phone = payload.phone or current_user.phone
     email = payload.email or current_user.email

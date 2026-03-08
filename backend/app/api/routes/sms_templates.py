@@ -143,20 +143,13 @@ def list_sms_templates(
     return ok(f"Found {len(templates)} SMS template(s)", result)
 
 
-@router.post("/{template_uuid}/columns/add")
+@router.post("/{template_uuid}/columns/add", summary="Add a column to a template")
 async def add_template_column(
-    request: Request,
+    payload: AddColumnRequest,
     template_uuid: uuid.UUID = Path(...),
     current_user: User = Depends(get_current_user),
     db: Session = Depends(get_db),
 ):
-    try:
-        data = await request.json()
-        payload = AddColumnRequest(**data)
-    except ValidationError as e:
-        return fail(e.errors()[0]["msg"])
-    except Exception:
-        return fail("Invalid JSON")
 
     template = db.query(SmsTemplate).filter(
         SmsTemplate.uuid == template_uuid,

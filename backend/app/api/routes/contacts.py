@@ -491,20 +491,13 @@ def get_contacts_overview(
     })
 
 
-@router.put("/{contact_uuid}/edit")
+@router.put("/{contact_uuid}/edit", summary="Edit an existing contact")
 async def edit_contact(
     contact_uuid: str,
-    request: Request,
+    payload: EditContactRequest,
     current_user: User = Depends(get_current_user),
     db: Session = Depends(get_db),
 ):
-    try:
-        data = await request.json()
-        payload = EditContactRequest(**data)
-    except ValidationError as e:
-        return fail(e.errors()[0]["msg"])
-    except Exception:
-        return fail("Invalid JSON")
 
     if not validate_phone(payload.phone):
         return fail(f"Invalid phone: {payload.phone}")

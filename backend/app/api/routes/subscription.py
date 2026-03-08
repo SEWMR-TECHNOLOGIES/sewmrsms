@@ -190,20 +190,13 @@ async def submit_bank_payment(
     )
 
 
-@router.post("/{subscription_order_uuid}/payments/mobile")
+@router.post("/{subscription_order_uuid}/payments/mobile", summary="Submit mobile payment for an order")
 async def submit_mobile_payment(
-    request: Request,
+    payload: MobilePaymentRequest,
     subscription_order_uuid: uuid.UUID = Path(...),
     current_user=Depends(get_current_user),
     db: Session = Depends(get_db),
 ):
-    try:
-        data = await request.json()
-        payload = MobilePaymentRequest(**data)
-    except ValidationError as e:
-        raise HTTPException(status_code=400, detail=e.errors()[0]["msg"])
-    except Exception:
-        raise HTTPException(status_code=400, detail="Invalid JSON")
 
     subscription_order = db.query(SubscriptionOrder).filter(
         SubscriptionOrder.uuid == subscription_order_uuid

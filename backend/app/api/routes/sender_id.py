@@ -30,19 +30,12 @@ from utils.timezone import now_eat
 router = APIRouter()
 
 
-@router.post("/request")
+@router.post("/request", summary="Request a new Sender ID")
 async def request_sender_id(
-    request: Request,
+    payload: RequestSenderIdSchema,
     current_user: User = Depends(get_current_user),
     db: Session = Depends(get_db),
 ):
-    try:
-        data = await request.json()
-        payload = RequestSenderIdSchema(**data)
-    except ValidationError as e:
-        return fail(e.errors()[0]["msg"])
-    except Exception:
-        return fail("Invalid JSON")
 
     existing_request = db.query(SenderIdRequest).filter(
         SenderIdRequest.user_id == current_user.id,

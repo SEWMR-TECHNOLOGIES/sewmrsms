@@ -6,7 +6,13 @@ from api.routes import subscription, sms_templates, sms, contacts, sender_id, cr
 from api.routes import admin_auth as admin_auth_routes
 from api.routes import admin as admin_routes
 
-app = FastAPI(title="SEWMR SMS API", version="1.0.0")
+app = FastAPI(
+    title="SEWMR SMS API",
+    version="1.0.0",
+    description="Bulk SMS messaging platform API for Tanzania — manage contacts, sender IDs, templates, subscriptions, and send SMS at scale.",
+    docs_url="/docs",
+    redoc_url="/redoc",
+)
 
 # --- CORS Middleware ---
 app.add_middleware(
@@ -56,14 +62,20 @@ async def http_exception_handler(request: Request, exc: HTTPException):
         }
     )
 
-# Uncomment and customize if you want to handle validation errors uniformly
-# @app.exception_handler(RequestValidationError)
-# async def validation_exception_handler(request: Request, exc: RequestValidationError):
-#     return JSONResponse(
-#         status_code=422,
-#         content={
-#             "success": False,
-#             "message": "Invalid request: Please send the correct content type and required fields.",
-#             "data": None
-#         },
-#     )
+# Validation error handler — shows structured Pydantic errors in /docs responses
+@app.exception_handler(RequestValidationError)
+async def validation_exception_handler(request: Request, exc: RequestValidationError):
+    errors = exc.errors()
+    messages = []
+    for err in errors:
+        loc = " → ".join(str(l) for l in err.get("loc", []) if l != "body")
+        msg = err.get("msg", "")
+        messages.append(f"{loc}: {msg}" if loc else msg)
+    return JSONResponse(
+        status_code=422,
+        content={
+            "success": False,
+            "message": "; ".join(messages) if messages else "Validation error",
+            "data": None
+        },
+    )
