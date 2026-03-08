@@ -113,7 +113,7 @@ export default function AdminSubscriptions() {
       )}
       <Dialog open={!!adjustDialog} onOpenChange={() => setAdjustDialog(null)}>
         <DialogContent>
-          <DialogHeader><DialogTitle>Adjust Subscription — {adjustDialog?.user?.email}</DialogTitle></DialogHeader>
+          <DialogHeader><DialogTitle>Adjust Subscription - {adjustDialog?.user?.email}</DialogTitle></DialogHeader>
           <div className="space-y-4">
             <div>
               <label className="text-sm font-medium">Add SMS Credits</label>

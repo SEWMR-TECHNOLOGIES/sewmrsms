@@ -82,8 +82,8 @@ export default function AdminDocuments() {
                 {requests.map((r) => (
                   <TableRow key={r.uuid}>
                     <TableCell className="font-medium">{r.sender_alias}</TableCell>
-                    <TableCell className="text-muted-foreground">{r.user?.email || "—"}</TableCell>
-                    <TableCell>{r.company_name || "—"}</TableCell>
+                    <TableCell className="text-muted-foreground">{r.user?.email || "N/A"}</TableCell>
+                    <TableCell>{r.company_name || "N/A"}</TableCell>
                     <TableCell>
                       {r.is_student_request 
                         ? <Badge variant="secondary" className="text-xs">Student</Badge> 

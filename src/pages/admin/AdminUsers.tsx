@@ -124,7 +124,7 @@ export default function AdminUsers() {
                 <div><span className="text-muted-foreground">Name:</span> <strong>{selectedUser.first_name} {selectedUser.last_name}</strong></div>
                 <div><span className="text-muted-foreground">Email:</span> <strong>{selectedUser.email}</strong></div>
                 <div><span className="text-muted-foreground">Username:</span> <strong>{selectedUser.username}</strong></div>
-                <div><span className="text-muted-foreground">Phone:</span> <strong>{selectedUser.phone || "—"}</strong></div>
+                <div><span className="text-muted-foreground">Phone:</span> <strong>{selectedUser.phone || "N/A"}</strong></div>
                 <div><span className="text-muted-foreground">Messages:</span> <strong>{selectedUser.total_messages}</strong></div>
                 <div><span className="text-muted-foreground">Contacts:</span> <strong>{selectedUser.total_contacts}</strong></div>
               </div>

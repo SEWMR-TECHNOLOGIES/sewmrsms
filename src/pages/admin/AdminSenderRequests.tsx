@@ -153,7 +153,7 @@ export default function AdminSenderRequests() {
       <Dialog open={!!actionDialog} onOpenChange={() => { setActionDialog(null); setRemarks(""); }}>
         <DialogContent>
           <DialogHeader>
-            <DialogTitle className="capitalize">{actionDialog?.action?.replace(/-/g, " ")} — {actionDialog?.request?.sender_alias}</DialogTitle>
+            <DialogTitle className="capitalize">{actionDialog?.action?.replace(/-/g, " ")} - {actionDialog?.request?.sender_alias}</DialogTitle>
           </DialogHeader>
           <div className="space-y-4">
             {actionDialog?.action !== "set-in-review" && (

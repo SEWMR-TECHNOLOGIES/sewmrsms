@@ -111,7 +111,7 @@ export default function AdminOrders() {
       )}
       <Dialog open={!!updateDialog} onOpenChange={() => setUpdateDialog(null)}>
         <DialogContent>
-          <DialogHeader><DialogTitle>Update Order — TZS {updateDialog ? parseFloat(updateDialog.amount).toLocaleString() : ""}</DialogTitle></DialogHeader>
+          <DialogHeader><DialogTitle>Update Order - TZS {updateDialog ? parseFloat(updateDialog.amount).toLocaleString() : ""}</DialogTitle></DialogHeader>
           <div className="space-y-4">
             <div>
               <label className="text-sm font-medium">Payment Status</label>

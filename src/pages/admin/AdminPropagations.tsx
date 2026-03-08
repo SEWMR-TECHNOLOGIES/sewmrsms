@@ -121,7 +121,7 @@ export default function AdminPropagations() {
 
       <Dialog open={!!editDialog} onOpenChange={() => setEditDialog(null)}>
         <DialogContent>
-          <DialogHeader><DialogTitle>Update Propagation — {editDialog?.request?.sender_alias} / {editDialog?.network?.name}</DialogTitle></DialogHeader>
+          <DialogHeader><DialogTitle>Update Propagation - {editDialog?.request?.sender_alias} / {editDialog?.network?.name}</DialogTitle></DialogHeader>
           <div className="space-y-4">
             <div>
               <label className="text-sm font-medium">Status</label>

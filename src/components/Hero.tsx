@@ -12,7 +12,7 @@ export const Hero = () => {
           <div className="space-y-8 animate-fade-in">
             <div className="space-y-4">
               <h1 className="text-4xl sm:text-5xl lg:text-6xl font-bold text-foreground leading-tight">
-                Deliver SMS at Scale —{" "}
+                Deliver SMS at Scale.{" "}
                 <span className="text-primary">Fast, Secure, Reliable</span>
               </h1>
               <p className="text-xl text-muted-foreground leading-relaxed max-w-lg">
