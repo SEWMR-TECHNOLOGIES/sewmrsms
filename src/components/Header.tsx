@@ -1,178 +1,204 @@
 import { useState, useEffect, useRef } from "react";
 import { Link, useLocation } from "react-router-dom";
 import {
-  Home,
-  Activity,
-  DollarSign,
-  Code,
-  Mail as MailIcon,
   User,
   Rocket,
   X,
   Plus,
+  Menu,
+  ChevronRight,
 } from "lucide-react";
 import logo from "@/assets/logo.png";
 
 const navItems = [
-  { label: "Home", href: "/", icon: Home },
-  { label: "Features", href: "/features", icon: Activity },
-  { label: "Pricing", href: "/pricing", icon: DollarSign },
-  { label: "Developers", href: "/developers", icon: Code },
-  { label: "Contact", href: "/contact", icon: MailIcon },
+  { label: "Home", href: "/" },
+  { label: "Features", href: "/features" },
+  { label: "Pricing", href: "/pricing" },
+  { label: "Developers", href: "/developers" },
+  { label: "Contact", href: "/contact" },
 ];
 
 export const Header = () => {
   const location = useLocation();
-  const [scrollPos, setScrollPos] = useState(0);
+  const [scrolled, setScrolled] = useState(false);
+  const [mobileOpen, setMobileOpen] = useState(false);
   const [fabOpen, setFabOpen] = useState(false);
   const fabRef = useRef<HTMLDivElement>(null);
 
   useEffect(() => {
-    const handleScroll = () => {
-      const { scrollTop, scrollHeight, clientHeight } = document.documentElement;
-      const percent = (scrollTop / (scrollHeight - clientHeight)) * 100;
-      setScrollPos(Math.min(Math.max(percent, 0), 100));
-    };
-    window.addEventListener("scroll", handleScroll);
+    const handleScroll = () => setScrolled(window.scrollY > 20);
+    window.addEventListener("scroll", handleScroll, { passive: true });
     return () => window.removeEventListener("scroll", handleScroll);
   }, []);
 
-  // Click-away listener to close FAB popup
   useEffect(() => {
     const handleClickOutside = (event: MouseEvent) => {
-      if (
-        fabRef.current &&
-        !fabRef.current.contains(event.target as Node)
-      ) {
+      if (fabRef.current && !fabRef.current.contains(event.target as Node)) {
         setFabOpen(false);
       }
     };
-
-    if (fabOpen) {
-      document.addEventListener("mousedown", handleClickOutside);
-    } else {
-      document.removeEventListener("mousedown", handleClickOutside);
-    }
-
-    return () => {
-      document.removeEventListener("mousedown", handleClickOutside);
-    };
+    if (fabOpen) document.addEventListener("mousedown", handleClickOutside);
+    return () => document.removeEventListener("mousedown", handleClickOutside);
   }, [fabOpen]);
+
+  // Close mobile menu on route change
+  useEffect(() => {
+    setMobileOpen(false);
+  }, [location.pathname]);
 
   return (
     <>
-      {/* Scroll Progress Bar */}
-      <div
-        className="fixed top-0 left-0 h-1 bg-primary z-50"
-        style={{ width: `${scrollPos}%` }}
-      />
-
       {/* Desktop Header */}
-      <header className="hidden lg:flex fixed top-0 w-full bg-background/90 backdrop-blur-sm border-b border-border z-40">
-        <div className="container mx-auto px-6 py-4 flex items-center justify-between">
-          {/* Logo */}
-          <Link to="/" className="flex items-center space-x-2">
-            <img src={logo} alt="SEWMR SMS" className="h-8 w-auto" />
-          </Link>
+      <header
+        className={`hidden lg:block fixed top-0 w-full z-50 transition-all duration-500 ${
+          scrolled
+            ? "bg-background/80 backdrop-blur-2xl border-b border-border/40 shadow-[0_1px_3px_0_hsl(var(--foreground)/0.04)]"
+            : "bg-transparent"
+        }`}
+      >
+        <div className="container mx-auto px-6">
+          <div className="flex items-center justify-between h-16">
+            {/* Logo */}
+            <Link to="/" className="flex items-center gap-2.5 group">
+              <img
+                src={logo}
+                alt="SEWMR SMS"
+                className="h-8 w-auto transition-transform duration-300 group-hover:scale-105"
+              />
+            </Link>
 
-          {/* Centered Nav */}
-          <nav className="flex space-x-8">
+            {/* Center Nav — pill-shaped container */}
+            <nav className="flex items-center bg-muted/50 backdrop-blur-sm rounded-full px-1.5 py-1 border border-border/30">
+              {navItems.map((item) => {
+                const active = location.pathname === item.href;
+                return (
+                  <Link
+                    key={item.href}
+                    to={item.href}
+                    className={`relative px-4 py-1.5 text-[13px] font-medium rounded-full transition-all duration-300 ${
+                      active
+                        ? "bg-background text-foreground shadow-sm"
+                        : "text-muted-foreground hover:text-foreground"
+                    }`}
+                  >
+                    {item.label}
+                  </Link>
+                );
+              })}
+            </nav>
+
+            {/* Right CTAs */}
+            <div className="flex items-center gap-3">
+              <Link
+                to="/signin"
+                className="text-[13px] font-medium text-muted-foreground hover:text-foreground transition-colors px-3 py-1.5"
+              >
+                Sign In
+              </Link>
+              <Link
+                to="/signup"
+                className="group inline-flex items-center gap-1.5 px-5 py-2 bg-foreground text-background rounded-full text-[13px] font-semibold hover:bg-foreground/90 transition-all duration-300 shadow-[0_1px_3px_0_hsl(var(--foreground)/0.2)]"
+              >
+                Get Started
+                <ChevronRight className="h-3.5 w-3.5 transition-transform duration-300 group-hover:translate-x-0.5" />
+              </Link>
+            </div>
+          </div>
+        </div>
+      </header>
+
+      {/* Mobile Header Bar */}
+      <header
+        className={`lg:hidden fixed top-0 w-full z-50 transition-all duration-500 ${
+          scrolled || mobileOpen
+            ? "bg-background/80 backdrop-blur-2xl border-b border-border/40"
+            : "bg-transparent"
+        }`}
+      >
+        <div className="flex items-center justify-between px-4 h-14">
+          <Link to="/" className="flex items-center gap-2">
+            <img src={logo} alt="SEWMR SMS" className="h-7 w-auto" />
+          </Link>
+          <button
+            onClick={() => setMobileOpen(!mobileOpen)}
+            className="p-2 rounded-xl text-foreground hover:bg-muted/60 transition-colors"
+          >
+            {mobileOpen ? <X className="h-5 w-5" /> : <Menu className="h-5 w-5" />}
+          </button>
+        </div>
+
+        {/* Mobile Dropdown */}
+        <div
+          className={`overflow-hidden transition-all duration-300 ease-out ${
+            mobileOpen ? "max-h-96 opacity-100" : "max-h-0 opacity-0"
+          }`}
+        >
+          <nav className="px-4 pb-4 space-y-1">
             {navItems.map((item) => {
-              const Icon = item.icon;
               const active = location.pathname === item.href;
               return (
                 <Link
                   key={item.href}
                   to={item.href}
-                  className={`flex items-center space-x-1 pb-1 transition-colors duration-200 ${
+                  className={`block px-4 py-2.5 rounded-xl text-sm font-medium transition-all duration-200 ${
                     active
-                      ? "text-primary"
-                      : "text-muted-foreground hover:text-foreground"
+                      ? "bg-primary/10 text-primary"
+                      : "text-muted-foreground hover:bg-muted/60 hover:text-foreground"
                   }`}
                 >
-                  <Icon className="h-5 w-5" />
-                  <span className="text-sm font-medium">{item.label}</span>
+                  {item.label}
                 </Link>
               );
             })}
+            <div className="pt-3 flex flex-col gap-2">
+              <Link
+                to="/signin"
+                className="block text-center px-4 py-2.5 rounded-xl text-sm font-medium border border-border/60 text-foreground hover:bg-muted/60 transition-colors"
+              >
+                Sign In
+              </Link>
+              <Link
+                to="/signup"
+                className="block text-center px-4 py-2.5 rounded-xl text-sm font-semibold bg-foreground text-background hover:bg-foreground/90 transition-colors"
+              >
+                Get Started
+              </Link>
+            </div>
           </nav>
-
-          {/* Right-side CTAs */}
-          <div className="space-x-4">
-            <Link
-              to="/signin"
-              className="text-sm font-medium text-muted-foreground hover:text-primary"
-            >
-              Sign In
-            </Link>
-            <Link
-              to="/signup"
-              className="px-4 py-2 bg-primary text-background rounded-full text-sm font-semibold hover:bg-primary-hover transition-colors"
-            >
-              Get Started
-            </Link>
-          </div>
         </div>
       </header>
 
-      {/* Mobile Bottom Navigation */}
-      <nav className="lg:hidden fixed bottom-0 left-0 right-0 bg-background/90 backdrop-blur-sm border-t border-border z-40">
-        <div className="flex justify-around py-2">
-          {navItems.map((item) => {
-            const Icon = item.icon;
-            const active = location.pathname === item.href;
-            return (
-              <Link
-                key={item.href}
-                to={item.href}
-                className={`flex flex-col items-center text-xs transition-colors duration-200 ${
-                  active
-                    ? "text-primary"
-                    : "text-muted-foreground hover:text-foreground"
-                }`}
-              >
-                <Icon className="h-6 w-6 mb-1" />
-                <span>{item.label}</span>
-              </Link>
-            );
-          })}
-        </div>
-      </nav>
-
-      {/* Floating Action Button with click-away */}
+      {/* Mobile FAB (for auth quick-access when scrolling) */}
       <div
         ref={fabRef}
-        className="lg:hidden fixed bottom-16 right-5 z-50 flex flex-col items-end space-y-2"
+        className="lg:hidden fixed bottom-6 right-5 z-50 flex flex-col items-end gap-2"
       >
-        {/* Expanded Buttons */}
         {fabOpen && (
-          <>
+          <div className="flex flex-col gap-2 animate-in slide-in-from-bottom-2 duration-200">
             <Link
               to="/signin"
-              className="flex items-center space-x-2 px-4 py-2 bg-background border border-primary text-primary rounded-full shadow-md text-sm font-semibold hover:bg-primary hover:text-background transition-colors"
+              className="flex items-center gap-2 px-4 py-2.5 bg-background border border-border/60 text-foreground rounded-full shadow-lg text-sm font-medium hover:bg-muted/60 transition-colors"
               onClick={() => setFabOpen(false)}
             >
-              <User className="h-5 w-5" />
+              <User className="h-4 w-4" />
               <span>Sign In</span>
             </Link>
             <Link
               to="/signup"
-              className="flex items-center space-x-2 px-4 py-2 bg-primary text-background rounded-full shadow-md text-sm font-semibold hover:bg-primary-hover transition-colors"
+              className="flex items-center gap-2 px-4 py-2.5 bg-foreground text-background rounded-full shadow-lg text-sm font-semibold hover:bg-foreground/90 transition-colors"
               onClick={() => setFabOpen(false)}
             >
-              <Rocket className="h-5 w-5" />
+              <Rocket className="h-4 w-4" />
               <span>Get Started</span>
             </Link>
-          </>
+          </div>
         )}
-
-        {/* FAB Toggle Button */}
         <button
-          onClick={() => setFabOpen((open) => !open)}
-          className="bg-primary hover:bg-primary-hover text-background rounded-full p-4 shadow-lg focus:outline-none focus:ring-2 focus:ring-primary focus:ring-offset-2 transition-colors"
+          onClick={() => setFabOpen((o) => !o)}
+          className="bg-foreground text-background rounded-full p-3.5 shadow-xl hover:bg-foreground/90 transition-all duration-300 focus:outline-none focus:ring-2 focus:ring-ring focus:ring-offset-2"
           aria-label="Toggle actions"
         >
-          {fabOpen ? <X size={24} /> : <Plus size={24} />}
+          {fabOpen ? <X className="h-5 w-5" /> : <Plus className="h-5 w-5" />}
         </button>
       </div>
     </>
