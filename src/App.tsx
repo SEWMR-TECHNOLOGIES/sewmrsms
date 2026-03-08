@@ -27,6 +27,7 @@ import UploadAgreement from "./pages/dashboard/sender-ids/UploadSignedAgreement"
 import SenderIdPropagationStatus from "./pages/dashboard/sender-ids/PropagationStatus";
 import ContactGroups from "./pages/dashboard/contacts/ContactGroups";
 import AddContacts from "./pages/dashboard/contacts/AddContact";
+import ImportContacts from "./pages/dashboard/contacts/ImportContacts";
 import CreateTemplate from "./pages/dashboard/message-templates/CreateTemplate";
 import TemplatesPage from "./pages/dashboard/message-templates/Templates";
 import SendFromTemplate from "./pages/dashboard/messages/SendFromFile";
@@ -36,12 +37,19 @@ import CreateOrder from "./pages/dashboard/billing/CreateOrder";
 import OrderPayment from "./pages/dashboard/billing/OrderPayment";
 import MobilePaymentWaiting from "./pages/dashboard/billing/MobilePaymentConfirmation";
 import Billing from "./pages/dashboard/billing/Billing";
+import Invoices from "./pages/dashboard/billing/Invoices";
 import CreateAPIToken from "./pages/dashboard/settings/CreateAPIToken";
 import APITokens from "./pages/dashboard/settings/APITokens";
 import MessageHistory from "./pages/dashboard/messages/MessageHistory";
 import UserSenderIds from "./pages/dashboard/sender-ids/SenderIds";
 import UserSenderRequests from "./pages/dashboard/sender-ids/SenderIdRequests";
 import OutageNotificationSettings from "./pages/dashboard/settings/OutageNotification";
+import DeliveryReports from "./pages/dashboard/reports/DeliveryReports";
+import Analytics from "./pages/dashboard/reports/Analytics";
+import NetworkStatus from "./pages/dashboard/sender-ids/NetworkStatus";
+import ProfileSettings from "./pages/dashboard/settings/ProfileSettings";
+import APISettings from "./pages/dashboard/settings/APISettings";
+import NotificationSettings from "./pages/dashboard/settings/NotificationSettings";
 import AdminLogin from "./pages/admin/AdminLogin";
 import { AdminLayout } from "./components/admin/AdminLayout";
 import AdminDashboard from "./pages/admin/AdminDashboard";
@@ -89,20 +97,20 @@ const App = () => (
             <Route path="contacts" element={<Contacts />} />
             <Route path="contacts/groups" element={<ContactGroups />} />
             <Route path="contacts/new" element={<AddContacts />} />
-            <Route path="contacts/import" element={<div>Import Contacts</div>} />
+            <Route path="contacts/import" element={<ImportContacts />} />
             <Route path="messages/quick-send" element={<QuickSend />} />
             <Route path="messages/from-template" element={<SendFromTemplate />} />
             <Route path="messages/history" element={<MessageHistory />} />
             <Route path="templates" element={<TemplatesPage />} />
             <Route path="templates/new" element={<CreateTemplate />} />
-            <Route path="reports/delivery" element={<div>Delivery Reports</div>} />
-            <Route path="reports/analytics" element={<div>Analytics</div>} />
+            <Route path="reports/delivery" element={<DeliveryReports />} />
+            <Route path="reports/analytics" element={<Analytics />} />
 
             {/* Billing routes */}
             <Route path="billing" element={<Billing />} />
             <Route path="billing/purchase" element={<BillingPurchase />} />
             <Route path="billing/history" element={<PaymentHistory />} />
-            <Route path="billing/invoices" element={<div>Invoices</div>} />
+            <Route path="billing/invoices" element={<Invoices />} />
             <Route path="billing/:packageUuid" element={<CreateOrder />} />
             <Route path="billing/:orderUuid/pay" element={<OrderPayment />} />
             <Route path="billing/mobile-payment-waiting/:orderUuid/:checkoutRequestId" element={<MobilePaymentWaiting />} />
@@ -111,20 +119,20 @@ const App = () => (
             <Route path="sender-ids" element={<UserSenderIds />} />
             <Route path="sender-ids/requests" element={<UserSenderRequests />} />
             <Route path="sender-ids/request" element={<RequestSenderID />} />
-            <Route path="sender-ids/networks" element={<div>Network Status</div>} />
+            <Route path="sender-ids/networks" element={<NetworkStatus />} />
             <Route path="sender-ids/:uuid/upload-agreement" element={<UploadAgreement />} />
             <Route path="sender-ids/:uuid/propagation" element={<SenderIdPropagationStatus />} />
 
             {/* Settings routes */}
-            <Route path="settings/profile" element={<div>Profile Settings</div>} />
-            <Route path="settings/api" element={<div>API Settings</div>} />
+            <Route path="settings/profile" element={<ProfileSettings />} />
+            <Route path="settings/api" element={<APISettings />} />
             <Route path="settings/create-token" element={<CreateAPIToken />} />
             <Route path="settings/api-tokens" element={<APITokens />} />
             <Route path="settings/outage-notifications" element={<OutageNotificationSettings />} />
-            <Route path="settings/notifications" element={<div>Notification Settings</div>} />
+            <Route path="settings/notifications" element={<NotificationSettings />} />
           </Route>
 
-          {/* Admin Routes - Hidden from main UI */}
+          {/* Admin Routes */}
           <Route path="/admin/login" element={<AdminLogin />} />
           <Route path="/admin" element={<AdminLayout />}>
             <Route index element={<AdminDashboard />} />
@@ -143,7 +151,6 @@ const App = () => (
             <Route path="documents" element={<AdminDocuments />} />
           </Route>
 
-          {/* ADD ALL CUSTOM ROUTES ABOVE THE CATCH-ALL "*" ROUTE */}
           <Route path="*" element={<NotFound />} />
         </Routes>
       </BrowserRouter>
