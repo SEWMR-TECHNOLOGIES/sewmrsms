@@ -4,6 +4,7 @@ from sqlalchemy.dialects.postgresql import UUID
 from sqlalchemy.sql import func
 import uuid
 
+from sqlalchemy.orm import relationship
 from db.base import Base
 
 class SmsTemplate(Base):
@@ -17,3 +18,5 @@ class SmsTemplate(Base):
     column_count = Column(Integer, nullable=False)
     created_at = Column(DateTime, nullable=False, server_default=func.now())
     updated_at = Column(DateTime, nullable=False, server_default=func.now(), onupdate=func.now())
+
+    columns = relationship("TemplateColumn", back_populates="template", cascade="all, delete-orphan", lazy="select")
