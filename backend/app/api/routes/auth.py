@@ -131,13 +131,8 @@ async def signin_user(payload: SigninRequest, db: Session = Depends(get_db)):
     return response
 
 
-@router.post("/request-password-reset")
-async def password_reset_request(request: Request, db: Session = Depends(get_db)):
-    try:
-        data = await request.json()
-        payload = PasswordResetRequestSchema(**data)
-    except Exception:
-        return fail("Invalid JSON")
+@router.post("/request-password-reset", summary="Request a password reset link")
+async def password_reset_request(payload: PasswordResetRequestSchema, request: Request, db: Session = Depends(get_db)):
 
     user = db.query(User).filter(
         or_(
