@@ -46,19 +46,12 @@ def _serialize_template(t: SmsTemplate, columns: list) -> dict:
     }
 
 
-@router.post("/create")
+@router.post("/create", summary="Create a new SMS template")
 async def create_sms_template(
-    request: Request,
+    payload: CreateTemplateRequest,
     current_user: User = Depends(get_current_user),
     db: Session = Depends(get_db),
 ):
-    try:
-        data = await request.json()
-        payload = CreateTemplateRequest(**data)
-    except ValidationError as e:
-        return fail(e.errors()[0]["msg"])
-    except Exception:
-        return fail("Invalid JSON")
 
     existing = db.query(SmsTemplate).filter(
         SmsTemplate.user_id == current_user.id,
