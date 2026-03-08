@@ -6,10 +6,12 @@ import { Badge } from "@/components/ui/badge";
 import { useToast } from "@/hooks/use-toast";
 import { Loader2, ChevronLeft, ChevronRight } from "lucide-react";
 import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from "@/components/ui/select";
+import { useMeta } from "@/hooks/useMeta";
 
 const API_BASE = "https://api.sewmrsms.co.tz/api/v1";
 
 export default function AdminSenderIds() {
+  useMeta({ title: "Admin - Sender IDs", description: "View and manage all approved sender IDs." });
   const [senderIds, setSenderIds] = useState<any[]>([]);
   const [loading, setLoading] = useState(true);
   const [page, setPage] = useState(1);

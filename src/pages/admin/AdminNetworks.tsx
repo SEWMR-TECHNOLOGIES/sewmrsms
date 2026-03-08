@@ -6,10 +6,12 @@ import { Table, TableBody, TableCell, TableHead, TableHeader, TableRow } from "@
 import { Dialog, DialogContent, DialogHeader, DialogTitle } from "@/components/ui/dialog";
 import { useToast } from "@/hooks/use-toast";
 import { Loader2, Plus, Pencil, Trash2 } from "lucide-react";
+import { useMeta } from "@/hooks/useMeta";
 
 const API_BASE = "https://api.sewmrsms.co.tz/api/v1";
 
 export default function AdminNetworks() {
+  useMeta({ title: "Admin - Networks", description: "Manage mobile network operators for sender ID routing." });
   const [networks, setNetworks] = useState<any[]>([]);
   const [loading, setLoading] = useState(true);
   const [dialog, setDialog] = useState<{ mode: "create" | "edit"; network?: any } | null>(null);

@@ -5,10 +5,12 @@ import { Input } from "@/components/ui/input";
 import { Table, TableBody, TableCell, TableHead, TableHeader, TableRow } from "@/components/ui/table";
 import { useToast } from "@/hooks/use-toast";
 import { Loader2, ChevronLeft, ChevronRight, Search } from "lucide-react";
+import { useMeta } from "@/hooks/useMeta";
 
 const API_BASE = "https://api.sewmrsms.co.tz/api/v1";
 
 export default function AdminSmsLogs() {
+  useMeta({ title: "Admin - SMS Logs", description: "View all sent SMS messages and delivery statuses." });
   const [messages, setMessages] = useState<any[]>([]);
   const [loading, setLoading] = useState(true);
   const [page, setPage] = useState(1);

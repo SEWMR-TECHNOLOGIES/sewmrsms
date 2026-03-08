@@ -8,10 +8,12 @@ import { Dialog, DialogContent, DialogHeader, DialogTitle } from "@/components/u
 import { Textarea } from "@/components/ui/textarea";
 import { useToast } from "@/hooks/use-toast";
 import { Loader2, ChevronLeft, ChevronRight, CheckCircle, XCircle, Clock, Eye } from "lucide-react";
+import { useMeta } from "@/hooks/useMeta";
 
 const API_BASE = "https://api.sewmrsms.co.tz/api/v1";
 
 export default function AdminSenderRequests() {
+  useMeta({ title: "Admin - Sender Requests", description: "Review and manage sender ID requests." });
   const [requests, setRequests] = useState<any[]>([]);
   const [loading, setLoading] = useState(true);
   const [page, setPage] = useState(1);

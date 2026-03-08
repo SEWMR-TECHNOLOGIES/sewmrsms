@@ -6,10 +6,12 @@ import { Table, TableBody, TableCell, TableHead, TableHeader, TableRow } from "@
 import { Dialog, DialogContent, DialogHeader, DialogTitle } from "@/components/ui/dialog";
 import { useToast } from "@/hooks/use-toast";
 import { Loader2, Pencil } from "lucide-react";
+import { useMeta } from "@/hooks/useMeta";
 
 const API_BASE = "https://api.sewmrsms.co.tz/api/v1";
 
 export default function AdminPackages() {
+  useMeta({ title: "Admin - Packages", description: "Configure SMS credit packages and pricing plans." });
   const [packages, setPackages] = useState<any[]>([]);
   const [loading, setLoading] = useState(true);
   const [editPkg, setEditPkg] = useState<any>(null);
