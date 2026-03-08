@@ -101,7 +101,7 @@ export const ModernSidebar = () => {
         </div>
       </SidebarHeader>
 
-      <SidebarContent className="px-2 py-4">
+      <SidebarContent className="px-2 py-4 modern-sidebar-scroll">
         <SidebarGroup>
           <SidebarGroupContent>
             <SidebarMenu className="space-y-1">
