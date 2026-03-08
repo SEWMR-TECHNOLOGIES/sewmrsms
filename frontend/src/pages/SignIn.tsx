@@ -9,6 +9,7 @@ import { Card, CardContent, CardDescription, CardHeader, CardTitle } from "@/com
 import { Separator } from "@/components/ui/separator"
 import { useToast } from "@/hooks/use-toast"
 import { Mail, Lock, Eye, EyeOff, ArrowLeft } from "lucide-react"
+import { Checkbox } from "@/components/ui/checkbox"
 import { useMeta } from "@/hooks/useMeta"
 
 const SignInPage = () => {
