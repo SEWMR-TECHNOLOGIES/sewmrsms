@@ -21,6 +21,7 @@ interface Stats {
 export default function AdminDashboard() {
   const [stats, setStats] = useState<Stats | null>(null);
   const [loading, setLoading] = useState(true);
+  useMeta({ title: "Admin Dashboard", description: "Overview of SEWMR SMS platform statistics and metrics." });
 
   useEffect(() => {
     fetch(`${API_BASE}/admin/dashboard/stats`, { credentials: "include" })
