@@ -45,15 +45,8 @@ from utils.validation import validate_email, validate_phone
 router = APIRouter()
 
 
-@router.post("/signup")
-async def signup_user(request: Request, db: Session = Depends(get_db)):
-    try:
-        data = await request.json()
-        payload = SignupRequest(**data)
-    except ValidationError as e:
-        return fail(e.errors()[0]["msg"])
-    except Exception:
-        return fail("Invalid JSON")
+@router.post("/signup", summary="Create a new user account")
+async def signup_user(payload: SignupRequest, db: Session = Depends(get_db)):
 
     # Check duplicates in a single query
     dup = db.query(User).filter(
@@ -101,15 +94,8 @@ async def signup_user(request: Request, db: Session = Depends(get_db)):
     )
 
 
-@router.post("/signin")
-async def signin_user(request: Request, db: Session = Depends(get_db)):
-    try:
-        data = await request.json()
-        payload = SigninRequest(**data)
-    except ValidationError as e:
-        return fail(e.errors()[0]["msg"])
-    except Exception:
-        return fail("Invalid JSON")
+@router.post("/signin", summary="Sign in with email/username/phone + password")
+async def signin_user(payload: SigninRequest, db: Session = Depends(get_db)):
 
     user = db.query(User).filter(
         or_(
@@ -145,13 +131,8 @@ async def signin_user(request: Request, db: Session = Depends(get_db)):
     return response
 
 
-@router.post("/request-password-reset")
-async def password_reset_request(request: Request, db: Session = Depends(get_db)):
-    try:
-        data = await request.json()
-        payload = PasswordResetRequestSchema(**data)
-    except Exception:
-        return fail("Invalid JSON")
+@router.post("/request-password-reset", summary="Request a password reset link")
+async def password_reset_request(payload: PasswordResetRequestSchema, request: Request, db: Session = Depends(get_db)):
 
     user = db.query(User).filter(
         or_(
@@ -217,22 +198,14 @@ async def accept_reset(token: str, db: Session = Depends(get_db)):
     return redirect
 
 
-@router.post("/reset-password")
+@router.post("/reset-password", summary="Reset password using token cookie")
 async def reset_password(
-    request: Request,
+    payload: ResetPasswordSchema,
     reset_token: Optional[str] = Cookie(None),
     db: Session = Depends(get_db),
 ):
     if not reset_token:
         raise HTTPException(status_code=400, detail="Reset token cookie missing")
-
-    try:
-        data = await request.json()
-        payload = ResetPasswordSchema(**data)
-    except ValidationError as e:
-        return fail(e.errors()[0]["msg"])
-    except Exception:
-        return fail("Invalid JSON")
 
     token_hash = hashlib.sha256(reset_token.encode("utf-8")).hexdigest()
     now = datetime.utcnow()
@@ -303,19 +276,12 @@ async def logout(response: Response):
     return ok("Logged out successfully")
 
 
-@router.post("/generate-api-token")
+@router.post("/generate-api-token", summary="Generate a new API access token")
 async def generate_api_token(
-    request: Request,
+    payload: GenerateApiTokenRequest,
     current_user: User = Depends(get_current_user),
     db: Session = Depends(get_db),
 ):
-    try:
-        body = await request.json()
-        payload = GenerateApiTokenRequest(**body)
-    except ValidationError as e:
-        raise HTTPException(status_code=400, detail=e.errors()[0]["msg"])
-    except Exception:
-        raise HTTPException(status_code=400, detail="Invalid JSON")
 
     # Check duplicate name
     if db.query(ApiAccessToken).filter(
@@ -559,19 +525,12 @@ def recent_messages(
     return {"recent_messages": results}
 
 
-@router.post("/set-outage-notification")
+@router.post("/set-outage-notification", summary="Set SMS outage notification preferences")
 async def set_outage_notification(
-    request: Request,
+    payload: OutageNotificationRequest,
     current_user: User = Depends(get_current_user),
     db: Session = Depends(get_db),
 ):
-    try:
-        data = await request.json()
-        payload = OutageNotificationRequest(**data)
-    except ValidationError as e:
-        raise HTTPException(status_code=400, detail=e.errors()[0]["msg"])
-    except Exception:
-        raise HTTPException(status_code=400, detail="Invalid JSON")
 
     phone = payload.phone or current_user.phone
     email = payload.email or current_user.email

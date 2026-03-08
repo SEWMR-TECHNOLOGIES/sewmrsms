@@ -24,19 +24,12 @@ from utils.validation import validate_email, validate_phone
 router = APIRouter()
 
 
-@router.post("/groups/create")
+@router.post("/groups/create", summary="Create a new contact group")
 async def create_contact_group(
-    request: Request,
+    payload: CreateGroupRequest,
     current_user: User = Depends(get_current_user),
     db: Session = Depends(get_db),
 ):
-    try:
-        data = await request.json()
-        payload = CreateGroupRequest(**data)
-    except ValidationError as e:
-        return fail(e.errors()[0]["msg"])
-    except Exception:
-        return fail("Invalid JSON")
 
     exists = db.query(ContactGroup).filter(
         ContactGroup.user_id == current_user.id,
@@ -67,20 +60,13 @@ async def create_contact_group(
     })
 
 
-@router.put("/groups/edit/{group_uuid}")
+@router.put("/groups/edit/{group_uuid}", summary="Edit a contact group")
 async def edit_contact_group(
     group_uuid: str,
-    request: Request,
+    payload: EditGroupRequest,
     current_user: User = Depends(get_current_user),
     db: Session = Depends(get_db),
 ):
-    try:
-        data = await request.json()
-        payload = EditGroupRequest(**data)
-    except ValidationError as e:
-        return fail(e.errors()[0]["msg"])
-    except Exception:
-        return fail("Invalid JSON")
 
     group = db.query(ContactGroup).filter(
         ContactGroup.uuid == group_uuid,
@@ -505,20 +491,13 @@ def get_contacts_overview(
     })
 
 
-@router.put("/{contact_uuid}/edit")
+@router.put("/{contact_uuid}/edit", summary="Edit an existing contact")
 async def edit_contact(
     contact_uuid: str,
-    request: Request,
+    payload: EditContactRequest,
     current_user: User = Depends(get_current_user),
     db: Session = Depends(get_db),
 ):
-    try:
-        data = await request.json()
-        payload = EditContactRequest(**data)
-    except ValidationError as e:
-        return fail(e.errors()[0]["msg"])
-    except Exception:
-        return fail("Invalid JSON")
 
     if not validate_phone(payload.phone):
         return fail(f"Invalid phone: {payload.phone}")

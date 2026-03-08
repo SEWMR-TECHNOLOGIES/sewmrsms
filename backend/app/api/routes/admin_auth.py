@@ -7,6 +7,7 @@ from api.deps import get_db
 from api.admin_auth import get_current_admin
 from models.admin_user import AdminUser, AdminRoleEnum
 from models.admin_activity_log import AdminActivityLog
+from schemas.admin import AdminLoginRequest, CreateAdminRequest
 from utils.security import Hasher, create_access_token
 from utils.validation import validate_email
 from datetime import timedelta
@@ -14,12 +15,11 @@ from datetime import timedelta
 router = APIRouter()
 
 
-@router.post("/login")
-async def admin_login(request: Request, db: Session = Depends(get_db)):
+@router.post("/login", summary="Admin login")
+async def admin_login(payload: AdminLoginRequest, request: Request, db: Session = Depends(get_db)):
     """Admin login - completely separate from user auth."""
-    body = await request.json()
-    email = body.get("email", "").strip().lower()
-    password = body.get("password", "")
+    email = payload.email
+    password = payload.password
 
     if not email or not password:
         raise HTTPException(status_code=400, detail="Email and password are required")
@@ -101,8 +101,9 @@ async def admin_logout():
     return response
 
 
-@router.post("/create-admin")
+@router.post("/create-admin", summary="Create a new admin user (superadmin only)")
 async def create_admin(
+    payload: CreateAdminRequest,
     request: Request,
     admin: AdminUser = Depends(get_current_admin),
     db: Session = Depends(get_db)
@@ -111,13 +112,12 @@ async def create_admin(
     if admin.role != AdminRoleEnum.superadmin:
         raise HTTPException(status_code=403, detail="Only superadmins can create admin accounts")
 
-    body = await request.json()
-    email = body.get("email", "").strip().lower()
-    username = body.get("username", "").strip().lower()
-    password = body.get("password", "")
-    first_name = body.get("first_name", "").strip()
-    last_name = body.get("last_name", "").strip()
-    role = body.get("role", "admin")
+    email = payload.email
+    username = payload.username
+    password = payload.password
+    first_name = payload.first_name.strip()
+    last_name = payload.last_name.strip()
+    role = payload.role
 
     if not email or not username or not password:
         raise HTTPException(status_code=400, detail="Email, username, and password are required")

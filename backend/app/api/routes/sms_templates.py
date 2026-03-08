@@ -46,19 +46,12 @@ def _serialize_template(t: SmsTemplate, columns: list) -> dict:
     }
 
 
-@router.post("/create")
+@router.post("/create", summary="Create a new SMS template")
 async def create_sms_template(
-    request: Request,
+    payload: CreateTemplateRequest,
     current_user: User = Depends(get_current_user),
     db: Session = Depends(get_db),
 ):
-    try:
-        data = await request.json()
-        payload = CreateTemplateRequest(**data)
-    except ValidationError as e:
-        return fail(e.errors()[0]["msg"])
-    except Exception:
-        return fail("Invalid JSON")
 
     existing = db.query(SmsTemplate).filter(
         SmsTemplate.user_id == current_user.id,
@@ -91,20 +84,13 @@ async def create_sms_template(
     })
 
 
-@router.put("/edit/{template_uuid}")
+@router.put("/edit/{template_uuid}", summary="Edit an existing SMS template")
 async def edit_sms_template(
     template_uuid: uuid.UUID,
-    request: Request,
+    payload: EditTemplateRequest,
     current_user: User = Depends(get_current_user),
     db: Session = Depends(get_db),
 ):
-    try:
-        data = await request.json()
-        payload = EditTemplateRequest(**data)
-    except ValidationError as e:
-        return fail(e.errors()[0]["msg"])
-    except Exception:
-        return fail("Invalid JSON")
 
     template = db.query(SmsTemplate).filter(
         SmsTemplate.uuid == template_uuid,
@@ -157,20 +143,13 @@ def list_sms_templates(
     return ok(f"Found {len(templates)} SMS template(s)", result)
 
 
-@router.post("/{template_uuid}/columns/add")
+@router.post("/{template_uuid}/columns/add", summary="Add a column to a template")
 async def add_template_column(
-    request: Request,
+    payload: AddColumnRequest,
     template_uuid: uuid.UUID = Path(...),
     current_user: User = Depends(get_current_user),
     db: Session = Depends(get_db),
 ):
-    try:
-        data = await request.json()
-        payload = AddColumnRequest(**data)
-    except ValidationError as e:
-        return fail(e.errors()[0]["msg"])
-    except Exception:
-        return fail("Invalid JSON")
 
     template = db.query(SmsTemplate).filter(
         SmsTemplate.uuid == template_uuid,
