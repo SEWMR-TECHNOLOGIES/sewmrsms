@@ -144,15 +144,15 @@ const SignInPage = () => {
                 </div>
 
                 <div className="flex items-center justify-between">
-                  <label className="flex items-center space-x-2 text-sm">
-                    <input
+                  <label className="flex items-center gap-2 text-sm cursor-pointer select-none">
+                    <Checkbox
                       id="remember"
-                      type="checkbox"
                       checked={form.remember}
-                      onChange={handleChange}
-                      className="rounded border-border"
+                      onCheckedChange={(checked) =>
+                        setForm((prev) => ({ ...prev, remember: !!checked }))
+                      }
                     />
-                    <span>Remember me</span>
+                    <span className="text-muted-foreground">Remember me</span>
                   </label>
                   <Link to="/forgot-password" className="text-sm text-primary hover:underline">
                     Forgot password?
