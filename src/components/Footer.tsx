@@ -1,6 +1,8 @@
-import { Facebook, Twitter, Mail, Phone } from "lucide-react";
+import { Mail, Phone } from "lucide-react";
 import { Link } from "react-router-dom";
 import logo from "@/assets/logo.png";
+import facebookIcon from "@/assets/facebook.png";
+import twitterIcon from "@/assets/twitter.png";
 
 const navigationLinks = [
   { label: "Home", href: "/" },
@@ -17,8 +19,8 @@ const legalLinks = [
 ];
 
 const socialLinks = [
-  { icon: Facebook, href: "#", label: "Facebook" },
-  { icon: Twitter, href: "#", label: "Twitter" },
+  { icon: facebookIcon, href: "#", label: "Facebook" },
+  { icon: twitterIcon, href: "#", label: "X (Twitter)" },
 ];
 
 export const Footer = () => {
@@ -87,19 +89,16 @@ export const Footer = () => {
             <div className="pt-4">
               <h4 className="text-sm font-medium mb-3">Follow Us</h4>
               <div className="flex space-x-3">
-                {socialLinks.map((social, index) => {
-                  const Icon = social.icon;
-                  return (
+                {socialLinks.map((social, index) => (
                     <a
                       key={index}
                       href={social.href}
                       className="w-8 h-8 bg-background/10 rounded-full flex items-center justify-center hover:bg-background/20 transition-colors"
                       aria-label={social.label}
                     >
-                      <Icon className="h-4 w-4" />
+                      <img src={social.icon} alt={social.label} className="h-4 w-4 invert" />
                     </a>
-                  );
-                })}
+                ))}
               </div>
             </div>
           </div>
