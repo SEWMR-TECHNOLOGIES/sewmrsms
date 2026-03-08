@@ -42,6 +42,21 @@ import MessageHistory from "./pages/dashboard/messages/MessageHistory";
 import UserSenderIds from "./pages/dashboard/sender-ids/SenderIds";
 import UserSenderRequests from "./pages/dashboard/sender-ids/SenderIdRequests";
 import OutageNotificationSettings from "./pages/dashboard/settings/OutageNotification";
+import AdminLogin from "./pages/admin/AdminLogin";
+import { AdminLayout } from "./components/admin/AdminLayout";
+import AdminDashboard from "./pages/admin/AdminDashboard";
+import AdminUsers from "./pages/admin/AdminUsers";
+import AdminSenderRequests from "./pages/admin/AdminSenderRequests";
+import AdminSenderIds from "./pages/admin/AdminSenderIds";
+import AdminPropagations from "./pages/admin/AdminPropagations";
+import AdminSubscriptions from "./pages/admin/AdminSubscriptions";
+import AdminOrders from "./pages/admin/AdminOrders";
+import AdminSmsLogs from "./pages/admin/AdminSmsLogs";
+import AdminNetworks from "./pages/admin/AdminNetworks";
+import AdminPackages from "./pages/admin/AdminPackages";
+import AdminSystemSettings from "./pages/admin/AdminSystemSettings";
+import AdminActivityLogs from "./pages/admin/AdminActivityLogs";
+import AdminAccounts from "./pages/admin/AdminAccounts";
 
 const queryClient = new QueryClient();
 
