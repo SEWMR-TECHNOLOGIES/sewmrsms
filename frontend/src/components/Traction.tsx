@@ -10,7 +10,7 @@ const stats = [
 
 const clients = [
   "Betasoko Store",
-  "Teksafari Systems",
+  "teKsafari Systems",
   "Kanisa Langu",
   "eTelectro",
   "Caffe Gelato",
