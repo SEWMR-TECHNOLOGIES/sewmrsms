@@ -26,7 +26,7 @@ export const Hero = () => {
               <Button variant="hero" className="group" asChild>
                 <Link to="/signup">
                   Start Sending SMS
-                  <ArrowRight className="group-hover:translate-x-1 transition-transform" />
+                  <ChevronRight className="group-hover:translate-x-1 transition-transform" />
                 </Link>
               </Button>
               <Button variant="outline-hero" asChild>

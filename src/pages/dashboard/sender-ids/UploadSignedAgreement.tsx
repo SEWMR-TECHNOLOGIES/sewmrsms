@@ -1,5 +1,5 @@
 import React, { useState } from "react";
-import { ArrowLeft, Upload } from "lucide-react";
+import { ChevronLeft, Upload } from "lucide-react";
 import { Button } from "@/components/ui/button";
 import { Card, CardContent, CardDescription, CardHeader, CardTitle } from "@/components/ui/card";
 import { useToast } from "@/hooks/use-toast";

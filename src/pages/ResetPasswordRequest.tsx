@@ -70,7 +70,7 @@ const RequestPasswordResetPage = () => {
           <div className="max-w-md mx-auto">
             <div className="text-center mb-8">
               <Link to="/signin" className="inline-flex items-center text-muted-foreground hover:text-primary transition-colors mb-6">
-                <ArrowLeft className="mr-2 h-4 w-4" />
+                <ChevronLeft className="mr-2 h-4 w-4" />
                 Back to Sign In
               </Link>
               <h1 className="text-3xl font-bold text-foreground mb-2">Reset Password</h1>
