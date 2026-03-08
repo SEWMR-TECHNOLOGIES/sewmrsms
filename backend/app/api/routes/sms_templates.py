@@ -84,20 +84,13 @@ async def create_sms_template(
     })
 
 
-@router.put("/edit/{template_uuid}")
+@router.put("/edit/{template_uuid}", summary="Edit an existing SMS template")
 async def edit_sms_template(
     template_uuid: uuid.UUID,
-    request: Request,
+    payload: EditTemplateRequest,
     current_user: User = Depends(get_current_user),
     db: Session = Depends(get_db),
 ):
-    try:
-        data = await request.json()
-        payload = EditTemplateRequest(**data)
-    except ValidationError as e:
-        return fail(e.errors()[0]["msg"])
-    except Exception:
-        return fail("Invalid JSON")
 
     template = db.query(SmsTemplate).filter(
         SmsTemplate.uuid == template_uuid,
