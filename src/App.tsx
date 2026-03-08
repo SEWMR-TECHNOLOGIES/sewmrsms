@@ -141,7 +141,6 @@ const App = () => (
             <Route path="activity-logs" element={<AdminActivityLogs />} />
             <Route path="admins" element={<AdminAccounts />} />
             <Route path="documents" element={<AdminDocuments />} />
-            <Route path="documents" element={<AdminDocuments />} />
           </Route>
 
           {/* ADD ALL CUSTOM ROUTES ABOVE THE CATCH-ALL "*" ROUTE */}
