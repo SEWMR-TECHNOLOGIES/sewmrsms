@@ -40,6 +40,10 @@ app.include_router(payments.router, prefix=f"{API_PREFIX}/payments", tags=["Paym
 app.include_router(contacts.router, prefix=f"{API_PREFIX}/contacts", tags=["Contacts"])
 app.include_router(cron.router, prefix=f"{API_PREFIX}/cron", tags=["Cron Jobs"])
 
+# Admin routes
+app.include_router(admin_auth_routes.router, prefix=f"{API_PREFIX}/admin/auth", tags=["Admin Auth"])
+app.include_router(admin_routes.router, prefix=f"{API_PREFIX}/admin", tags=["Admin Management"])
+
 # Custom HTTPException handler
 @app.exception_handler(HTTPException)
 async def http_exception_handler(request: Request, exc: HTTPException):
