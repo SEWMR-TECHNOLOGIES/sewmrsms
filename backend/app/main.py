@@ -3,6 +3,8 @@ from fastapi.exceptions import RequestValidationError
 from fastapi.responses import JSONResponse
 from fastapi.middleware.cors import CORSMiddleware
 from api.routes import subscription, sms_templates, sms, contacts, sender_id, cron, auth, plans, payments
+from api.routes import admin_auth as admin_auth_routes
+from api.routes import admin as admin_routes
 
 app = FastAPI(title="SEWMR SMS API", version="1.0.0")
 
@@ -37,6 +39,10 @@ app.include_router(sms.router, prefix=f"{API_PREFIX}/sms", tags=["Messaging"])
 app.include_router(payments.router, prefix=f"{API_PREFIX}/payments", tags=["Payments"])
 app.include_router(contacts.router, prefix=f"{API_PREFIX}/contacts", tags=["Contacts"])
 app.include_router(cron.router, prefix=f"{API_PREFIX}/cron", tags=["Cron Jobs"])
+
+# Admin routes
+app.include_router(admin_auth_routes.router, prefix=f"{API_PREFIX}/admin/auth", tags=["Admin Auth"])
+app.include_router(admin_routes.router, prefix=f"{API_PREFIX}/admin", tags=["Admin Management"])
 
 # Custom HTTPException handler
 @app.exception_handler(HTTPException)
