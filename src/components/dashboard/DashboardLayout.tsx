@@ -11,7 +11,7 @@ export const DashboardLayout = () => {
       <SidebarProvider>
         <div className="min-h-screen flex w-full bg-background">
           <ModernSidebar />
-          <div className="flex-1 flex flex-col ml-4">
+          <div className="flex-1 flex flex-col min-w-0">
             <DashboardHeader />
             <main className="flex-1 p-6 bg-muted/30 ml-2">
               <Outlet />

@@ -57,6 +57,7 @@ import AdminPackages from "./pages/admin/AdminPackages";
 import AdminSystemSettings from "./pages/admin/AdminSystemSettings";
 import AdminActivityLogs from "./pages/admin/AdminActivityLogs";
 import AdminAccounts from "./pages/admin/AdminAccounts";
+import AdminDocuments from "./pages/admin/AdminDocuments";
 
 const queryClient = new QueryClient();
 
@@ -139,6 +140,7 @@ const App = () => (
             <Route path="settings" element={<AdminSystemSettings />} />
             <Route path="activity-logs" element={<AdminActivityLogs />} />
             <Route path="admins" element={<AdminAccounts />} />
+            <Route path="documents" element={<AdminDocuments />} />
           </Route>
 
           {/* ADD ALL CUSTOM ROUTES ABOVE THE CATCH-ALL "*" ROUTE */}
