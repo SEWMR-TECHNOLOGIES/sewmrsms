@@ -1,117 +1,90 @@
 # backend/app/api/sender_id.py
+"""Sender ID routes with Pydantic validation."""
+
 import os
+from io import BytesIO
 from typing import Optional
-from fastapi import APIRouter, Depends, File, Form, Path, Request, UploadFile, HTTPException
-from sqlalchemy.orm import Session
-from sqlalchemy import or_
-from api.user_auth import get_current_user, get_current_user_optional
-from models.network import Network
-from models.sender_id_propagation import SenderIdPropagation
-from models.sender_id import SenderId
-from models.models import SenderIdRequest
-from models.enums import PropagationStatusEnum, SenderIdRequestStatusEnum
-from models.user import User
-from api.deps import get_db
-from utils.validation import (validate_sender_alias)
-from datetime import datetime
-import pytz
-import uuid
-import httpx
+
+from fastapi import APIRouter, Depends, File, Form, HTTPException, Path, Request, UploadFile
 from fastapi.responses import StreamingResponse
-from io import BytesIO
+import httpx
+from pydantic import ValidationError
+from sqlalchemy import or_
+from sqlalchemy.orm import Session
 from xhtml2pdf import pisa
-from io import BytesIO
-from core.config import UPLOAD_SERVICE_URL, MAX_FILE_SIZE
+import uuid
+
+from api.deps import get_db
+from api.user_auth import get_current_user, get_current_user_optional
+from core.config import MAX_FILE_SIZE, UPLOAD_SERVICE_URL
+from models.enums import PropagationStatusEnum, SenderIdRequestStatusEnum
+from models.models import SenderIdRequest
+from models.network import Network
+from models.sender_id import SenderId
+from models.sender_id_propagation import SenderIdPropagation
+from models.user import User
+from schemas.sender_id import RequestSenderIdSchema
+from utils.responses import fail, ok
+from utils.timezone import now_eat
 
 router = APIRouter()
+
 
 @router.post("/request")
 async def request_sender_id(
     request: Request,
     current_user: User = Depends(get_current_user),
-    db: Session = Depends(get_db)
+    db: Session = Depends(get_db),
 ):
-    content_type = request.headers.get("content-type", "")
-    if "application/json" not in content_type.lower():
-        return {
-            "success": False,
-            "message": "Invalid content type. Expected application/json",
-            "data": None
-        }
     try:
         data = await request.json()
+        payload = RequestSenderIdSchema(**data)
+    except ValidationError as e:
+        return fail(e.errors()[0]["msg"])
     except Exception:
-        return {"success": False, "message": "Invalid JSON", "data": None}
+        return fail("Invalid JSON")
 
-    alias = data.get("alias", "").strip().upper()
-    sample_message = data.get("sample_message", "").strip()
-    company_name = data.get("company_name", "").strip()
-
-    if not alias:
-        return {"success": False, "message": "Alias is required", "data": None}
-    if not sample_message:
-        return {"success": False, "message": "Sample message is required", "data": None}
-    if not company_name:
-        return {"success": False, "message": "Company name is required", "data": None}
-
-    if not validate_sender_alias(alias):
-        return {
-            "success": False,
-            "message": "Alias must be 3 to 11 characters long and contain only uppercase letters, digits, and spaces",
-            "data": None
-        }
-
-    # Check if alias already exists for this user in SenderIdRequests (pending/approved/in_review)
     existing_request = db.query(SenderIdRequest).filter(
         SenderIdRequest.user_id == current_user.id,
-        SenderIdRequest.sender_alias == alias,
+        SenderIdRequest.sender_alias == payload.alias,
         or_(
             SenderIdRequest.status == SenderIdRequestStatusEnum.pending.value,
             SenderIdRequest.status == SenderIdRequestStatusEnum.approved.value,
-            SenderIdRequest.status == SenderIdRequestStatusEnum.in_review.value
-        )
+            SenderIdRequest.status == SenderIdRequestStatusEnum.in_review.value,
+        ),
     ).first()
 
     if existing_request:
         status_message = existing_request.status.replace("_", " ").capitalize()
-        return {
-            "success": False,
-            "message": f"Sender ID '{alias}' is already submitted and it is currently {status_message}.",
-            "data": None
-        }
+        return fail(f"Sender ID '{payload.alias}' is already submitted and it is currently {status_message}.")
 
-    now = datetime.now(pytz.timezone("Africa/Nairobi")).replace(tzinfo=None)
-
+    now = now_eat()
     new_request = SenderIdRequest(
         user_id=current_user.id,
-        sender_alias=alias,
-        sample_message=sample_message,
-        company_name=company_name,
+        sender_alias=payload.alias,
+        sample_message=payload.sample_message,
+        company_name=payload.company_name,
         status=SenderIdRequestStatusEnum.pending.value,
         created_at=now,
-        updated_at=now
+        updated_at=now,
     )
-    try:
-        db.add(new_request)
-        db.commit()
-        db.refresh(new_request)
-    except Exception as e:
-        print(f"DB error on sender ID request creation: {e}")
-        return {"success": False, "message": "Database error", "data": None}
+    db.add(new_request)
+    db.commit()
+    db.refresh(new_request)
 
-    return {
-        "success": True,
-        "message": "Sender ID request submitted successfully. Please download, sign, and upload the Sender ID agreement to complete your request.",
-        "data": {
+    return ok(
+        "Sender ID request submitted successfully. Please download, sign, and upload the Sender ID agreement to complete your request.",
+        {
             "id": new_request.id,
             "uuid": str(new_request.uuid),
             "sender_alias": new_request.sender_alias,
             "status": new_request.status,
             "sample_message": new_request.sample_message,
             "company_name": new_request.company_name,
-            "created_at": now.strftime("%Y-%m-%d %H:%M:%S")
-        }
-    }
+            "created_at": now.strftime("%Y-%m-%d %H:%M:%S"),
+        },
+    )
+
 
 @router.post("/{sender_request_uuid}/upload-signed-agreement")
 async def upload_sender_id_document(
@@ -119,20 +92,15 @@ async def upload_sender_id_document(
     sender_request_uuid: uuid.UUID = Path(...),
     file: UploadFile = File(...),
     current_user: User = Depends(get_current_user),
-    db: Session = Depends(get_db)
+    db: Session = Depends(get_db),
 ):
-    content_type = request.headers.get("content-type", "")
-    if "multipart/form-data" not in content_type.lower():
-        raise HTTPException(
-            status_code=415,
-            detail="Invalid content type. Expected multipart/form-data"
-        )
+    if "multipart/form-data" not in request.headers.get("content-type", "").lower():
+        raise HTTPException(status_code=415, detail="Invalid content type. Expected multipart/form-data")
 
-    # Ensure request exists and belongs to user
     sender_req = db.query(SenderIdRequest).filter(
         SenderIdRequest.uuid == sender_request_uuid,
         SenderIdRequest.user_id == current_user.id,
-        SenderIdRequest.status == SenderIdRequestStatusEnum.pending.value
+        SenderIdRequest.status == SenderIdRequestStatusEnum.pending.value,
     ).first()
     if not sender_req:
         raise HTTPException(status_code=404, detail="Sender ID request not found or not pending")
@@ -143,22 +111,19 @@ async def upload_sender_id_document(
     _, ext = os.path.splitext(file.filename)
     if ext.lower() != ".pdf":
         raise HTTPException(status_code=400, detail="File extension must be .pdf")
-    
+
     content = await file.read()
     if len(content) > MAX_FILE_SIZE:
         raise HTTPException(status_code=400, detail="File size must be less than 0.5 MB")
 
-    # Prepare unique filename
     unique_filename = f"{uuid.uuid4()}.pdf"
-
-    # Prepare target path for PHP upload
     target_path = "sewmrsms/uploads/sender-id-requests/agreements/"
 
-    data = {'target_path': target_path}
+    data = {"target_path": target_path}
     if sender_req.document_path:
-        data['old_attachment'] = sender_req.document_path
+        data["old_attachment"] = sender_req.document_path
 
-    files = {'file': (unique_filename, content, 'application/pdf')}
+    files = {"file": (unique_filename, content, "application/pdf")}
 
     async with httpx.AsyncClient() as client:
         response = await client.post(UPLOAD_SERVICE_URL, data=data, files=files)
@@ -170,23 +135,15 @@ async def upload_sender_id_document(
     if not result.get("success"):
         raise HTTPException(status_code=400, detail=result.get("message", "Upload failed"))
 
-    # Update DB with document URL
     sender_req.document_path = result["data"]["url"]
-    sender_req.updated_at = datetime.now(pytz.timezone("Africa/Nairobi")).replace(tzinfo=None)
+    sender_req.updated_at = now_eat()
+    db.commit()
 
-    try:
-        db.commit()
-    except Exception:
-        raise HTTPException(status_code=500, detail="Failed to update sender ID request")
+    return ok("Sender ID agreement uploaded successfully.", {
+        "uuid": str(sender_req.uuid),
+        "document_path": sender_req.document_path,
+    })
 
-    return {
-        "success": True,
-        "message": "Sender ID agreement uploaded successfully. We are reviewing your sender ID request and will notify you once it is processed.",
-        "data": {
-            "uuid": str(sender_req.uuid),
-            "document_path": sender_req.document_path
-        }
-    }
 
 @router.post("/request/student")
 async def request_student_sender_id(
@@ -194,63 +151,56 @@ async def request_student_sender_id(
     is_student_request: Optional[bool] = Form(None),
     file: Optional[UploadFile] = File(None),
     current_user: User = Depends(get_current_user),
-    db: Session = Depends(get_db)
+    db: Session = Depends(get_db),
 ):
-    content_type = request.headers.get("content-type", "")
-    if "multipart/form-data" not in content_type.lower():
-        raise HTTPException(
-            status_code=415,
-            detail="Invalid content type. Expected multipart/form-data"
-        )
+    if "multipart/form-data" not in request.headers.get("content-type", "").lower():
+        raise HTTPException(status_code=415, detail="Invalid content type. Expected multipart/form-data")
 
     if not is_student_request:
         raise HTTPException(status_code=400, detail="Only student requests are accepted here.")
-    
+
     if not file:
         raise HTTPException(status_code=400, detail="File is required. Please upload a PDF file.")
-    
-    # Check for existing pending or approved student request
+
     existing_request = db.query(SenderIdRequest).filter(
         SenderIdRequest.user_id == current_user.id,
         SenderIdRequest.is_student_request.is_(True),
         SenderIdRequest.status.in_([
             SenderIdRequestStatusEnum.pending.value,
-            SenderIdRequestStatusEnum.approved.value
-        ])
+            SenderIdRequestStatusEnum.approved.value,
+        ]),
     ).first()
-    
     if existing_request:
         raise HTTPException(status_code=400, detail="You already have a pending or approved student sender ID request.")
-    
+
     if file.content_type != "application/pdf":
         raise HTTPException(status_code=400, detail="Only PDF files are allowed.")
-    
+
     _, ext = os.path.splitext(file.filename)
     if ext.lower() != ".pdf":
         raise HTTPException(status_code=400, detail="File extension must be .pdf")
-    
+
     content = await file.read()
     if len(content) > MAX_FILE_SIZE:
         raise HTTPException(status_code=400, detail="File size must be less than 0.5 MB")
-    
+
     unique_filename = f"{uuid.uuid4()}.pdf"
     target_path = "sewmrsms/uploads/sender-id-requests/student-ids/"
-    
-    data = {'target_path': target_path}
-    files = {'file': (unique_filename, content, 'application/pdf')}
-    
+
+    data = {"target_path": target_path}
+    files = {"file": (unique_filename, content, "application/pdf")}
+
     async with httpx.AsyncClient() as client:
         response = await client.post(UPLOAD_SERVICE_URL, data=data, files=files)
-    
+
     if response.status_code != 200:
         raise HTTPException(status_code=500, detail="Upload service error")
-    
+
     result = response.json()
     if not result.get("success"):
         raise HTTPException(status_code=400, detail=result.get("message", "Upload failed"))
-    
-    # Create new sender ID request for student
-    now = datetime.now(pytz.timezone("Africa/Nairobi")).replace(tzinfo=None)
+
+    now = now_eat()
     new_request = SenderIdRequest(
         user_id=current_user.id,
         sender_alias="EasyTextAPI",
@@ -261,54 +211,43 @@ async def request_student_sender_id(
         is_student_request=True,
         student_id_path=result["data"]["url"],
         created_at=now,
-        updated_at=now
+        updated_at=now,
     )
-    
-    try:
-        db.add(new_request)
-        db.commit()
-        db.refresh(new_request)
-    except Exception as e:
-        raise HTTPException(status_code=500, detail=f"Database error: {str(e)}")
-    
-    return {
-        "success": True,
-        "message": "We have received your student Sender ID request. Once approved, EasyTextAPI will be added to your account. Meanwhile, please download, sign, and upload the Sender ID agreement to complete your request.",
-        "data": {
+    db.add(new_request)
+    db.commit()
+    db.refresh(new_request)
+
+    return ok(
+        "We have received your student Sender ID request. Once approved, EasyTextAPI will be added to your account.",
+        {
             "id": new_request.id,
             "uuid": str(new_request.uuid),
             "sender_alias": new_request.sender_alias,
             "status": new_request.status,
             "company_name": new_request.company_name,
             "student_id_path": new_request.student_id_path,
-            "created_at": now.strftime("%Y-%m-%d %H:%M:%S")
-        }
-    }
+            "created_at": now.strftime("%Y-%m-%d %H:%M:%S"),
+        },
+    )
+
 
 @router.get("/{sender_request_uuid}/propagation-status")
 def get_sender_id_propagation_status(
     sender_request_uuid: str,
     db: Session = Depends(get_db),
-    current_user=Depends(get_current_user)
+    current_user=Depends(get_current_user),
 ):
-    # Confirm sender request ownership
     request_obj = db.query(SenderIdRequest).filter(
         SenderIdRequest.uuid == sender_request_uuid,
-        SenderIdRequest.user_id == current_user.id
+        SenderIdRequest.user_id == current_user.id,
     ).first()
-
     if not request_obj:
         raise HTTPException(status_code=404, detail="Sender ID request not found or unauthorized")
 
-    # Fetch all networks
     all_networks = db.query(Network).all()
-
-    # Fetch existing propagation records for this request
     existing_propagations = db.query(SenderIdPropagation).filter(
         SenderIdPropagation.request_id == request_obj.id
     ).all()
-
-    # Map network_id -> propagation
     propagation_map = {p.network_id: p for p in existing_propagations}
 
     data = []
@@ -317,14 +256,12 @@ def get_sender_id_propagation_status(
         data.append({
             "network_name": network.name,
             "network_uuid": str(network.uuid),
-            "color_code": network.color_code,  # optional
+            "color_code": network.color_code,
             "status": propagation.status.value if propagation else PropagationStatusEnum.pending.value,
-            "updated_at": propagation.updated_at.strftime("%Y-%m-%d %H:%M:%S") 
-                          if propagation and propagation.updated_at else None,
-            "details": propagation.details if propagation and propagation.details else "No additional details provided"
+            "updated_at": propagation.updated_at.strftime("%Y-%m-%d %H:%M:%S") if propagation and propagation.updated_at else None,
+            "details": propagation.details if propagation and propagation.details else "No additional details provided",
         })
 
-    # Compute overall status
     all_statuses = [item["status"] for item in data]
     if all(s == "propagated" for s in all_statuses):
         overall_status = "propagated"
@@ -335,17 +272,11 @@ def get_sender_id_propagation_status(
     else:
         overall_status = "pending"
 
-    # Last checked timestamp
-    last_checked = datetime.now(pytz.timezone("Africa/Nairobi")).replace(tzinfo=None).isoformat()
+    return ok("Propagation status retrieved successfully", data,
+              sender_id=request_obj.sender_alias,
+              overall_status=overall_status,
+              last_checked=now_eat().isoformat())
 
-    return {
-        "success": True,
-        "message": "Propagation status retrieved successfully",
-        "sender_id": request_obj.sender_alias,
-        "overall_status": overall_status,
-        "last_checked": last_checked,
-        "data": data
-    }
 
 @router.get("/")
 async def get_user_sender_ids(
@@ -354,21 +285,19 @@ async def get_user_sender_ids(
 ):
     sender_ids = db.query(SenderId).filter(SenderId.user_id == current_user.id).all()
 
-    data = []
-    for s in sender_ids:
-        data.append({
+    data = [
+        {
             "uuid": str(s.uuid),
             "alias": s.alias,
-            "status": s.status.value if hasattr(s.status, 'value') else s.status,
+            "status": s.status.value if hasattr(s.status, "value") else s.status,
             "created_at": s.created_at.strftime("%Y-%m-%d %H:%M:%S") if s.created_at else None,
             "updated_at": s.updated_at.strftime("%Y-%m-%d %H:%M:%S") if s.updated_at else None,
-        })
+        }
+        for s in sender_ids
+    ]
 
-    return {
-        "success": True,
-        "message": f"Sender IDs retrieved for user {current_user.username}",
-        "data": data
-    }
+    return ok(f"Sender IDs retrieved for user {current_user.username}", data)
+
 
 @router.get("/requests")
 async def get_user_sender_id_requests(
@@ -379,9 +308,8 @@ async def get_user_sender_id_requests(
         SenderIdRequest.user_id == current_user.id
     ).order_by(SenderIdRequest.created_at.desc()).all()
 
-    data = []
-    for r in requests:
-        data.append({
+    data = [
+        {
             "uuid": str(r.uuid),
             "sender_alias": r.sender_alias,
             "status": r.status.value if hasattr(r.status, "value") else r.status,
@@ -393,13 +321,12 @@ async def get_user_sender_id_requests(
             "remarks": r.remarks,
             "created_at": r.created_at.strftime("%Y-%m-%d %H:%M:%S") if r.created_at else None,
             "updated_at": r.updated_at.strftime("%Y-%m-%d %H:%M:%S") if r.updated_at else None,
-        })
+        }
+        for r in requests
+    ]
 
-    return {
-        "success": True,
-        "message": f"{len(data)} sender ID requests retrieved for user {current_user.username}",
-        "data": data
-    }
+    return ok(f"{len(data)} sender ID requests retrieved for user {current_user.username}", data)
+
 
 @router.get("/requests/{sender_request_uuid}/download-agreement")
 async def download_sender_id_agreement(
@@ -407,16 +334,13 @@ async def download_sender_id_agreement(
     current_user=Depends(get_current_user),
     db: Session = Depends(get_db),
 ):
-    # Fetch request and verify ownership
     request_obj = db.query(SenderIdRequest).filter(
         SenderIdRequest.uuid == sender_request_uuid,
-        SenderIdRequest.user_id == current_user.id
+        SenderIdRequest.user_id == current_user.id,
     ).first()
-
     if not request_obj:
         raise HTTPException(status_code=404, detail="Sender ID request not found or unauthorized")
 
-    # Include student note only if request is a student request
     student_note_html = f"""
     <p><strong>Special student provision</strong></p>
     <div class="note">
@@ -565,5 +489,5 @@ SEWMR TECHNOLOGIES • SEWMR SMS — P.O Box 15961, Nairobi Road, Ngarenaro, Aru
     return StreamingResponse(
         pdf_file,
         media_type="application/pdf",
-        headers={"Content-Disposition": f"attachment; filename=sender_id_agreement_{request_obj.sender_alias}.pdf"}
+        headers={"Content-Disposition": f"attachment; filename=sender_id_agreement_{request_obj.sender_alias}.pdf"},
     )
