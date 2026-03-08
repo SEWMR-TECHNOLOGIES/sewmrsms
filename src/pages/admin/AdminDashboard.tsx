@@ -1,6 +1,7 @@
 import React, { useEffect, useState } from "react";
 import { Card, CardContent, CardHeader, CardTitle } from "@/components/ui/card";
 import { Users, MessageSquare, Send, CreditCard, Package, Radio, Loader2 } from "lucide-react";
+import { useMeta } from "@/hooks/useMeta";
 
 const API_BASE = "https://api.sewmrsms.co.tz/api/v1";
 
@@ -20,6 +21,7 @@ interface Stats {
 export default function AdminDashboard() {
   const [stats, setStats] = useState<Stats | null>(null);
   const [loading, setLoading] = useState(true);
+  useMeta({ title: "Admin Dashboard", description: "Overview of SEWMR SMS platform statistics and metrics." });
 
   useEffect(() => {
     fetch(`${API_BASE}/admin/dashboard/stats`, { credentials: "include" })

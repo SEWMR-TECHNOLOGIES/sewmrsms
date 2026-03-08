@@ -1,8 +1,11 @@
 import { useLocation, Link } from "react-router-dom";
 import { useEffect } from "react";
+import { useMeta } from "@/hooks/useMeta";
 
 const NotFound = () => {
   const location = useLocation();
+
+  useMeta({ title: "Page Not Found", description: "The page you are looking for does not exist on SEWMR SMS." });
 
   useEffect(() => {
     console.error(

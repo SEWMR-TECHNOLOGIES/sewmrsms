@@ -8,10 +8,12 @@ import { Dialog, DialogContent, DialogHeader, DialogTitle } from "@/components/u
 import { useToast } from "@/hooks/use-toast";
 import { useAdmin } from "@/components/admin/AdminGuard";
 import { Loader2, Plus } from "lucide-react";
+import { useMeta } from "@/hooks/useMeta";
 
 const API_BASE = "https://api.sewmrsms.co.tz/api/v1";
 
 export default function AdminAccounts() {
+  useMeta({ title: "Admin - Accounts", description: "Manage admin accounts and access control." });
   const { admin } = useAdmin();
   const [showCreate, setShowCreate] = useState(false);
   const [formData, setFormData] = useState({ email: "", username: "", password: "", first_name: "", last_name: "", role: "admin" });

@@ -29,6 +29,13 @@
     <priority>0.8</priority>
   </url>
 
+  <!-- API Documentation -->
+  <url>
+    <loc>https://sewmrsms.co.tz/developers/docs</loc>
+    <changefreq>monthly</changefreq>
+    <priority>0.8</priority>
+  </url>
+
   <!-- Contact Page -->
   <url>
     <loc>https://sewmrsms.co.tz/contact</loc>
