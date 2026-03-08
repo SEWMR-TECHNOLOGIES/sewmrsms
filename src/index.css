@@ -166,14 +166,15 @@
 /* Sidebar scrollbars: hidden by default, visible on hover */
 .modern-sidebar-scroll,
 .admin-sidebar-scroll {
+  overflow-y: auto;
   scrollbar-width: none;
-  scrollbar-gutter: stable;
+  -ms-overflow-style: none;
 }
 
 .modern-sidebar-scroll::-webkit-scrollbar,
 .admin-sidebar-scroll::-webkit-scrollbar {
-  width: 0;
-  height: 0;
+  width: 0 !important;
+  height: 0 !important;
 }
 
 .modern-sidebar-scroll:hover,
@@ -184,8 +185,8 @@
 
 .modern-sidebar-scroll:hover::-webkit-scrollbar,
 .admin-sidebar-scroll:hover::-webkit-scrollbar {
-  width: 4px;
-  height: 4px;
+  width: 4px !important;
+  height: 4px !important;
 }
 
 .modern-sidebar-scroll:hover::-webkit-scrollbar-track,
