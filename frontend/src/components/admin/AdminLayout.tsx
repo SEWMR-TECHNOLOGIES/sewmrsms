@@ -1,4 +1,4 @@
-import React from "react";
+import React, { useEffect } from "react";
 import { Outlet } from "react-router-dom";
 import { SidebarProvider, SidebarTrigger } from "@/components/ui/sidebar";
 import { AdminSidebar } from "./AdminSidebar";
@@ -6,6 +6,14 @@ import { AdminGuard, useAdmin } from "./AdminGuard";
 import { Badge } from "@/components/ui/badge";
 
 function AdminLayoutInner() {
+  useEffect(() => {
+    document.documentElement.classList.add("admin-no-scrollbar");
+    document.body.classList.add("admin-no-scrollbar");
+    return () => {
+      document.documentElement.classList.remove("admin-no-scrollbar");
+      document.body.classList.remove("admin-no-scrollbar");
+    };
+  }, []);
   const { admin } = useAdmin();
 
   return (
